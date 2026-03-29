@@ -1,0 +1,8 @@
+# 无需 pip 安装第三方 Python 包
+# 核心模块仅使用 Python 标准库。
+#
+# 运行时外部依赖:
+# - yt-dlp
+# - ffmpeg（部分视频合并功能需要）
+#
+# yt-dlp 通过 subprocess 调用，不作为 Python 包导入。
