@@ -42,7 +42,8 @@ class TestMainFlow:
         detect_proc = _mock_detect_success()
         download_proc = MagicMock(returncode=0, stdout="", stderr="")
 
-        with patch("app.format_detector.subprocess.run", return_value=detect_proc):
+        with patch("app.main._run_env_check", return_value=True), \
+             patch("app.format_detector.subprocess.run", return_value=detect_proc):
             monkeypatch.setattr("builtins.input", lambda _: "0")
             result = main(["http://example.com"])
             assert result == 0
@@ -65,6 +66,7 @@ class TestMainFlow:
                 return detect_proc
             return dl_proc
 
-        with patch("subprocess.run", side_effect=route_subprocess):
+        with patch("app.main._run_env_check", return_value=True), \
+             patch("subprocess.run", side_effect=route_subprocess):
             result = main(["http://example.com"])
             assert result == 0
