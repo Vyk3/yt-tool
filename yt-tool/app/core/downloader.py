@@ -12,11 +12,12 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from .core import config
-from .core.path_utils import ensure_dir, expand_path
+from . import config
+from .path_utils import ensure_dir, expand_path
 
 
 @dataclass(frozen=True)
@@ -55,8 +56,14 @@ def _extract_saved_path(output: str) -> str:
     return path.strip().strip("\"'")
 
 
-def _stream_process_output(cmd: list[str]) -> tuple[int, str]:
-    """流式转发 yt-dlp 输出，保留进度条，同时捕获完整文本。"""
+def _stream_process_output(
+    cmd: list[str],
+    on_chunk: Callable[[str], None] | None = None,
+) -> tuple[int, str]:
+    """流式转发 yt-dlp 输出，保留进度条，同时捕获完整文本。
+
+    on_chunk: 若提供，每个字符块调用此回调；否则直接写 sys.stdout（CLI 默认行为）。
+    """
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -75,19 +82,29 @@ def _stream_process_output(cmd: list[str]) -> tuple[int, str]:
         if chunk == "":
             break
         chunks.append(chunk)
-        sys.stdout.write(chunk)
-        sys.stdout.flush()
+        if on_chunk is not None:
+            try:
+                on_chunk(chunk)
+            except Exception:
+                pass
+        else:
+            sys.stdout.write(chunk)
+            sys.stdout.flush()
 
     returncode = proc.wait()
     return returncode, "".join(chunks)
 
 
-def _run_ytdlp(args: list[str]) -> DownloadResult:
+def _run_ytdlp(
+    args: list[str],
+    *,
+    on_chunk: Callable[[str], None] | None = None,
+) -> DownloadResult:
     """执行 yt-dlp 并返回结构化结果。"""
     cmd = ["yt-dlp", *args]
 
-    if config.YT_SHOW_PROGRESS and sys.stdout.isatty():
-        returncode, output = _stream_process_output(cmd)
+    if (config.YT_SHOW_PROGRESS and sys.stdout.isatty()) or on_chunk is not None:
+        returncode, output = _stream_process_output(cmd, on_chunk=on_chunk)
         if returncode != 0:
             err = output.strip().splitlines()[-1][:300] if output.strip() else ""
             return DownloadResult(
@@ -183,6 +200,7 @@ def download_video(
     cookies_from: str | None = None,
     embed_subs_lang: str | None = None,
     extra_args: list[str] | None = None,
+    on_chunk: Callable[[str], None] | None = None,
 ) -> DownloadResult:
     """下载用户选定的视频流（含合并音频）。
 
@@ -209,7 +227,7 @@ def download_video(
     args += ["-o", str(dest / "%(title)s.%(ext)s")]
     args.append(url)
 
-    return _run_ytdlp(args)
+    return _run_ytdlp(args, on_chunk=on_chunk)
 
 
 def download_audio(
@@ -220,6 +238,7 @@ def download_audio(
     cookies_from: str | None = None,
     transcode_to: str | None = None,
     extra_args: list[str] | None = None,
+    on_chunk: Callable[[str], None] | None = None,
 ) -> DownloadResult:
     """下载用户选定的音频流。
 
@@ -244,7 +263,7 @@ def download_audio(
     args += ["-o", str(dest / "%(title)s.%(ext)s")]
     args.append(url)
 
-    return _run_ytdlp(args)
+    return _run_ytdlp(args, on_chunk=on_chunk)
 
 
 def download_subs(
@@ -254,6 +273,7 @@ def download_subs(
     *,
     cookies_from: str | None = None,
     extra_args: list[str] | None = None,
+    on_chunk: Callable[[str], None] | None = None,
 ) -> DownloadResult:
     """下载普通字幕（不含自动字幕）。"""
     if not url or not lang:
@@ -274,7 +294,7 @@ def download_subs(
     args += ["-o", str(dest / "%(title)s.%(ext)s")]
     args.append(url)
 
-    return _run_ytdlp(args)
+    return _run_ytdlp(args, on_chunk=on_chunk)
 
 
 def download_auto_subs(
@@ -284,6 +304,7 @@ def download_auto_subs(
     *,
     cookies_from: str | None = None,
     extra_args: list[str] | None = None,
+    on_chunk: Callable[[str], None] | None = None,
 ) -> DownloadResult:
     """下载自动字幕（automatic_captions）。"""
     if not url or not lang:
@@ -303,7 +324,7 @@ def download_auto_subs(
     args += ["-o", str(dest / "%(title)s.%(ext)s")]
     args.append(url)
 
-    return _run_ytdlp(args)
+    return _run_ytdlp(args, on_chunk=on_chunk)
 
 
 def download_playlist(
@@ -313,6 +334,7 @@ def download_playlist(
     *,
     cookies_from: str | None = None,
     extra_args: list[str] | None = None,
+    on_chunk: Callable[[str], None] | None = None,
 ) -> DownloadResult:
     """下载整个播放列表（自动选取最佳格式）。
 
@@ -351,4 +373,4 @@ def download_playlist(
     args += ["--yes-playlist"]
     args.append(url)
 
-    return _run_ytdlp(args)
+    return _run_ytdlp(args, on_chunk=on_chunk)
