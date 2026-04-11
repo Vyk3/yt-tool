@@ -40,13 +40,10 @@
 app/
   __init__.py
   __main__.py
-  config.py
-  downloader.py
-  env_check.py
-  format_detector.py
-  main.py
-  path_utils.py
-  ui.py
+  core/
+  services/
+  cli/
+  gui/
 
 launcher/
   mac/
@@ -78,6 +75,7 @@ Python 代码本身不要求用户额外安装第三方 Python 包。
 
 * `yt-dlp`
 * `ffmpeg`（部分视频合并功能需要）
+* `PySide6`（仅 GUI 模式需要）
 
 ---
 
@@ -99,6 +97,12 @@ yt-dlp --version
 ffmpeg -version
 ```
 
+如需 GUI：
+
+```bash
+python3 -m pip install PySide6
+```
+
 ### Windows
 
 可使用 `winget`：
@@ -117,6 +121,12 @@ yt-dlp --version
 ffmpeg -version
 ```
 
+如需 GUI：
+
+```powershell
+py -m pip install PySide6
+```
+
 ---
 
 ## 启动方式
@@ -131,6 +141,12 @@ python3 -m app
 
 ```bash
 python3 -m app "https://www.youtube.com/watch?v=xxxx"
+```
+
+### 方式 1.5：GUI 模式（需要 PySide6）
+
+```bash
+python3 -m app.gui
 ```
 
 ### 方式 2：Mac 启动器

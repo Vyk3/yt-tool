@@ -45,6 +45,11 @@ class AppWorkflow:
         """检查运行环境，返回 CheckResult。"""
         return check_env()
 
+    @property
+    def settings(self) -> AppSettings:
+        """返回当前生效的应用设置。"""
+        return self._settings
+
     def _effective_cookies(self, req_cookies: str | None) -> str | None:
         """per-request cookies 优先，不存在时回退到 AppSettings.cookies_from。"""
         return req_cookies if req_cookies is not None else self._settings.cookies_from
