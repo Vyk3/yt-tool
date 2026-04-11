@@ -90,9 +90,23 @@ Python 依赖通过单一文件 `requirements.txt` 管理。
 
 最小使用步骤：
 
-1. 从 Release 页面下载对应平台产物：macOS `.app` / Windows `.exe`
-2. macOS：双击 `.app` 启动；Windows：双击 `.exe` 启动
-3. 首次运行如提示缺少 `ffmpeg`，请先安装 `ffmpeg` 后重试
+1. 从 Release 页面下载对应平台产物：macOS `.dmg` / Windows `.zip`
+2. macOS：挂载 `.dmg`，将 `yt-tool.app` 拖入 Applications，双击启动
+3. Windows：解压 `.zip`，双击 `yt-tool.exe` 启动
+4. 首次运行如提示缺少 `ffmpeg`，请先安装 `ffmpeg` 后重试
+
+### macOS 首次运行提示"无法验证开发者"
+
+由于应用未经 Apple 付费公证，macOS Gatekeeper 会在首次打开时提示：
+
+> "yt-tool" cannot be opened because the developer cannot be verified.
+
+解决方法（任选一）：
+
+- **右键菜单**：在 Finder 中右键点击 `yt-tool.app` → **打开** → 弹窗中点击 **打开**
+- **系统设置**：若双击后被拒绝，打开 **系统设置 → 隐私与安全性 → 安全性**，找到拦截提示，点击 **仍要打开**
+
+首次确认后，后续双击可正常启动，无需重复操作。
 
 ---
 

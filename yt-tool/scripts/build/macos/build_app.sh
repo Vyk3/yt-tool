@@ -57,10 +57,19 @@ cd "$PROJECT_DIR"
 "$PYTHON" -m PyInstaller \
   --noconfirm \
   $CLEAN_FLAG \
-  --windowed \
-  --name "$APP_NAME" \
-  --paths "$PROJECT_DIR" \
-  --paths "$PROJECT_DIR/vendor" \
-  app/__main__.py
+  "$PROJECT_DIR/yt-tool.spec"
 
 echo "Built app: $PROJECT_DIR/dist/$APP_NAME.app"
+
+# Ad-hoc codesign — resolves "app is damaged" Gatekeeper error without a paid certificate.
+# Users will still see "unverified developer" on first launch; right-click → Open to proceed.
+codesign --force --deep --sign - "$PROJECT_DIR/dist/$APP_NAME.app"
+echo "Codesigned (ad-hoc): $APP_NAME.app"
+
+# Package as DMG for distribution.
+hdiutil create \
+  -volname "$APP_NAME" \
+  -srcfolder "$PROJECT_DIR/dist/$APP_NAME.app" \
+  -ov -format UDZO \
+  "$PROJECT_DIR/dist/$APP_NAME-macOS.dmg"
+echo "DMG: $PROJECT_DIR/dist/$APP_NAME-macOS.dmg"
