@@ -12,7 +12,13 @@ def _should_force_cli(argv: Sequence[str]) -> bool:
     mode = os.environ.get("YT_TOOL_MODE", "").strip().lower()
     if mode == "cli":
         return True
-    return "--cli" in argv
+    if "--cli" in argv:
+        return True
+    # 兼容历史行为：`python -m app <url>`（http/https）应直接走 CLI。
+    return any(
+        arg.startswith(("http://", "https://"))
+        for arg in argv
+    )
 
 
 def _argv_without_cli_flag(argv: Sequence[str]) -> list[str]:
