@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.path_utils import ensure_dir, expand_path, resolve_download_dir
+from app.core.path_utils import ensure_dir, expand_path, resolve_download_dir
 
 
 class TestExpandPath:

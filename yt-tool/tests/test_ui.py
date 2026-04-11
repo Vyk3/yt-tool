@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.format_detector import SubtitleTrack, VideoFormat
+from app.core.format_detector import SubtitleTrack, VideoFormat
 from app.ui import (
     ask_download_type,
     ask_download_sections,

@@ -15,8 +15,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import config
-from .path_utils import ensure_dir, expand_path
+from .core import config
+from .core.path_utils import ensure_dir, expand_path
 
 
 @dataclass(frozen=True)

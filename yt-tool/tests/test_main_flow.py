@@ -33,7 +33,7 @@ class TestMainFlow:
         fake = MagicMock()
         fake.returncode = 1
         fake.stderr = "ERROR"
-        with patch("app.format_detector.subprocess.run", return_value=fake):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake):
             result = main(["http://bad-url"])
             assert result == 1
 
@@ -42,7 +42,7 @@ class TestMainFlow:
         detect_proc = _mock_detect_success()
 
         with patch("app.main._run_env_check", return_value=(True, True)), \
-             patch("app.format_detector.subprocess.run", return_value=detect_proc):
+             patch("app.core.format_detector.subprocess.run", return_value=detect_proc):
             monkeypatch.setattr("builtins.input", lambda _: "0")
             result = main(["http://example.com"])
             assert result == 0
@@ -78,7 +78,7 @@ class TestMainFlow:
         detect_proc = _mock_detect_success()
 
         with patch("app.main._run_env_check", return_value=(True, True)), \
-             patch("app.format_detector.subprocess.run", return_value=detect_proc), \
+             patch("app.core.format_detector.subprocess.run", return_value=detect_proc), \
              patch("app.main.validate_detected_formats") as mock_validate:
             mock_validate.side_effect = lambda url, info, **kwargs: info
             monkeypatch.setattr("builtins.input", lambda _: "0")

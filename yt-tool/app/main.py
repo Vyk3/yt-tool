@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import sys
 
-from . import config
+from .core import config
+from .core.env_check import check_env
+from .core.format_detector import DetectResult, detect, validate_detected_formats
+from .core.path_utils import resolve_download_dir
 from .downloader import download_audio, download_auto_subs, download_playlist, download_subs, download_video
-from .env_check import check_env
-from .format_detector import DetectResult, detect, validate_detected_formats
-from .path_utils import resolve_download_dir
 from .ui import (
     ask_audio_transcode,
     ask_cookie_browser,
