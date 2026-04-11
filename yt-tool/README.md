@@ -140,6 +140,12 @@ py -m pip install -r requirements.txt
 
 ## 启动方式
 
+默认入口策略（`python3 -m app` 及 launcher 脚本一致）：
+
+* 默认先尝试 GUI（`app.gui`）
+* GUI 依赖缺失或启动失败时自动回退 CLI（`app.cli`）
+* 可强制 CLI：传 `--cli` 或设置环境变量 `YT_TOOL_MODE=cli`
+
 ### 方式 1：直接运行 Python 模块
 
 ```bash
@@ -156,6 +162,13 @@ python3 -m app "https://www.youtube.com/watch?v=xxxx"
 
 ```bash
 python3 -m app.gui
+```
+
+强制 CLI 示例：
+
+```bash
+python3 -m app --cli
+YT_TOOL_MODE=cli python3 -m app
 ```
 
 ### 方式 2：Mac 启动器
@@ -175,6 +188,17 @@ launcher\windows\yt.cmd "https://www.youtube.com/watch?v=xxxx"
 ```powershell
 .\launcher\windows\yt.ps1 "https://www.youtube.com/watch?v=xxxx"
 ```
+
+---
+
+## Packaging Notes
+
+打包/分发建议：
+
+* 保留统一入口 `python -m app`，让 GUI->CLI 回退逻辑在 Python 层生效
+* Windows/macOS 启动器仅负责找解释器并转发参数，不复制业务逻辑
+* GUI 依赖使用 `requirements.txt` 中的 `PySide6_Essentials + shiboken6`
+* 系统级依赖（如 `ffmpeg`）仍需在目标机器单独安装并验证
 
 ---
 
