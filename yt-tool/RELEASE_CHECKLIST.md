@@ -10,6 +10,8 @@
 
 ## 2. 启动入口
 - [x] `python3 -m app` 可运行
+- [x] 默认入口策略：先 GUI，失败回退 CLI
+- [x] 强制 CLI：`--cli` 与 `YT_TOOL_MODE=cli` 可用
 - [x] Mac `yt.command` 可运行
 - [ ] Windows `yt.cmd` 已验证
 - [ ] Windows `yt.ps1` 已验证
@@ -17,10 +19,10 @@
 - [x] 不带参数时可进入交互模式
 
 ## 3. 测试
-- [x] pytest 全部通过 (55/55)
+- [x] pytest 全部通过 (120/120)
 - [x] 关键冒烟联调已通过 (7/7)
 - [x] 关键异常联调已通过 (9/9)
-- [ ] 回归测试已通过
+- [x] 回归测试已通过
 - [x] 已知限制文档已更新
 
 ## 4. 文档
@@ -35,3 +37,9 @@
 - [ ] 提交 git commit
 - [ ] 打 git tag
 - [ ] 准备 release note
+
+## 6. Packaging
+- [ ] 验证 launcher 与 `python -m app` 入口策略一致（GUI 优先，失败回退 CLI）
+- [ ] 验证 `--cli` 与 `YT_TOOL_MODE=cli` 在 macOS/Windows 可用
+- [ ] 验证 `requirements.txt`（含 GUI 依赖）可在干净环境安装
+- [ ] 验证 ffmpeg 在目标分发机器可用
