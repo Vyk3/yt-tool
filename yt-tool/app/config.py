@@ -40,3 +40,17 @@ YT_PREFER_SUBTITLE_LANGS: tuple[str, ...] = ("zh-Hans", "en")
 # --- 行为开关 ---
 YT_SHOW_PROGRESS: bool = True
 YT_PLAYLIST_CONTINUE_ON_ERROR: bool = True
+YT_VALIDATE_FORMATS_BEFORE_MENU: bool = True
+YT_VALIDATE_FORMAT_TIMEOUT_SEC: int = 8
+YT_VALIDATE_VIDEO_CANDIDATES: int = 4
+YT_VALIDATE_AUDIO_CANDIDATES: int = 3
+YT_USE_DOWNLOAD_ARCHIVE: bool = True
+YT_DOWNLOAD_ARCHIVE: Path = _DOWNLOADS / ".yt-tool-download-archive.txt"
+YT_SPONSORBLOCK_DEFAULT_CATEGORIES: tuple[str, ...] = (
+    "sponsor",
+    "intro",
+    "outro",
+    "selfpromo",
+    "preview",
+    "interaction",
+)
