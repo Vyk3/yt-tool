@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.format_detector import (
+from app.core.format_detector import (
     DetectResult,
     _parse_subtitle_tracks,
     detect,
@@ -73,7 +73,7 @@ class TestDetect:
         fake_proc = MagicMock()
         fake_proc.returncode = 1
         fake_proc.stderr = "ERROR: not a video"
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             with pytest.raises(RuntimeError, match="format detect failed"):
                 detect("http://example.com")
 
@@ -82,7 +82,7 @@ class TestDetect:
         fake_proc.returncode = 0
         fake_proc.stdout = json.dumps(SAMPLE_YTDLP_JSON)
         fake_proc.stderr = ""
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com")
             assert result.title == "Test Video"
             assert len(result.video_formats) == 2
@@ -97,7 +97,7 @@ class TestDetect:
         fake_proc.returncode = 0
         fake_proc.stdout = json.dumps(SAMPLE_YTDLP_JSON)
         fake_proc.stderr = ""
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com")
             fmt_248 = next(f for f in result.video_formats if f.id == "248")
             assert "video only" in fmt_248.note
@@ -113,7 +113,7 @@ class TestDetect:
         fake_proc.returncode = 0
         fake_proc.stdout = json.dumps(playlist_json)
         fake_proc.stderr = ""
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com/playlist")
             assert result.title == "Test Video"
             assert result.is_playlist is True
@@ -132,7 +132,7 @@ class TestDetect:
         fake_proc.returncode = 0
         fake_proc.stdout = json.dumps(data)
         fake_proc.stderr = ""
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com/live")
             assert result.subtitles[0].is_live_chat is True
 
@@ -149,7 +149,7 @@ class TestDetect:
         fake_proc.returncode = 0
         fake_proc.stdout = json.dumps(data)
         fake_proc.stderr = ""
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com")
             assert [track.lang for track in result.subtitles] == ["zh-Hans", "en"]
 
@@ -158,13 +158,13 @@ class TestDetect:
         fake_proc.returncode = 0
         fake_proc.stdout = json.dumps(SAMPLE_YTDLP_JSON)
         fake_proc.stderr = ""
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com")
 
         def is_available(url, format_id, **kwargs):
             return format_id != "248"
 
-        with patch("app.format_detector._probe_format_available", side_effect=is_available):
+        with patch("app.core.format_detector._probe_format_available", side_effect=is_available):
             validated = validate_detected_formats("http://example.com", result)
 
         assert [fmt.id for fmt in validated.video_formats] == ["137"]
@@ -190,7 +190,7 @@ class TestDetect:
             ],
         }
         fake_proc = MagicMock(returncode=0, stdout=json.dumps(extended), stderr="")
-        with patch("app.format_detector.subprocess.run", return_value=fake_proc):
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
             result = detect("http://example.com")
 
         checked: list[str] = []
@@ -199,8 +199,8 @@ class TestDetect:
             checked.append(format_id)
             return True
 
-        with patch("app.format_detector.config.YT_VALIDATE_VIDEO_CANDIDATES", 1), \
-             patch("app.format_detector._probe_format_available", side_effect=is_available):
+        with patch("app.core.format_detector.config.YT_VALIDATE_VIDEO_CANDIDATES", 1), \
+             patch("app.core.format_detector._probe_format_available", side_effect=is_available):
             validated = validate_detected_formats("http://example.com", result)
 
         # 只有 top-1 视频候选和音频被探测

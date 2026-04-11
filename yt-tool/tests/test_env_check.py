@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from app.env_check import CheckResult, check_env
+from app.core.env_check import CheckResult, check_env
 
 
 class TestCheckEnv:
@@ -23,7 +23,7 @@ class TestCheckEnv:
                 return None
             return original_which(cmd)
 
-        with patch("app.env_check.shutil.which", side_effect=fake_which):
+        with patch("app.core.env_check.shutil.which", side_effect=fake_which):
             result = check_env()
             assert result.fatal_missing is True
             assert result.ok is False
@@ -39,7 +39,7 @@ class TestCheckEnv:
                 return None
             return original_which(cmd)
 
-        with patch("app.env_check.shutil.which", side_effect=fake_which):
+        with patch("app.core.env_check.shutil.which", side_effect=fake_which):
             result = check_env()
             assert result.warning_missing is True
             # 只要 python/yt-dlp 在，ok 仍为 True
