@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.format_detector import SubtitleTrack, VideoFormat
-from app.ui import (
+from app.cli.ui import (
     ask_download_type,
     ask_download_sections,
     ask_sponsorblock_categories,
@@ -48,8 +48,8 @@ class TestMenuSelect:
             menu_select("test", ["A"], ["a", "b"])
 
     def test_column_hint_forces_numeric_menu(self, monkeypatch):
-        monkeypatch.setattr("app.ui.sys.stdin.isatty", lambda: True)
-        monkeypatch.setattr("app.ui.sys.stdout.isatty", lambda: True)
+        monkeypatch.setattr("app.cli.ui.sys.stdin.isatty", lambda: True)
+        monkeypatch.setattr("app.cli.ui.sys.stdout.isatty", lambda: True)
         monkeypatch.setattr("builtins.input", lambda _: "1")
         result = menu_select("test", ["A", "B"], ["a", "b"], column_hint="ID  编码  码率")
         assert result == "a"

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.main import main
+from app.cli.main import main
 
 from .test_format_detector import SAMPLE_YTDLP_JSON
 
@@ -41,7 +41,7 @@ class TestMainFlow:
         """用户在下载类型菜单选 0 退出，返回 0。"""
         detect_proc = _mock_detect_success()
 
-        with patch("app.main._run_env_check", return_value=(True, True)), \
+        with patch("app.cli.main._run_env_check", return_value=(True, True)), \
              patch("app.core.format_detector.subprocess.run", return_value=detect_proc):
             monkeypatch.setattr("builtins.input", lambda _: "0")
             result = main(["http://example.com"])
@@ -69,7 +69,7 @@ class TestMainFlow:
                 return detect_proc
             return dl_proc
 
-        with patch("app.main._run_env_check", return_value=(True, True)), \
+        with patch("app.cli.main._run_env_check", return_value=(True, True)), \
              patch("subprocess.run", side_effect=route_subprocess):
             result = main(["http://example.com"])
             assert result == 0
@@ -77,9 +77,9 @@ class TestMainFlow:
     def test_prevalidate_formats_before_menu(self, monkeypatch):
         detect_proc = _mock_detect_success()
 
-        with patch("app.main._run_env_check", return_value=(True, True)), \
+        with patch("app.cli.main._run_env_check", return_value=(True, True)), \
              patch("app.core.format_detector.subprocess.run", return_value=detect_proc), \
-             patch("app.main.validate_detected_formats") as mock_validate:
+             patch("app.services.workflow.validate_detected_formats") as mock_validate:
             mock_validate.side_effect = lambda url, info, **kwargs: info
             monkeypatch.setattr("builtins.input", lambda _: "0")
             result = main(["http://example.com"])
@@ -101,10 +101,10 @@ class TestMainFlow:
 
         fake_result = MagicMock(ok=True, output="ok", error="", saved_path=str(tmp_path / "x.mp4"))
 
-        with patch("app.main._run_env_check", return_value=(True, True)), \
-             patch("app.main.detect", return_value=sample_detect_result), \
-             patch("app.main.validate_detected_formats", return_value=sample_detect_result), \
-             patch("app.main.download_video", return_value=fake_result) as mock_download:
+        with patch("app.cli.main._run_env_check", return_value=(True, True)), \
+             patch("app.services.workflow.detect", return_value=sample_detect_result), \
+             patch("app.services.workflow.validate_detected_formats", return_value=sample_detect_result), \
+             patch("app.services.workflow.download_video", return_value=fake_result) as mock_download:
             result = main(["http://example.com"])
             assert result == 0
             extra_args = mock_download.call_args.kwargs["extra_args"]
@@ -133,10 +133,10 @@ class TestMainFlow:
         fail_result = MagicMock(ok=False, output="", error="yt-dlp exited 1: Requested format is not available", saved_path="")
         ok_result = MagicMock(ok=True, output="ok", error="", saved_path=str(tmp_path / "x.m4a"))
 
-        with patch("app.main._run_env_check", return_value=(True, True)), \
-             patch("app.main.detect", side_effect=[sample_detect_result, refreshed_info]), \
-             patch("app.main.validate_detected_formats", side_effect=[sample_detect_result, refreshed_info]), \
-             patch("app.main.download_audio", side_effect=[fail_result, ok_result]) as mock_download:
+        with patch("app.cli.main._run_env_check", return_value=(True, True)), \
+             patch("app.services.workflow.detect", side_effect=[sample_detect_result, refreshed_info]), \
+             patch("app.services.workflow.validate_detected_formats", side_effect=[sample_detect_result, refreshed_info]), \
+             patch("app.services.workflow.download_audio", side_effect=[fail_result, ok_result]) as mock_download:
             result = main(["http://example.com"])
             assert result == 0
             assert mock_download.call_count == 2
