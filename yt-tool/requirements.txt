@@ -1,9 +1,9 @@
-# 无需 pip 安装第三方 Python 包
-# 项目 vendored 了 wcwidth，用于终端字符显示宽度计算。
-#
-# 运行时外部依赖:
-# - yt-dlp
-# - ffmpeg（部分视频合并功能需要）
-# - PySide6（仅 GUI 模式需要）
-#
-# yt-dlp 通过 subprocess 调用，不作为 Python 包导入。
+# Python 包依赖（单文件方案）
+# 安装: python3 -m pip install -r requirements.txt
+yt-dlp>=2025.1.0
+PySide6_Essentials==6.11.0
+shiboken6==6.11.0
+
+# 非 pip 依赖（需系统安装）:
+# - Python 3.10+
+# - ffmpeg
