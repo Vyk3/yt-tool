@@ -3,6 +3,7 @@ GUI_ARCHITECTURE.md
 /build/
 /dist/
 *.spec
+!yt-tool.spec
 *.pyz
 .pytest_cache/
 __pycache__/
