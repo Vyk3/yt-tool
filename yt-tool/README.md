@@ -68,14 +68,17 @@ RELEASE_CHECKLIST.md
 
 ## 运行依赖
 
-Python 代码本身不要求用户额外安装第三方 Python 包。
-项目内部 vendored 了 `wcwidth`，用于终端字符显示宽度计算。
+Python 依赖通过单一文件 `requirements.txt` 管理。
 
 运行时外部依赖：
 
-* `yt-dlp`
+* Python 3.10+
 * `ffmpeg`（部分视频合并功能需要）
-* `PySide6`（仅 GUI 模式需要）
+
+`requirements.txt` 会安装：
+
+* `yt-dlp`
+* `PySide6_Essentials` + `shiboken6`（GUI 模式，覆盖当前项目所需 QtWidgets 能力）
 
 ---
 
@@ -97,10 +100,13 @@ yt-dlp --version
 ffmpeg -version
 ```
 
-如需 GUI：
+安装 Python 依赖（CLI + GUI）：
 
 ```bash
-python3 -m pip install PySide6
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -U pip
+python3 -m pip install -r requirements.txt
 ```
 
 ### Windows
@@ -121,10 +127,13 @@ yt-dlp --version
 ffmpeg -version
 ```
 
-如需 GUI：
+安装 Python 依赖（CLI + GUI）：
 
 ```powershell
-py -m pip install PySide6
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+py -m pip install -U pip
+py -m pip install -r requirements.txt
 ```
 
 ---
@@ -143,7 +152,7 @@ python3 -m app
 python3 -m app "https://www.youtube.com/watch?v=xxxx"
 ```
 
-### 方式 1.5：GUI 模式（需要 PySide6）
+### 方式 1.5：GUI 模式（需要 PySide6 Essentials）
 
 ```bash
 python3 -m app.gui
