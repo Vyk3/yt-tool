@@ -49,7 +49,7 @@ class DetectWorker(QObject):
 
 
 class DownloadWorker(QObject):
-    """后台执行视频下载。"""
+    """后台执行下载任务（带格式失效重探测重试）。"""
 
     finished = Signal(object)
     failed = Signal(str)
@@ -63,7 +63,10 @@ class DownloadWorker(QObject):
     @Slot()
     def run(self) -> None:
         try:
-            result = self._workflow.run_download(self._request, on_progress=self.progress.emit)
+            result = self._workflow.retry_with_redetect(
+                self._request,
+                on_progress=self.progress.emit,
+            )
         except Exception as exc:
             self.failed.emit(str(exc))
             return

@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 from typing import Literal
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread
 
+from ..core import config
 from ..services.models import DetectRequest, ProgressEvent
 from ..services.workflow import AppWorkflow
-from .main_window import MainWindow
 from .workers import DetectWorker, DownloadWorker, EnvCheckWorker
+
+if TYPE_CHECKING:
+    from .main_window import MainWindow
 
 
 class AppController(QObject):
@@ -80,7 +84,7 @@ class AppController(QObject):
 
     def _build_download_request(self, *, kind: str, url: str):
         cookies = self._window.current_cookies_from()
-        extra_args = self._window.current_extra_args()
+        extra_args = self._compose_extra_args(kind)
 
         if kind == "video":
             video_fmt = self._window.selected_video_format_id()
@@ -138,6 +142,31 @@ class AppController(QObject):
 
         self._window.show_error(f"不支持的下载类型: {kind}")
         return None
+
+    def _compose_extra_args(self, kind: str) -> tuple[str, ...]:
+        args: list[str] = []
+
+        if kind in ("video", "audio", "playlist"):
+            download_sections = self._window.current_download_sections()
+            if download_sections:
+                args += ["--download-sections", download_sections]
+
+            sponsorblock_mode = self._window.current_sponsorblock_mode()
+            if sponsorblock_mode:
+                categories = (
+                    self._window.current_sponsorblock_categories()
+                    or ",".join(config.YT_SPONSORBLOCK_DEFAULT_CATEGORIES)
+                )
+                flag = (
+                    "--sponsorblock-mark"
+                    if sponsorblock_mode == "mark"
+                    else "--sponsorblock-remove"
+                )
+                args += [flag, categories]
+
+        # 手动参数放在最后，便于用户按需覆盖结构化默认参数。
+        args += list(self._window.current_extra_args())
+        return tuple(args)
 
     def _run_worker(
         self,
