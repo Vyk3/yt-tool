@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.format_detector import (
+from app.core.format_detector import (
     AudioFormat,
     DetectResult,
     SubtitleTrack,

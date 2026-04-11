@@ -1,6 +1,6 @@
 """允许 python -m app 直接启动。"""
 import sys
 
-from .main import main
+from .cli.main import main
 
 sys.exit(main())

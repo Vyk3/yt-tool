@@ -15,7 +15,7 @@ from __future__ import annotations
 import platform
 import sys
 
-from .format_detector import AudioFormat, SubtitleTrack, VideoFormat
+from ..core.format_detector import AudioFormat, SubtitleTrack, VideoFormat
 from wcwidth import wcswidth, wcwidth
 
 # ---- ANSI 颜色常量 ----
