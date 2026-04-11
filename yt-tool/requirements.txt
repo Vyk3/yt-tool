@@ -1,5 +1,5 @@
 # 无需 pip 安装第三方 Python 包
-# 核心模块仅使用 Python 标准库。
+# 项目 vendored 了 wcwidth，用于终端字符显示宽度计算。
 #
 # 运行时外部依赖:
 # - yt-dlp

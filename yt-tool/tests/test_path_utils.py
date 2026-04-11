@@ -51,8 +51,11 @@ class TestEnsureDir:
         finally:
             target.chmod(0o755)
 
-    def test_tilde_path(self):
+    def test_tilde_path(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
         result = ensure_dir("~/Downloads")
+        assert result == tmp_path / "Downloads"
         assert result.is_dir()
 
 

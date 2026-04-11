@@ -14,17 +14,22 @@ from app.format_detector import (
 @pytest.fixture()
 def sample_video_formats() -> tuple[VideoFormat, ...]:
     return (
-        VideoFormat(id="137", height=1080, codec="avc1", fps=30, tbr=4000.0, note="1080p [v+a]"),
-        VideoFormat(id="248", height=1080, codec="vp9", fps=30, tbr=3500.0, note="1080p [video only]"),
-        VideoFormat(id="136", height=720, codec="avc1", fps=30, tbr=2500.0, note="720p [v+a]"),
+        VideoFormat(id="137", height=1080, codec="avc1", fps=30, tbr=4000.0, ext="mp4",
+                    filesize_approx=120_000_000, dynamic_range="SDR", note="[v+a]"),
+        VideoFormat(id="248", height=1080, codec="vp9",  fps=30, tbr=3500.0, ext="webm",
+                    filesize_approx=90_000_000, dynamic_range="HDR", note="[video only]"),
+        VideoFormat(id="136", height=720,  codec="avc1", fps=30, tbr=2500.0, ext="mp4",
+                    filesize_approx=60_000_000, dynamic_range="", note="[v+a]"),
     )
 
 
 @pytest.fixture()
 def sample_audio_formats() -> tuple[AudioFormat, ...]:
     return (
-        AudioFormat(id="140", codec="mp4a", abr=128.0, ext="m4a", note="medium"),
-        AudioFormat(id="251", codec="opus", abr=160.0, ext="webm", note="high"),
+        AudioFormat(id="140", codec="mp4a", abr=128.0, ext="m4a",
+                    filesize_approx=9_000_000, audio_channels=2, note="medium"),
+        AudioFormat(id="251", codec="opus", abr=160.0, ext="webm",
+                    filesize_approx=11_000_000, audio_channels=2, note="high"),
     )
 
 
