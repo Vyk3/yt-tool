@@ -193,14 +193,22 @@ git diff --cached
 4. `Makefile`
 5. 其他项目惯例脚本
 
-以下为**本项目验证命令示例**；若项目中已定义实际命令，agent 应优先使用实际配置：
+以下为**通用示例**；agent 应优先使用项目实际配置：
 
 ```yaml
-# Validation
-lint: pnpm lint
-test: pnpm test
-typecheck: pnpm tsc --noEmit
-build: pnpm build
+# Node.js / TypeScript
+# lint: pnpm lint
+# test: pnpm test
+# typecheck: pnpm tsc --noEmit
+# build: pnpm build
+
+# Python
+# lint: ruff check .
+# test: python -m pytest tests/ -q
+# typecheck: mypy .
+
+# 本仓库 (monorepo)
+# yt-tool: cd yt-tool && python -m pytest tests/ -q
 ```
 
 验证结果分类：**Passed** / **Failed** / **Not Run** / **Unavailable** / **Not Configured**
@@ -240,6 +248,111 @@ build: pnpm build
 类型：`feat` / `fix` / `refactor` / `perf` / `style` / `docs` / `test` / `chore`
 
 示例：`fix(auth): prevent duplicate token refresh under concurrent requests`
+
+### Commit 前必须检查
+
+每次 commit 前，必须按顺序执行：
+
+1. `git status --short` — 确认所有改动文件都已 staged，没有漏掉的修改
+2. `git diff --cached` — 确认 staged 内容与预期一致
+3. 如有漏掉的文件，先补 `git add` 再 commit
+
+**绝不允许在不确认 staging 完整性的情况下直接 commit。**
+
+### Push 前必须本地验证
+
+每次 push 前，必须先本地运行测试套件并确认通过：
+
+- Python 项目：`python -m pytest tests/ -q`（或项目配置的等效命令）
+- CI 不是第一道验证关卡，本地测试是
+- 本地测试失败时，绝不 push，先修复
+- "我觉得应该能过"不是跳过本地测试的理由
+
+---
+
+## Git Workflow
+
+### 分支策略
+
+判断是否需要从 main 新建分支：
+
+| 改动类型 | 是否建分支 |
+|---------|----------|
+| 小改动：1-2 个文件 / 修 bug / 调参数 / 纯文档 | 可直接在 main 提交 |
+| 中大改动：多文件联动 / 新功能 / 核心逻辑 | **必须建分支** |
+| 实验性改动：方向不确定 / 可能回滚 | **必须建分支** |
+| 高风险改动：迁移 / 公开 API 变更 / 并发逻辑 | **必须建分支** |
+
+分支命名：
+
+- `feat/<slug>` — 新功能
+- `fix/<slug>` — bug 修复
+- `refactor/<slug>` — 重构
+- `docs/<slug>` — 纯文档
+- `chore/<slug>` — 杂项
+
+当改动规模不确定时，默认建分支。分支的成本远低于污染 main 的成本。
+
+### Pull Request 工作流
+
+中大及以上改动必须走 PR 流程，不允许直接 push 到 main：
+
+```bash
+# 1. 从最新 main 建分支
+git checkout main && git pull
+git checkout -b feat/xxx
+
+# 2. 开发 + 本地验证（测试必须通过）
+# ... edit ...
+python -m pytest tests/ -q
+
+# 3. Commit 前确认 staging 完整性
+git status --short
+git add <files>
+git commit -m "feat(scope): subject"
+
+# 4. Push 分支（不是 main）
+git push -u origin feat/xxx
+
+# 5. 开 PR
+gh pr create --fill
+
+# 6. 等 CI 绿灯
+gh pr checks --watch
+
+# 7. CI 通过后 squash merge 并删分支
+gh pr merge --squash --delete-branch
+
+# 8. 本地同步并清理
+git checkout main && git pull
+git branch -d feat/xxx
+```
+
+### CI 作为 merge gate
+
+- **CI 必须全绿才能 merge 到 main**
+- 禁止使用 `--admin` / `--force-with-lease` / `--no-verify` 绕过 CI
+- 本地测试通过但 CI 失败 → 必须定位本地与 CI 环境的差异，在 feature branch 上修复
+- 不允许在 main 上追加 `fix(ci):` 补丁 commit。CI 问题应在 feature branch 上修完再 squash 合并，而不是把修复过程暴露在 main 历史中
+
+### Merge 策略
+
+- feature branch → main：优先使用 **squash merge**
+  - 多轮开发和修复 commit 被压缩成一条语义完整的 commit
+  - main 历史保持线性、可读
+- 单个 commit 的小改动：fast-forward merge 即可
+- 避免 merge commit（本项目规模用不到）
+- 禁止对 main 做 force push
+
+### 分支清理
+
+- feature branch 合并后立即删除（本地 + 远程）
+  - `gh pr merge --squash --delete-branch` 会自动删除远程分支
+  - 本地用 `git branch -d <branch>` 删除已合并的分支
+- 定期检查 `git branch -vv`，清理过期分支：
+  - 超过 2 周未推进且无活跃计划 → 删除或归档
+  - 已完全包含在 main 中（`git merge-base --is-ancestor` 验证）→ 删除
+- 删除分支前确认该分支已合入 main 或已不再需要
 
 ---
 
