@@ -6,7 +6,7 @@ shiboken6_d, shiboken6_b, shiboken6_h = collect_all('shiboken6')
 ytdlp_d, ytdlp_b, ytdlp_h = collect_all('yt_dlp')
 
 a = Analysis(
-    ['app/__main__.py'],
+    ['run.py'],
     pathex=['.', 'vendor'],
     binaries=[*pyside6_b, *shiboken6_b, *ytdlp_b],
     datas=[*pyside6_d, *shiboken6_d, *ytdlp_d],
