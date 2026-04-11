@@ -3,15 +3,17 @@
 调用 yt-dlp -J 获取视频元数据，解析出可用的视频流、音频流、字幕列表。
 不做交互，不做输出，只返回结构化数据。
 
-注意: 当输入为 playlist URL 时，当前实现只探测第一个条目。
-完整 playlist 支持需后续扩展。
+播放列表：detect() 检测到 playlist 时设置 is_playlist=True，格式信息取自第一个条目
+（供用户预览）；实际全列表下载由 downloader.download_playlist() 处理。
 """
 from __future__ import annotations
 
 import json
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
+
+from . import config
 
 
 @dataclass(frozen=True)
@@ -21,6 +23,9 @@ class VideoFormat:
     codec: str
     fps: int
     tbr: float
+    ext: str
+    filesize_approx: int
+    dynamic_range: str
     note: str
 
 
@@ -30,6 +35,8 @@ class AudioFormat:
     codec: str
     abr: float
     ext: str
+    filesize_approx: int
+    audio_channels: int
     note: str
 
 
@@ -37,6 +44,29 @@ class AudioFormat:
 class SubtitleTrack:
     lang: str
     label: str
+    is_live_chat: bool = False
+
+
+def _is_live_chat_track(lang: str, entries: Any) -> bool:
+    """粗略识别 live_chat 轨道，便于 UI 做提示。"""
+    if "live_chat" in lang.lower():
+        return True
+
+    if not isinstance(entries, list):
+        return False
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+
+        haystack = " ".join(
+            str(entry.get(key, "") or "").lower()
+            for key in ("name", "format", "protocol", "url")
+        )
+        if "live_chat" in haystack:
+            return True
+
+    return False
 
 
 @dataclass(frozen=True)
@@ -47,6 +77,9 @@ class DetectResult:
     audio_formats: tuple[AudioFormat, ...]
     subtitles: tuple[SubtitleTrack, ...]
     auto_subtitles: tuple[SubtitleTrack, ...]
+    is_playlist: bool = False
+    playlist_title: str = ""
+    playlist_count: int = 0
 
 
 def _parse_subtitle_tracks(
@@ -55,22 +88,43 @@ def _parse_subtitle_tracks(
     """从 yt-dlp 的 subtitles / automatic_captions 字典构建字幕轨道列表。"""
     tracks: list[SubtitleTrack] = []
     for lang, entries in mapping.items():
+        lang_str = str(lang)
         label = (
-            entries[0].get("name", lang)
+            entries[0].get("name", lang_str)
             if entries and isinstance(entries[0], dict)
-            else lang
+            else lang_str
         )
-        tracks.append(SubtitleTrack(lang=str(lang), label=label))
+        tracks.append(
+            SubtitleTrack(
+                lang=lang_str,
+                label=str(label),
+                is_live_chat=_is_live_chat_track(lang_str, entries),
+            )
+        )
     return tuple(tracks)
 
 
-def detect(url: str) -> DetectResult:
-    """调用 yt-dlp -J 获取视频信息并解析格式。"""
+def detect(url: str, *, cookies_from: str | None = None, no_playlist: bool = False) -> DetectResult:
+    """调用 yt-dlp -J 获取视频信息并解析格式。
+
+    cookies_from: 浏览器名称（"chrome"/"firefox" 等），None 表示不使用 Cookie。
+    no_playlist: True 时加 --no-playlist，用于下载 watch?v=X&list=Y 形式 URL 时
+                 确保获取的是 URL 实际指向的视频，而非播放列表第一条。
+    """
     if not url:
         raise ValueError("URL required")
 
+    cmd = ["yt-dlp", "-J", "--no-warnings"]
+    if no_playlist:
+        cmd += ["--no-playlist"]
+    else:
+        cmd += ["--playlist-items", "1"]
+    if cookies_from:
+        cmd += ["--cookies-from-browser", cookies_from]
+    cmd.append(url)
+
     proc = subprocess.run(
-        ["yt-dlp", "-J", "--no-warnings", url],
+        cmd,
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -85,11 +139,21 @@ def detect(url: str) -> DetectResult:
 
     data: dict[str, Any] = json.loads(proc.stdout)
 
-    # 若为 playlist，先取第一个条目；后续可扩展成完整 playlist 支持
+    # 检测播放列表
+    is_playlist = False
+    playlist_title = ""
+    playlist_count = 0
     if "entries" in data and isinstance(data["entries"], list) and data["entries"]:
+        is_playlist = True
+        playlist_title = str(data.get("title", "") or "")
+        # playlist_count / n_entries 是 yt-dlp 上报的总条数；
+        # 加了 --playlist-items 1 后 entries 只有 1 项，不能再用 len(entries) 计数。
+        playlist_count = int(
+            data.get("playlist_count") or data.get("n_entries") or len(data["entries"])
+        )
         first = data["entries"][0]
         if isinstance(first, dict):
-            data = first
+            data = first  # 格式信息取自首条（供预览）
 
     title = (
         str(data.get("title", "unknown"))
@@ -124,7 +188,10 @@ def detect(url: str) -> DetectResult:
                     codec=vc,
                     fps=int(f.get("fps") or 0),
                     tbr=float(f.get("tbr") or 0),
-                    note=f"{note} [{tag}]" if note else f"[{tag}]",
+                    ext=str(f.get("ext", "") or ""),
+                    filesize_approx=int(f.get("filesize_approx") or f.get("filesize") or 0),
+                    dynamic_range=str(f.get("dynamic_range", "") or ""),
+                    note=f"[{tag}]",
                 )
             )
         elif has_a:
@@ -134,6 +201,8 @@ def detect(url: str) -> DetectResult:
                     codec=ac,
                     abr=float(f.get("abr") or 0),
                     ext=str(f.get("ext", "") or ""),
+                    filesize_approx=int(f.get("filesize_approx") or f.get("filesize") or 0),
+                    audio_channels=int(f.get("audio_channels") or 0),
                     note=str(f.get("format_note", "") or ""),
                 )
             )
@@ -141,8 +210,207 @@ def detect(url: str) -> DetectResult:
     return DetectResult(
         title=title,
         raw_json=data,
-        video_formats=tuple(video_formats),
-        audio_formats=tuple(audio_formats),
-        subtitles=_parse_subtitle_tracks(data.get("subtitles", {})),
-        auto_subtitles=_parse_subtitle_tracks(data.get("automatic_captions", {})),
+        video_formats=_sort_video_formats(video_formats),
+        audio_formats=_sort_audio_formats(audio_formats),
+        subtitles=_sort_subtitle_tracks(
+            _parse_subtitle_tracks(data.get("subtitles", {}))
+        ),
+        auto_subtitles=_sort_subtitle_tracks(
+            _parse_subtitle_tracks(data.get("automatic_captions", {}))
+        ),
+        is_playlist=is_playlist,
+        playlist_title=playlist_title,
+        playlist_count=playlist_count,
     )
+
+
+def _probe_format_available(
+    url: str,
+    format_id: str,
+    *,
+    cookies_from: str | None = None,
+    extra_args: list[str] | None = None,
+) -> bool:
+    """用 yt-dlp 模拟一次格式选择，判断当前 format_id 是否仍可用。"""
+    cmd = [
+        "yt-dlp",
+        "--simulate",
+        "--skip-download",
+        "--no-warnings",
+        "-f",
+        format_id,
+    ]
+    if cookies_from:
+        cmd += ["--cookies-from-browser", cookies_from]
+    if extra_args:
+        cmd += extra_args
+    cmd.append(url)
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=config.YT_VALIDATE_FORMAT_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired:
+        # 超时不代表格式失效，网络慢时 simulate 本就容易超时；
+        # 保守地视为可用，让用户自行尝试，而不是从菜单中错误删除。
+        return True
+
+    if proc.returncode == 0:
+        return True
+    # 仅在 stderr 明确指出格式不可用时才删除候选；
+    # 网络抖动、限速、认证失败等瞬时错误不应误删有效格式。
+    err = proc.stderr.lower()
+    if "format is not available" in err or "requested format is not available" in err:
+        return False
+    return True  # 其他错误：保守保留，让用户实际下载时自行判断
+
+
+def validate_detected_formats(
+    url: str,
+    result: DetectResult,
+    *,
+    cookies_from: str | None = None,
+    extra_args: list[str] | None = None,
+) -> DetectResult:
+    """预检高优先级候选格式是否仍可用，并过滤掉失效项。"""
+    if not config.YT_VALIDATE_FORMATS_BEFORE_MENU:
+        return result
+
+    available_videos = _validate_top_candidates(
+        url,
+        result.video_formats,
+        limit=config.YT_VALIDATE_VIDEO_CANDIDATES,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+    )
+    available_audios = _validate_top_candidates(
+        url,
+        result.audio_formats,
+        limit=config.YT_VALIDATE_AUDIO_CANDIDATES,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+    )
+
+    return replace(
+        result,
+        video_formats=_sort_video_formats(list(available_videos)),
+        audio_formats=_sort_audio_formats(list(available_audios)),
+    )
+
+
+def _validate_top_candidates(
+    url: str,
+    formats: tuple[VideoFormat, ...] | tuple[AudioFormat, ...],
+    *,
+    limit: int,
+    cookies_from: str | None = None,
+    extra_args: list[str] | None = None,
+) -> tuple[VideoFormat, ...] | tuple[AudioFormat, ...]:
+    """只预检排序靠前的候选；若一个都没通过，则继续向后探测直到找到可用项。"""
+    if not formats:
+        return formats
+
+    checked = 0
+    available: list[VideoFormat | AudioFormat] = []
+    target = max(limit, 1)
+
+    for fmt in formats:
+        should_probe = checked < target or not available
+        if not should_probe:
+            break
+
+        checked += 1
+        if _probe_format_available(
+            url,
+            fmt.id,
+            cookies_from=cookies_from,
+            extra_args=extra_args,
+        ):
+            available.append(fmt)
+
+    # 未探测的低优先级格式保留在列表末尾：
+    # 预检只过滤已被确认失效的候选，不截断用户的完整选择范围。
+    available.extend(formats[checked:])
+    return tuple(available)
+
+
+def _video_codec_matches(codec: str, pref: str) -> bool:
+    """将配置中的编码偏好与 yt-dlp 实际 vcodec 字段做模糊匹配。
+
+    yt-dlp 上报 H.264 为 "avc1.*"，配置通常写 "h264"；需要处理这类常见别名。
+    """
+    c, p = codec.lower(), pref.lower()
+    if p in c:
+        return True
+    _ALIASES: dict[str, tuple[str, ...]] = {
+        "h264": ("avc1",),
+        "h265": ("hvc1", "hev1"),
+        "vp9":  ("vp09",),
+        "av1":  ("av01",),
+    }
+    for alias in _ALIASES.get(p, ()):
+        if c.startswith(alias):
+            return True
+    return False
+
+
+def _audio_codec_matches(fmt: AudioFormat, pref: str) -> bool:
+    """将配置中的音频编码偏好与 yt-dlp 实际 acodec/ext 字段做模糊匹配。
+
+    yt-dlp 上报 AAC/M4A 为 "mp4a.*"，配置通常写 "m4a"；同时检查 ext 字段兜底。
+    """
+    p = pref.lower()
+    if p in fmt.codec.lower():
+        return True
+    if p in fmt.ext.lower():
+        return True
+    # m4a ↔ mp4a 家族
+    if p == "m4a" and fmt.codec.lower().startswith("mp4a"):
+        return True
+    return False
+
+
+def _sort_video_formats(
+    formats: list[VideoFormat],
+) -> tuple[VideoFormat, ...]:
+    """按 config 偏好排序视频流：分辨率接近度 → 编码匹配 → 码率。"""
+
+    def _key(f: VideoFormat) -> tuple[int, int, float]:
+        height_diff = abs(f.height - config.YT_PREFER_VIDEO_HEIGHT)
+        codec_match = 0 if _video_codec_matches(f.codec, config.YT_PREFER_VIDEO_CODEC) else 1
+        return (height_diff, codec_match, -f.tbr)
+
+    return tuple(sorted(formats, key=_key))
+
+
+def _sort_audio_formats(
+    formats: list[AudioFormat],
+) -> tuple[AudioFormat, ...]:
+    """按 config 偏好排序音频流：编码匹配 → 比特率（不足最低值的排末尾）。"""
+
+    def _key(f: AudioFormat) -> tuple[int, int, float]:
+        codec_match = 0 if _audio_codec_matches(f, config.YT_PREFER_AUDIO_CODEC) else 1
+        below_min = 0 if f.abr >= config.YT_PREFER_AUDIO_MIN_BITRATE else 1
+        return (below_min, codec_match, -f.abr)
+
+    return tuple(sorted(formats, key=_key))
+
+
+def _sort_subtitle_tracks(
+    tracks: tuple[SubtitleTrack, ...],
+) -> tuple[SubtitleTrack, ...]:
+    """按 YT_PREFER_SUBTITLE_LANGS 将首选语言排到前面。"""
+    pref = config.YT_PREFER_SUBTITLE_LANGS
+
+    def _key(t: SubtitleTrack) -> int:
+        for i, lang in enumerate(pref):
+            if t.lang.startswith(lang) or lang.startswith(t.lang):
+                return i
+        return len(pref)
+
+    return tuple(sorted(tracks, key=_key))
