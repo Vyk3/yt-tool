@@ -1,2 +1,9 @@
 .venv/
 GUI_ARCHITECTURE.md
+/build/
+/dist/
+*.spec
+*.pyz
+.pytest_cache/
+__pycache__/
+.DS_Store
