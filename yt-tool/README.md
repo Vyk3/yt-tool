@@ -82,27 +82,26 @@ Python 依赖通过单一文件 `requirements.txt` 管理。
 
 ---
 
-## 安装依赖
+## End-user Quick Start
+
+面向普通用户，推荐直接下载发布页里的打包产物（`macOS .app` / `Windows .exe`）。
+
+若你是源码运行用户，请看下一节 Developer Setup。
+
+最小使用步骤：
+
+1. 从 Release 页面下载对应平台产物：macOS `.app` / Windows `.exe`
+2. macOS：双击 `.app` 启动；Windows：双击 `.exe` 启动
+3. 首次运行如提示缺少 `ffmpeg`，请先安装 `ffmpeg` 后重试
+
+---
+
+## Developer Setup
 
 ### macOS
 
-使用 Homebrew：
-
 ```bash
 brew install python yt-dlp ffmpeg
-```
-
-安装完成后可检查：
-
-```bash
-python3 --version
-yt-dlp --version
-ffmpeg -version
-```
-
-安装 Python 依赖（CLI + GUI）：
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -U pip
@@ -111,25 +110,10 @@ python3 -m pip install -r requirements.txt
 
 ### Windows
 
-可使用 `winget`：
-
 ```powershell
 winget install Python.Python.3
 winget install yt-dlp
 winget install Gyan.FFmpeg
-```
-
-安装完成后可检查：
-
-```powershell
-py --version
-yt-dlp --version
-ffmpeg -version
-```
-
-安装 Python 依赖（CLI + GUI）：
-
-```powershell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 py -m pip install -U pip
@@ -138,53 +122,31 @@ py -m pip install -r requirements.txt
 
 ---
 
-## 启动方式
+## 启动方式（源码运行）
 
-默认入口策略（`python3 -m app` 及 launcher 脚本一致）：
+默认入口策略（`python3 -m app` 与 launcher 脚本一致）：
 
 * 默认先尝试 GUI（`app.gui`）
 * GUI 依赖缺失或启动失败时自动回退 CLI（`app.cli`）
 * 可强制 CLI：传 `--cli` 或设置环境变量 `YT_TOOL_MODE=cli`
 * 兼容旧行为：传入 `http/https` URL 参数时直接走 CLI（`python3 -m app "<url>"`）
 
-### 方式 1：直接运行 Python 模块
-
 ```bash
 python3 -m app
-```
-
-或传入 URL：
-
-```bash
-python3 -m app "https://www.youtube.com/watch?v=xxxx"
-```
-
-### 方式 1.5：GUI 模式（需要 PySide6 Essentials）
-
-```bash
 python3 -m app.gui
-```
-
-强制 CLI 示例：
-
-```bash
 python3 -m app --cli
 YT_TOOL_MODE=cli python3 -m app
 ```
 
-### 方式 2：Mac 启动器
+Launcher：
 
 ```bash
 ./launcher/mac/yt.command
 ```
 
-### 方式 3：Windows CMD
-
 ```bat
 launcher\windows\yt.cmd "https://www.youtube.com/watch?v=xxxx"
 ```
-
-### 方式 4：Windows PowerShell
 
 ```powershell
 .\launcher\windows\yt.ps1 "https://www.youtube.com/watch?v=xxxx"
@@ -192,14 +154,59 @@ launcher\windows\yt.cmd "https://www.youtube.com/watch?v=xxxx"
 
 ---
 
-## Packaging Notes
+## 打包（M5）
 
-打包/分发建议：
+打包统一基于 `app/__main__.py`，保持与源码运行一致的入口策略（GUI 优先 + CLI 回退）。
 
-* 保留统一入口 `python -m app`，让 GUI->CLI 回退逻辑在 Python 层生效
-* Windows/macOS 启动器仅负责找解释器并转发参数，不复制业务逻辑
-* GUI 依赖使用 `requirements.txt` 中的 `PySide6_Essentials + shiboken6`
-* 系统级依赖（如 `ffmpeg`）仍需在目标机器单独安装并验证
+### macOS 生成 `.app`（可本机实测）
+
+先安装打包依赖：
+
+```bash
+python3 -m pip install pyinstaller
+```
+
+执行打包：
+
+```bash
+scripts/build/macos/build_app.sh --clean
+```
+
+可选参数：
+
+* `--name <APP_NAME>`：设置应用名（默认 `yt-tool`）
+* `--clean`：清理后打包
+
+产物路径：
+
+* `dist/yt-tool.app`
+
+### Windows 打包脚本（在 Windows 上执行）
+
+PowerShell：
+
+```powershell
+.\scripts\build\windows\build_exe.ps1 -Clean -Name yt-tool
+```
+
+Batch/CMD：
+
+```bat
+scripts\build\windows\build_exe.bat yt-tool clean
+```
+
+参数说明：
+
+* PowerShell: `-Name <name>`、`-Clean`
+* Batch: 第一个参数是 name，第二个参数填 `clean` 启用清理
+
+默认产物路径（PyInstaller onedir）：
+
+* `dist\yt-tool\yt-tool.exe`
+
+注意：
+
+* 系统依赖（如 `ffmpeg`）仍需在目标机器安装并验证
 
 ---
 
