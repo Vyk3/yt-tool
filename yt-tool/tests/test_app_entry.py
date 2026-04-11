@@ -43,12 +43,8 @@ def test_force_cli_via_env(monkeypatch):
     assert called["argv"] == ["http://x"]
 
 
-def test_default_uses_gui_then_fallback_to_cli_on_nonzero(monkeypatch):
+def test_url_arg_keeps_legacy_cli_behavior(monkeypatch):
     entry = _load_entry_module()
-    gui_mod = ModuleType("app.gui.main")
-    gui_mod.main = lambda argv: 2
-    monkeypatch.setitem(sys.modules, "app.gui.main", gui_mod)
-
     called = {}
 
     def fake_cli(argv):
@@ -63,6 +59,49 @@ def test_default_uses_gui_then_fallback_to_cli_on_nonzero(monkeypatch):
     assert called["argv"] == ["http://x"]
 
 
+def test_default_uses_gui_then_fallback_to_cli_on_nonzero(monkeypatch):
+    entry = _load_entry_module()
+    gui_mod = ModuleType("app.gui.main")
+    gui_mod.main = lambda argv: 2
+    monkeypatch.setitem(sys.modules, "app.gui.main", gui_mod)
+
+    called = {}
+
+    def fake_cli(argv):
+        called["argv"] = list(argv)
+        return 0
+
+    monkeypatch.setattr(entry, "cli_main", fake_cli)
+
+    rc = entry.main([])
+
+    assert rc == 0
+    assert called["argv"] == []
+
+
+def test_default_fallback_to_cli_when_gui_raises(monkeypatch):
+    entry = _load_entry_module()
+    gui_mod = ModuleType("app.gui.main")
+
+    def _boom(argv):
+        raise RuntimeError("boom")
+
+    gui_mod.main = _boom
+    monkeypatch.setitem(sys.modules, "app.gui.main", gui_mod)
+    called = {}
+
+    def fake_cli(argv):
+        called["argv"] = list(argv)
+        return 0
+
+    monkeypatch.setattr(entry, "cli_main", fake_cli)
+
+    rc = entry.main([])
+
+    assert rc == 0
+    assert called["argv"] == []
+
+
 def test_default_uses_gui_when_ok(monkeypatch):
     entry = _load_entry_module()
     gui_mod = ModuleType("app.gui.main")
@@ -72,7 +111,7 @@ def test_default_uses_gui_when_ok(monkeypatch):
     called = {}
     monkeypatch.setattr(entry, "cli_main", lambda argv: called.setdefault("argv", list(argv)) or 0)
 
-    rc = entry.main(["http://x"])
+    rc = entry.main([])
 
     assert rc == 0
     assert called == {}

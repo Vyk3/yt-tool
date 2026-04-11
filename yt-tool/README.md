@@ -145,6 +145,7 @@ py -m pip install -r requirements.txt
 * 默认先尝试 GUI（`app.gui`）
 * GUI 依赖缺失或启动失败时自动回退 CLI（`app.cli`）
 * 可强制 CLI：传 `--cli` 或设置环境变量 `YT_TOOL_MODE=cli`
+* 兼容旧行为：传入 `http/https` URL 参数时直接走 CLI（`python3 -m app "<url>"`）
 
 ### 方式 1：直接运行 Python 模块
 
