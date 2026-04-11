@@ -19,7 +19,7 @@
 - [x] 不带参数时可进入交互模式
 
 ## 3. 测试
-- [x] pytest 全部通过 (120/120)
+- [x] pytest 全部通过 (122/122)
 - [x] 关键冒烟联调已通过 (7/7)
 - [x] 关键异常联调已通过 (9/9)
 - [x] 回归测试已通过
@@ -33,10 +33,10 @@
 - [x] 支持平台已写清
 
 ## 5. 发布准备
-- [ ] 确认版本号
-- [ ] 提交 git commit
-- [ ] 打 git tag
-- [ ] 准备 release note
+- [x] 确认版本号 (v0.0.1)
+- [x] 提交 git commit
+- [x] 打 git tag (v0.0.1)
+- [x] 准备 release note
 
 ## 6. Packaging
 - [ ] 验证 launcher 与 `python -m app` 入口策略一致（GUI 优先，失败回退 CLI）
