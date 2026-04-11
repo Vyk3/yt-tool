@@ -21,15 +21,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..core import config
 from ..services.models import DetectResponse
 
 
 class MainWindow(QMainWindow):
-    """M2 最小 GUI：环境检查 + 格式探测。"""
+    """M4 GUI：环境检查、格式探测与多类型下载。"""
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("yt-tool GUI (M2)")
+        self.setWindowTitle("yt-tool GUI (M4)")
         self.resize(900, 640)
 
         root = QWidget(self)
@@ -62,8 +63,24 @@ class MainWindow(QMainWindow):
         self.playlist_mode_combo.addItem("音频", userData="audio")
         top_layout.addRow("播放列表模式", self.playlist_mode_combo)
 
+        self.download_sections_input = QLineEdit()
+        self.download_sections_input.setPlaceholderText("*00:00:30-00:01:30")
+        top_layout.addRow("下载片段", self.download_sections_input)
+
+        self.sponsorblock_mode_combo = QComboBox()
+        self.sponsorblock_mode_combo.addItem("不使用", userData="")
+        self.sponsorblock_mode_combo.addItem("标记", userData="mark")
+        self.sponsorblock_mode_combo.addItem("移除", userData="remove")
+        top_layout.addRow("SponsorBlock", self.sponsorblock_mode_combo)
+
+        self.sponsorblock_categories_input = QLineEdit()
+        self.sponsorblock_categories_input.setPlaceholderText(
+            ",".join(config.YT_SPONSORBLOCK_DEFAULT_CATEGORIES)
+        )
+        top_layout.addRow("SB 分类", self.sponsorblock_categories_input)
+
         self.extra_args_input = QLineEdit()
-        self.extra_args_input.setPlaceholderText("--sponsorblock-remove all")
+        self.extra_args_input.setPlaceholderText("--no-playlist")
         top_layout.addRow("额外参数", self.extra_args_input)
 
         button_row = QHBoxLayout()
@@ -112,6 +129,9 @@ class MainWindow(QMainWindow):
         self.kind_combo.setEnabled(not busy)
         self.transcode_input.setEnabled(not busy)
         self.playlist_mode_combo.setEnabled(not busy)
+        self.download_sections_input.setEnabled(not busy)
+        self.sponsorblock_mode_combo.setEnabled(not busy)
+        self.sponsorblock_categories_input.setEnabled(not busy)
         self.extra_args_input.setEnabled(not busy)
 
     def current_url(self) -> str:
@@ -206,6 +226,21 @@ class MainWindow(QMainWindow):
 
     def current_transcode_to(self) -> str:
         return self.transcode_input.text().strip()
+
+    def current_download_sections(self) -> str | None:
+        value = self.download_sections_input.text().strip()
+        return value or None
+
+    def current_sponsorblock_mode(self) -> str | None:
+        value = self.sponsorblock_mode_combo.currentData()
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    def current_sponsorblock_categories(self) -> str | None:
+        value = self.sponsorblock_categories_input.text().strip()
+        return value or None
 
     def current_extra_args(self) -> tuple[str, ...]:
         raw = self.extra_args_input.text().strip()
