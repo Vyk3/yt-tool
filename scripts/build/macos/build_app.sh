@@ -16,11 +16,8 @@ CODESIGN_IDENTITY="${YT_TOOL_CODESIGN_IDENTITY:--}"
 if [[ -n "${YT_TOOL_FFMPEG_MACOS_URL:-}" ]]; then
   FFMPEG_ARCHIVE_URL="$YT_TOOL_FFMPEG_MACOS_URL"
 else
-  FFMPEG_ASSET="ffmpeg-master-latest-macos64-gpl.zip"
-  if [[ "$(uname -m)" == "arm64" ]]; then
-    FFMPEG_ASSET="ffmpeg-master-latest-macosarm64-gpl.zip"
-  fi
-  FFMPEG_ARCHIVE_URL="https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/$FFMPEG_ASSET"
+  # macOS builds are provided by evermeet; URL redirects to the latest ffmpeg zip.
+  FFMPEG_ARCHIVE_URL="https://evermeet.cx/ffmpeg/getrelease/zip"
 fi
 
 usage() {
@@ -137,15 +134,31 @@ if [[ "$WITH_FFMPEG" -eq 1 ]]; then
       archive_path="$tmp_dir/ffmpeg-macos.zip"
       echo "Downloading ffmpeg archive..."
       curl --fail --location --progress-bar "$FFMPEG_ARCHIVE_URL" -o "$archive_path"
-      unzip -q -o -j "$archive_path" "*/bin/ffmpeg" "*/bin/ffprobe" -d "$VENDOR_BIN_DIR"
+      # Support both archive layouts:
+      # 1) FFmpeg-Builds style: */bin/ffmpeg + */bin/ffprobe
+      # 2) evermeet style: top-level "ffmpeg" only
+      unzip -q -o -j "$archive_path" "*/bin/ffmpeg" -d "$VENDOR_BIN_DIR" || true
+      unzip -q -o -j "$archive_path" "*/bin/ffprobe" -d "$VENDOR_BIN_DIR" || true
+      unzip -q -o -j "$archive_path" "ffmpeg" -d "$VENDOR_BIN_DIR" || true
+      unzip -q -o -j "$archive_path" "ffprobe" -d "$VENDOR_BIN_DIR" || true
     )
-    if [[ ! -f "$FFMPEG_BIN" || ! -f "$FFPROBE_BIN" ]]; then
-      echo "ffmpeg archive does not contain ffmpeg + ffprobe: $FFMPEG_ARCHIVE_URL" >&2
+    if [[ ! -f "$FFMPEG_BIN" ]]; then
+      echo "ffmpeg archive does not contain ffmpeg: $FFMPEG_ARCHIVE_URL" >&2
       exit 2
     fi
-    chmod +x "$FFMPEG_BIN" "$FFPROBE_BIN"
+    if [[ ! -f "$FFPROBE_BIN" ]] && command -v ffprobe >/dev/null 2>&1; then
+      cp "$(command -v ffprobe)" "$FFPROBE_BIN"
+    fi
+    chmod +x "$FFMPEG_BIN"
+    if [[ -f "$FFPROBE_BIN" ]]; then
+      chmod +x "$FFPROBE_BIN"
+    fi
     echo "ffmpeg binary: $FFMPEG_BIN"
-    echo "ffprobe binary: $FFPROBE_BIN"
+    if [[ -f "$FFPROBE_BIN" ]]; then
+      echo "ffprobe binary: $FFPROBE_BIN"
+    else
+      echo "ffprobe binary not bundled (optional)"
+    fi
   else
     echo "ffmpeg binaries already present: $FFMPEG_BIN / $FFPROBE_BIN"
   fi
