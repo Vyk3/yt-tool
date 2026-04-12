@@ -11,18 +11,26 @@ import stat
 import sys
 
 
+def _ensure_executable(bundle_dir: str, binary_base_name: str) -> None:
+    """Best-effort chmod for bundled helper binaries."""
+    ext = ".exe" if os.name == "nt" else ""
+    binary_path = os.path.join(bundle_dir, f"{binary_base_name}{ext}")
+    if not os.path.isfile(binary_path):
+        return
+    mode = os.stat(binary_path).st_mode
+    os.chmod(binary_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
 def _patch_frozen_path() -> None:
-    """Add the PyInstaller bundle dir to PATH so bundled binaries (yt-dlp) are found."""
+    """Add the PyInstaller bundle dir to PATH so bundled binaries are found."""
     if not (getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")):
         return
     bundle_dir: str = sys._MEIPASS  # type: ignore[attr-defined]
-    # Ensure the bundled yt-dlp binary has execute permission (PyInstaller may strip it).
-    # Windows uses yt-dlp.exe; Unix uses yt-dlp (no extension). chmod is a no-op on Windows.
-    ext = ".exe" if os.name == "nt" else ""
-    ytdlp_path = os.path.join(bundle_dir, f"yt-dlp{ext}")
-    if os.path.isfile(ytdlp_path):
-        mode = os.stat(ytdlp_path).st_mode
-        os.chmod(ytdlp_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    # Ensure bundled helper binaries keep executable permissions in frozen builds.
+    # PyInstaller packaging can strip execute bits on Unix-like targets.
+    _ensure_executable(bundle_dir, "yt-dlp")
+    _ensure_executable(bundle_dir, "ffmpeg")
+    _ensure_executable(bundle_dir, "ffprobe")
     os.environ["PATH"] = bundle_dir + os.pathsep + os.environ.get("PATH", "")
 
 
