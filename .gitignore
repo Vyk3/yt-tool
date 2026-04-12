@@ -9,6 +9,7 @@
 __pycache__/
 *.pyc
 *.pyz
+*.egg-info/
 .pytest_cache/
 
 # Build artifacts

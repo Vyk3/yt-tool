@@ -485,6 +485,14 @@ def get_html() -> str:
             <button class="btn" data-value="playlist">播放列表</button>
         </div>
 
+        <div id="playlistModeSection" style="display: none;">
+            <label class="label" style="margin-top: 12px;">播放列表模式</label>
+            <div class="segmented-control" id="playlistMode">
+                <button class="btn selected" data-value="video">视频</button>
+                <button class="btn" data-value="audio">音频</button>
+            </div>
+        </div>
+
         <label class="label" style="margin-top: 12px;">保存目录</label>
         <div class="input-group-row">
             <input type="text" id="saveDir" placeholder="选择保存目录" readonly />
@@ -578,9 +586,12 @@ def get_html() -> str:
     <script>
         // Global state
         let currentKind = 'video';
+        let playlistMode = 'video';
         let selectedVideoFormat = null;
         let selectedAudioFormat = null;
-        let selectedSubtitles = [];
+        let selectedSubtitle = '';
+        let defaultDirs = { video: '', audio: '', subtitle: '' };
+        let lastAutoSaveDir = '';
         let isBusy = false;
 
         // Utility functions
@@ -629,22 +640,79 @@ def get_html() -> str:
             document.getElementById('logView').textContent = '';
         }
 
+        function _setSaveDirDefault() {
+            if (!defaultDirs.video) return;
+            const saveDirInput = document.getElementById('saveDir');
+            const next = currentKind === 'audio'
+                ? defaultDirs.audio
+                : currentKind === 'subtitle'
+                    ? defaultDirs.subtitle
+                    : defaultDirs.video;
+            if (!saveDirInput.value || saveDirInput.value === lastAutoSaveDir) {
+                saveDirInput.value = next;
+                lastAutoSaveDir = next;
+            }
+        }
+
+        function _togglePlaylistMode() {
+            document.getElementById('playlistModeSection').style.display =
+                currentKind === 'playlist' ? 'block' : 'none';
+        }
+
+        function _setActiveFormatPane(paneId) {
+            document.querySelectorAll('.format-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.format-pane').forEach(p => p.classList.remove('active'));
+            const tab = document.querySelector(`.format-tab[data-pane="${paneId}"]`);
+            const pane = document.getElementById(paneId);
+            if (tab) tab.classList.add('active');
+            if (pane) pane.classList.add('active');
+        }
+
+        function _syncKindUI() {
+            _togglePlaylistMode();
+            _setSaveDirDefault();
+            if (currentKind === 'audio') {
+                _setActiveFormatPane('audioPane');
+            } else if (currentKind === 'subtitle') {
+                _setActiveFormatPane('subtitlePane');
+            } else {
+                _setActiveFormatPane('videoPane');
+            }
+        }
+
+        function _fmtVideoResolution(fmt) {
+            if (fmt.resolution) return fmt.resolution;
+            if (fmt.height) return `${fmt.height}p`;
+            return '-';
+        }
+
+        function _fmtBitrate(value) {
+            if (!value) return '-';
+            return `${Math.round(value)} kbps`;
+        }
+
         // Segmented control handlers
         document.querySelectorAll('#kind .btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#kind .btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 currentKind = btn.getAttribute('data-value');
+                _syncKindUI();
+            });
+        });
+
+        document.querySelectorAll('#playlistMode .btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#playlistMode .btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                playlistMode = btn.getAttribute('data-value');
             });
         });
 
         // Format tab handlers
         document.querySelectorAll('.format-tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.format-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.format-pane').forEach(p => p.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(tab.getAttribute('data-pane')).classList.add('active');
+                _setActiveFormatPane(tab.getAttribute('data-pane'));
             });
         });
 
@@ -656,14 +724,31 @@ def get_html() -> str:
                 appendLog('检查运行环境...');
                 const result = await window.pywebview.api.check_environment();
                 appendLog('环境检查完成');
-                if (result.ffmpeg && result.yt_dlp) {
-                    document.getElementById('envStatus').textContent = '✓ 就绪';
-                    appendLog('✓ ffmpeg: ' + result.ffmpeg);
-                    appendLog('✓ yt-dlp: ' + result.yt_dlp);
+                const items = Array.isArray(result.items) ? result.items : [];
+                const pythonItem = items.find(item => item.name === 'python');
+                const ytdlpItem = items.find(item => item.name === 'yt-dlp');
+                const ffmpegItem = items.find(item => item.name === 'ffmpeg');
+                if (result.ok) {
+                    document.getElementById('envStatus').textContent = ffmpegItem && !ffmpegItem.found
+                        ? '✓ 基本就绪'
+                        : '✓ 就绪';
+                    appendLog('✓ python: ' + (pythonItem && pythonItem.path ? pythonItem.path : '可用'));
+                    appendLog('✓ yt-dlp: ' + (ytdlpItem && ytdlpItem.path ? ytdlpItem.path : '可用'));
+                    if (ffmpegItem && ffmpegItem.found) {
+                        appendLog('✓ ffmpeg: ' + (ffmpegItem.path || '可用'));
+                    } else if (ffmpegItem) {
+                        appendLog('⚠ ffmpeg: 缺失（可选）');
+                    }
                 } else {
                     document.getElementById('envStatus').textContent = '⚠ 缺失';
-                    if (!result.ffmpeg) appendLog('⚠ ffmpeg: 缺失');
-                    if (!result.yt_dlp) appendLog('⚠ yt-dlp: 缺失');
+                    const missing = items.filter(item => item.required && !item.found);
+                    if (missing.length === 0) {
+                        appendLog('错误: 环境检查失败');
+                    } else {
+                        missing.forEach(item => {
+                            appendLog(`⚠ ${item.name}: 缺失`);
+                        });
+                    }
                 }
             } catch (e) {
                 appendLog('错误: ' + e.message);
@@ -682,37 +767,49 @@ def get_html() -> str:
             clearLog();
             try {
                 appendLog('探测格式...');
-                const result = await window.pywebview.api.detect_formats(url);
+                const cookies = document.getElementById('cookies').value.trim();
+                const result = await window.pywebview.api.detect_formats(url, cookies || null);
                 if (result.error) {
                     appendLog('错误: ' + result.error);
                     return;
                 }
                 appendLog('探测完成: ' + result.title);
                 document.getElementById('detectStatus').textContent = '✓ ' + result.title;
+                selectedVideoFormat = null;
+                selectedAudioFormat = null;
+                selectedSubtitle = '';
 
                 // Populate video formats
                 const videoTable = document.getElementById('videoTable');
                 videoTable.innerHTML = '';
                 if (result.video_formats && result.video_formats.length > 0) {
                     result.video_formats.forEach(fmt => {
+                        const formatId = fmt.format_id || fmt.id || '';
+                        const bitrate = fmt.bitrate || _fmtBitrate(fmt.tbr);
+                        const codec = fmt.video_codec || fmt.codec || '';
+                        const filesize = fmt.filesize || fmt.filesize_approx || 0;
                         const row = document.createElement('tr');
-                        row.dataset.formatId = fmt.format_id;
+                        row.dataset.formatId = formatId;
                         row.innerHTML = `
-                            <td>${fmt.format_id}</td>
-                            <td>${fmt.resolution || '-'}</td>
+                            <td>${formatId || '-'}</td>
+                            <td>${_fmtVideoResolution(fmt)}</td>
                             <td>${fmt.fps || '-'}</td>
-                            <td>${fmt.bitrate || '-'}</td>
-                            <td>${_shortCodec(fmt.video_codec)}</td>
+                            <td>${bitrate || '-'}</td>
+                            <td>${_shortCodec(codec)}</td>
                             <td>${fmt.ext || '-'}</td>
-                            <td>${_fmtSize(fmt.filesize)}</td>
+                            <td>${_fmtSize(filesize)}</td>
                             <td>${fmt.note || '-'}</td>
                         `;
                         row.addEventListener('click', () => {
                             document.querySelectorAll('#videoTable tr').forEach(r => r.classList.remove('selected'));
                             row.classList.add('selected');
-                            selectedVideoFormat = fmt.format_id;
+                            selectedVideoFormat = formatId;
                         });
                         videoTable.appendChild(row);
+                        if (!selectedVideoFormat && formatId) {
+                            row.classList.add('selected');
+                            selectedVideoFormat = formatId;
+                        }
                     });
                 }
 
@@ -721,47 +818,72 @@ def get_html() -> str:
                 audioTable.innerHTML = '';
                 if (result.audio_formats && result.audio_formats.length > 0) {
                     result.audio_formats.forEach(fmt => {
+                        const formatId = fmt.format_id || fmt.id || '';
+                        const bitrate = fmt.bitrate || _fmtBitrate(fmt.abr);
+                        const codec = fmt.audio_codec || fmt.codec || '';
+                        const channels = fmt.channels || (fmt.audio_channels ? `${fmt.audio_channels}ch` : '-');
+                        const filesize = fmt.filesize || fmt.filesize_approx || 0;
                         const row = document.createElement('tr');
-                        row.dataset.formatId = fmt.format_id;
+                        row.dataset.formatId = formatId;
                         row.innerHTML = `
-                            <td>${fmt.format_id}</td>
-                            <td>${fmt.bitrate || '-'}</td>
-                            <td>${_shortCodec(fmt.audio_codec)}</td>
+                            <td>${formatId || '-'}</td>
+                            <td>${bitrate || '-'}</td>
+                            <td>${_shortCodec(codec)}</td>
                             <td>${fmt.ext || '-'}</td>
-                            <td>${fmt.channels || '-'}</td>
-                            <td>${_fmtSize(fmt.filesize)}</td>
+                            <td>${channels}</td>
+                            <td>${_fmtSize(filesize)}</td>
                         `;
                         row.addEventListener('click', () => {
                             document.querySelectorAll('#audioTable tr').forEach(r => r.classList.remove('selected'));
                             row.classList.add('selected');
-                            selectedAudioFormat = fmt.format_id;
+                            selectedAudioFormat = formatId;
                         });
                         audioTable.appendChild(row);
+                        if (!selectedAudioFormat && formatId) {
+                            row.classList.add('selected');
+                            selectedAudioFormat = formatId;
+                        }
                     });
                 }
 
                 // Populate subtitles
                 const subtitleList = document.getElementById('subtitleList');
                 subtitleList.innerHTML = '';
-                const allSubs = [...(result.subtitles || []), ...(result.auto_subtitles || [])];
+                const allSubs = [
+                    ...(result.subtitles || []).map(sub => ({ ...sub, _isAuto: false })),
+                    ...(result.auto_subtitles || []).map(sub => ({ ...sub, _isAuto: true })),
+                ];
                 if (allSubs.length > 0) {
                     allSubs.forEach(sub => {
                         const item = document.createElement('div');
                         item.className = 'subtitle-item';
-                        const isAuto = result.auto_subtitles && result.auto_subtitles.some(s => s.lang === sub.lang);
-                        item.innerHTML = `
-                            <span><span class="subtitle-lang">${sub.lang}</span> <span class="subtitle-auto">${isAuto ? '(自动)' : ''}</span></span>
-                            <span class="subtitle-auto">${sub.ext}</span>
-                        `;
+                        const isAuto = !!sub._isAuto;
+                        const value = isAuto ? `auto:${sub.lang}` : sub.lang;
+                        const left = document.createElement('span');
+                        const lang = document.createElement('span');
+                        lang.className = 'subtitle-lang';
+                        lang.textContent = sub.lang;
+                        const auto = document.createElement('span');
+                        auto.className = 'subtitle-auto';
+                        auto.textContent = isAuto ? '(自动)' : '';
+                        left.appendChild(lang);
+                        left.appendChild(document.createTextNode(' '));
+                        left.appendChild(auto);
+                        const meta = document.createElement('span');
+                        meta.className = 'subtitle-auto';
+                        meta.textContent = sub.label || sub.ext || '-';
+                        item.appendChild(left);
+                        item.appendChild(meta);
                         item.addEventListener('click', () => {
-                            item.classList.toggle('selected');
-                            if (item.classList.contains('selected')) {
-                                selectedSubtitles.push(sub.lang);
-                            } else {
-                                selectedSubtitles = selectedSubtitles.filter(l => l !== sub.lang);
-                            }
+                            document.querySelectorAll('#subtitleList .subtitle-item').forEach(el => el.classList.remove('selected'));
+                            item.classList.add('selected');
+                            selectedSubtitle = value;
                         });
                         subtitleList.appendChild(item);
+                        if (!selectedSubtitle) {
+                            item.classList.add('selected');
+                            selectedSubtitle = value;
+                        }
                     });
                 }
 
@@ -784,20 +906,45 @@ def get_html() -> str:
                 appendLog('错误: 保存目录不能为空');
                 return;
             }
+            if (currentKind === 'video' && !selectedVideoFormat) {
+                appendLog('错误: 请先探测并选择视频格式');
+                return;
+            }
+            if (currentKind === 'audio' && !selectedAudioFormat) {
+                appendLog('错误: 请先探测并选择音频格式');
+                return;
+            }
+            if (currentKind === 'subtitle' && !selectedSubtitle) {
+                appendLog('错误: 请先探测并选择字幕');
+                return;
+            }
             setBusy(true);
             clearLog();
             try {
                 appendLog('开始下载...');
-                const extraArgs = document.getElementById('extraArgs').value.split(/\\s+/).filter(Boolean);
+                let extraArgs = document.getElementById('extraArgs').value.split(/\\s+/).filter(Boolean);
+                const cookies = document.getElementById('cookies').value.trim();
+                if (currentKind === 'playlist') {
+                    extraArgs = extraArgs.filter(arg => arg !== '--no-playlist');
+                } else if (!extraArgs.includes('--no-playlist')) {
+                    extraArgs.push('--no-playlist');
+                }
+                const primaryFormatId = currentKind === 'playlist'
+                    ? playlistMode
+                    : currentKind === 'audio'
+                        ? (selectedAudioFormat || '')
+                        : currentKind === 'subtitle'
+                            ? ''
+                            : (selectedVideoFormat || '');
                 const result = await window.pywebview.api.start_download(
                     currentKind,
                     url,
                     destDir,
-                    selectedVideoFormat || '',
-                    selectedAudioFormat || '',
-                    selectedSubtitles.join(','),
+                    primaryFormatId,
+                    currentKind === 'video' ? (selectedAudioFormat || '') : '',
+                    currentKind === 'subtitle' ? selectedSubtitle : '',
                     document.getElementById('transcode').value,
-                    document.getElementById('cookies').value,
+                    cookies || null,
                     extraArgs
                 );
                 if (result.error) {
@@ -822,6 +969,7 @@ def get_html() -> str:
                 );
                 if (dir) {
                     document.getElementById('saveDir').value = dir;
+                    lastAutoSaveDir = '';
                 }
             } catch (e) {
                 appendLog('错误: ' + e.message);
@@ -837,7 +985,8 @@ def get_html() -> str:
         async function initialize() {
             try {
                 const dirs = await window.pywebview.api.get_default_dirs();
-                document.getElementById('saveDir').value = dirs.video;
+                defaultDirs = dirs;
+                _syncKindUI();
             } catch (e) {
                 console.error('Failed to get default dirs:', e);
             }

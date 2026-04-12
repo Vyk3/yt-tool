@@ -81,12 +81,36 @@ class Api:
             extra_args=tuple(extra_args or []),
         )
 
-        def on_progress(event: ProgressEvent) -> None:
+        progress_buffer = ""
+        skip_lf_after_cr = False
+
+        def emit_progress(message: str) -> None:
             if self._window:
-                msg = json.dumps(event.message)
-                self._window.evaluate_js(f"window._onProgress({msg})")
+                payload = json.dumps(message)
+                self._window.evaluate_js(f"window._onProgress({payload})")
+
+        def on_progress(event: ProgressEvent) -> None:
+            nonlocal progress_buffer, skip_lf_after_cr
+            for char in event.message:
+                if char == "\r":
+                    if progress_buffer:
+                        emit_progress(progress_buffer)
+                    progress_buffer = ""
+                    skip_lf_after_cr = True
+                elif char == "\n":
+                    if skip_lf_after_cr:
+                        skip_lf_after_cr = False
+                        continue
+                    if progress_buffer:
+                        emit_progress(progress_buffer)
+                    progress_buffer = ""
+                else:
+                    skip_lf_after_cr = False
+                    progress_buffer += char
 
         result = self._workflow.retry_with_redetect(request, on_progress=on_progress)
+        if progress_buffer:
+            emit_progress(progress_buffer)
         return _serialize(result)  # type: ignore[return-value]
 
     def browse_directory(self, current: str = "") -> str | None:

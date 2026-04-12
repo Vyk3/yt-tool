@@ -114,6 +114,23 @@ class TestApi:
             assert isinstance(result, dict)
             assert "title" in result
             assert result["title"] == "Test Video"
+            req = mock_detect.call_args.args[0]
+            assert req.url == "http://example.com/video"
+            assert req.cookies_from is None
+            assert req.extra_args == ("--no-playlist",)
+
+    def test_detect_formats_passes_cookies(self, api: Api) -> None:
+        with patch.object(api._workflow, "detect_formats") as mock_detect:
+            mock_detect.return_value = DetectResponse(
+                title="Test Video",
+                video_formats=(),
+                audio_formats=(),
+                subtitles=(),
+                auto_subtitles=(),
+            )
+            api.detect_formats("http://example.com/video", "chrome")
+            req = mock_detect.call_args.args[0]
+            assert req.cookies_from == "chrome"
 
     def test_detect_formats_error(self, api: Api) -> None:
         with patch.object(api._workflow, "detect_formats") as mock_detect:
@@ -155,6 +172,75 @@ class TestApi:
             )
             assert isinstance(result, dict)
             assert result["ok"] is True
+
+    def test_start_download_forwards_request_fields(self, api: Api) -> None:
+        request_obj = object()
+        with patch.object(api._workflow, "build_download_request", return_value=request_obj) as mock_build, patch.object(
+            api._workflow, "retry_with_redetect"
+        ) as mock_download:
+            mock_download.return_value = TaskResult(ok=True, state="success")
+            api.start_download(
+                kind="subtitle",
+                url="http://example.com/video",
+                dest_dir="/tmp",
+                format_id="137",
+                audio_format_id="140",
+                subtitle_lang="auto:en",
+                transcode_to="mp3",
+                cookies_from="chrome",
+                extra_args=["--proxy", "socks5://127.0.0.1:1080"],
+            )
+            mock_build.assert_called_once_with(
+                kind="subtitle",
+                url="http://example.com/video",
+                dest_dir="/tmp",
+                format_id="137",
+                audio_format_id="140",
+                subtitle_lang="auto:en",
+                transcode_to="mp3",
+                cookies_from="chrome",
+                extra_args=("--proxy", "socks5://127.0.0.1:1080"),
+            )
+            mock_download.assert_called_once()
+            assert mock_download.call_args.args[0] is request_obj
+
+    def test_start_download_streams_progress_handles_carriage_returns(self, api: Api) -> None:
+        mock_window = Mock()
+        api.set_window(mock_window)
+
+        def fake_retry(request: object, on_progress=None):  # type: ignore[no-untyped-def]
+            assert on_progress is not None
+            on_progress(type("Evt", (), {"message": "\r"})())
+            on_progress(type("Evt", (), {"message": "a"})())
+            on_progress(type("Evt", (), {"message": "b"})())
+            on_progress(type("Evt", (), {"message": "\r"})())
+            on_progress(type("Evt", (), {"message": "c"})())
+            on_progress(type("Evt", (), {"message": "\n"})())
+            on_progress(type("Evt", (), {"message": "d"})())
+            on_progress(type("Evt", (), {"message": "\r\n"})())
+            on_progress(type("Evt", (), {"message": "e"})())
+            return TaskResult(ok=True, state="success")
+
+        with patch.object(api._workflow, "build_download_request", return_value=object()), patch.object(
+            api._workflow,
+            "retry_with_redetect",
+            side_effect=fake_retry,
+        ):
+            api.start_download(
+                kind="video",
+                url="http://example.com/video",
+                dest_dir="/tmp",
+                format_id="137",
+                audio_format_id="140",
+            )
+
+        payloads = [call.args[0] for call in mock_window.evaluate_js.call_args_list]
+        assert payloads == [
+            'window._onProgress("ab")',
+            'window._onProgress("c")',
+            'window._onProgress("d")',
+            'window._onProgress("e")',
+        ]
 
     def test_get_default_dirs(self, api: Api) -> None:
         result = api.get_default_dirs()
