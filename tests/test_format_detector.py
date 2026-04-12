@@ -1,7 +1,6 @@
 """format_detector.py 单元测试。"""
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -62,24 +61,35 @@ SAMPLE_YTDLP_JSON = {
 }
 
 
+def _patch_extract_info(return_value=None, side_effect=None):
+    """Helper: patch yt_dlp.YoutubeDL to return a mock with controlled extract_info."""
+    mock_ydl_instance = MagicMock()
+    if side_effect:
+        mock_ydl_instance.extract_info.side_effect = side_effect
+    else:
+        mock_ydl_instance.extract_info.return_value = return_value
+
+    mock_ydl_cls = MagicMock()
+    mock_ydl_cls.return_value.__enter__ = MagicMock(return_value=mock_ydl_instance)
+    mock_ydl_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+    return patch("app.core.format_detector.yt_dlp.YoutubeDL", mock_ydl_cls)
+
+
 class TestDetect:
     def test_empty_url_raises(self):
         with pytest.raises(ValueError, match="URL required"):
             detect("")
 
-    def test_ytdlp_nonzero_raises(self):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 1
-        fake_proc.stderr = "ERROR: not a video"
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc), pytest.raises(RuntimeError, match="format detect failed"):
+    def test_ytdlp_error_raises(self):
+        import yt_dlp
+        error = yt_dlp.utils.DownloadError("ERROR: not a video")
+        with _patch_extract_info(side_effect=error), \
+             pytest.raises(RuntimeError, match="format detect failed"):
             detect("http://example.com")
 
     def test_success_parses_formats(self):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = json.dumps(SAMPLE_YTDLP_JSON)
-        fake_proc.stderr = ""
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=SAMPLE_YTDLP_JSON):
             result = detect("http://example.com")
             assert result.title == "Test Video"
             assert len(result.video_formats) == 2
@@ -90,11 +100,7 @@ class TestDetect:
             assert result.audio_formats[0].audio_channels == 2
 
     def test_video_only_tagged(self):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = json.dumps(SAMPLE_YTDLP_JSON)
-        fake_proc.stderr = ""
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=SAMPLE_YTDLP_JSON):
             result = detect("http://example.com")
             fmt_248 = next(f for f in result.video_formats if f.id == "248")
             assert "video only" in fmt_248.note
@@ -106,11 +112,7 @@ class TestDetect:
             "title": "My Playlist",
             "entries": [SAMPLE_YTDLP_JSON, SAMPLE_YTDLP_JSON],
         }
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = json.dumps(playlist_json)
-        fake_proc.stderr = ""
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=playlist_json):
             result = detect("http://example.com/playlist")
             assert result.title == "Test Video"
             assert result.is_playlist is True
@@ -125,11 +127,7 @@ class TestDetect:
                 "live_chat": [{"name": "live_chat", "ext": "json"}],
             },
         }
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = json.dumps(data)
-        fake_proc.stderr = ""
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=data):
             result = detect("http://example.com/live")
             assert result.subtitles[0].is_live_chat is True
 
@@ -142,20 +140,12 @@ class TestDetect:
                 "zh-Hans": [{"name": "Chinese", "ext": "vtt"}],
             },
         }
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = json.dumps(data)
-        fake_proc.stderr = ""
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=data):
             result = detect("http://example.com")
             assert [track.lang for track in result.subtitles] == ["zh-Hans", "en"]
 
     def test_validate_detected_formats_filters_unavailable_items(self):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = json.dumps(SAMPLE_YTDLP_JSON)
-        fake_proc.stderr = ""
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=SAMPLE_YTDLP_JSON):
             result = detect("http://example.com")
 
         def is_available(url, format_id, **kwargs):
@@ -186,8 +176,7 @@ class TestDetect:
                 },
             ],
         }
-        fake_proc = MagicMock(returncode=0, stdout=json.dumps(extended), stderr="")
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
+        with _patch_extract_info(return_value=extended):
             result = detect("http://example.com")
 
         checked: list[str] = []
@@ -204,6 +193,11 @@ class TestDetect:
         assert checked == [validated.video_formats[0].id, "140"]
         # 未探测的低优先级视频格式应保留在菜单末尾，不被截断
         assert len(validated.video_formats) > 1
+
+    def test_none_data_raises(self):
+        with _patch_extract_info(return_value=None), \
+             pytest.raises(RuntimeError, match="no data returned"):
+            detect("http://example.com")
 
 
 class TestParseSubtitleTracks:

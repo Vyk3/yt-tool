@@ -1,6 +1,6 @@
-"""动态格式探测 — 对应原 format-detector.sh。
+"""动态格式探测 — 使用 yt-dlp Python API。
 
-调用 yt-dlp -J 获取视频元数据，解析出可用的视频流、音频流、字幕列表。
+通过 yt_dlp.YoutubeDL.extract_info() 获取视频元数据，解析出可用的视频流、音频流、字幕列表。
 不做交互，不做输出，只返回结构化数据。
 
 播放列表：detect() 检测到 playlist 时设置 is_playlist=True，格式信息取自第一个条目
@@ -8,10 +8,10 @@
 """
 from __future__ import annotations
 
-import json
-import subprocess
 from dataclasses import dataclass, replace
 from typing import Any
+
+import yt_dlp
 
 from . import config
 
@@ -104,40 +104,48 @@ def _parse_subtitle_tracks(
     return tuple(tracks)
 
 
+def _build_ydl_opts(
+    *,
+    cookies_from: str | None = None,
+    no_playlist: bool = False,
+    extra_opts: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """构建 yt-dlp YoutubeDL 选项字典。"""
+    opts: dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+    }
+    if no_playlist:
+        opts["noplaylist"] = True
+    else:
+        opts["playlist_items"] = "1"
+    if cookies_from:
+        opts["cookiesfrombrowser"] = (cookies_from,)
+    if extra_opts:
+        opts.update(extra_opts)
+    return opts
+
+
 def detect(url: str, *, cookies_from: str | None = None, no_playlist: bool = False) -> DetectResult:
-    """调用 yt-dlp -J 获取视频信息并解析格式。
+    """使用 yt-dlp Python API 获取视频信息并解析格式。
 
     cookies_from: 浏览器名称（"chrome"/"firefox" 等），None 表示不使用 Cookie。
-    no_playlist: True 时加 --no-playlist，用于下载 watch?v=X&list=Y 形式 URL 时
+    no_playlist: True 时设置 noplaylist，用于下载 watch?v=X&list=Y 形式 URL 时
                  确保获取的是 URL 实际指向的视频，而非播放列表第一条。
     """
     if not url:
         raise ValueError("URL required")
 
-    cmd = ["yt-dlp", "-J", "--no-warnings"]
-    if no_playlist:
-        cmd += ["--no-playlist"]
-    else:
-        cmd += ["--playlist-items", "1"]
-    if cookies_from:
-        cmd += ["--cookies-from-browser", cookies_from]
-    cmd.append(url)
+    ydl_opts = _build_ydl_opts(cookies_from=cookies_from, no_playlist=no_playlist)
 
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            data: dict[str, Any] | None = ydl.extract_info(url, download=False)
+    except yt_dlp.utils.DownloadError as e:
+        raise RuntimeError(f"format detect failed: {e}") from e
 
-    if proc.returncode != 0:
-        err = proc.stderr.strip()[:300]
-        raise RuntimeError(
-            f"format detect failed: yt-dlp exited {proc.returncode}: {err}"
-        )
-
-    data: dict[str, Any] = json.loads(proc.stdout)
+    if data is None:
+        raise RuntimeError("format detect failed: no data returned")
 
     # 检测播放列表
     is_playlist = False
@@ -230,41 +238,35 @@ def _probe_format_available(
     cookies_from: str | None = None,
     extra_args: list[str] | None = None,
 ) -> bool:
-    """用 yt-dlp 模拟一次格式选择，判断当前 format_id 是否仍可用。"""
-    cmd = [
-        "yt-dlp",
-        "--simulate",
-        "--skip-download",
-        "--no-warnings",
-        "-f",
-        format_id,
-    ]
-    if cookies_from:
-        cmd += ["--cookies-from-browser", cookies_from]
-    if extra_args:
-        cmd += extra_args
-    cmd.append(url)
+    """用 yt-dlp Python API 模拟一次格式选择，判断当前 format_id 是否仍可用。"""
+    extra_opts: dict[str, Any] = {
+        "format": format_id,
+        "socket_timeout": config.YT_VALIDATE_FORMAT_TIMEOUT_SEC,
+    }
+    # 将已知的 CLI extra_args 映射为 library 选项
+    no_playlist = bool(extra_args and "--no-playlist" in extra_args)
+
+    ydl_opts = _build_ydl_opts(
+        cookies_from=cookies_from,
+        no_playlist=no_playlist,
+        extra_opts=extra_opts,
+    )
 
     try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=config.YT_VALIDATE_FORMAT_TIMEOUT_SEC,
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.extract_info(url, download=False)
+        return True
+    except yt_dlp.utils.DownloadError as e:
+        # 仅在明确指出格式不可用时才删除候选；
+        # 网络抖动、限速、认证失败等瞬时错误不应误删有效格式。
+        err = str(e).lower()
+        return not (
+            "format is not available" in err
+            or "requested format is not available" in err
         )
-    except subprocess.TimeoutExpired:
-        # 超时不代表格式失效，网络慢时 simulate 本就容易超时；
-        # 保守地视为可用，让用户自行尝试，而不是从菜单中错误删除。
+    except Exception:
+        # 超时或其他异常：保守地视为可用
         return True
-
-    if proc.returncode == 0:
-        return True
-    # 仅在 stderr 明确指出格式不可用时才删除候选；
-    # 网络抖动、限速、认证失败等瞬时错误不应误删有效格式。
-    err = proc.stderr.lower()
-    return not ("format is not available" in err or "requested format is not available" in err)  # 其他错误：保守保留，让用户实际下载时自行判断
 
 
 def validate_detected_formats(
