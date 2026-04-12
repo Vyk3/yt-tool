@@ -1,12 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
-from PyInstaller.utils.hooks import collect_all
 
-pyside6_d, pyside6_b, pyside6_h = collect_all('PySide6')
-shiboken6_d, shiboken6_b, shiboken6_h = collect_all('shiboken6')
-ytdlp_d, ytdlp_b, ytdlp_h = collect_all('yt_dlp')
-
-# Bundle the yt-dlp standalone binary so the app works without a system yt-dlp install.
+# Bundle the yt-dlp and ffmpeg binaries so the app works without system installs.
 # Optional bundled helper binaries:
 # - yt-dlp is expected by default.
 # - ffmpeg/ffprobe are optional and included when present in vendor/bin.
@@ -21,9 +16,9 @@ _extra_binaries = [(path, '.') for path in _optional_bins if os.path.isfile(path
 a = Analysis(
     ['run.py'],
     pathex=['.', 'vendor'],
-    binaries=[*pyside6_b, *shiboken6_b, *ytdlp_b, *_extra_binaries],
-    datas=[*pyside6_d, *shiboken6_d, *ytdlp_d],
-    hiddenimports=[*pyside6_h, *shiboken6_h, *ytdlp_h],
+    binaries=_extra_binaries,
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
