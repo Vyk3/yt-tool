@@ -115,3 +115,4 @@ jobs:
           if ($LASTEXITCODE -ne 1) {
             throw "Unexpected exit code from yt.ps1: $LASTEXITCODE"
           }
+          exit 0
