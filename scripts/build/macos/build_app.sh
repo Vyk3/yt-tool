@@ -3,7 +3,8 @@
 # Usage:
 #   scripts/build/macos/build_app.sh [--clean] [--name APP_NAME] [--with-ffmpeg]
 #                                   [--codesign-identity IDENTITY] [--ffmpeg-url URL]
-#                                   [--ffmpeg-sha256 HEX]
+#                                   [--ffmpeg-sha256 HEX] [--ffprobe-url URL]
+#                                   [--ffprobe-sha256 HEX]
 
 set -euo pipefail
 
@@ -16,12 +17,15 @@ WITH_FFMPEG=0
 CODESIGN_IDENTITY="${YT_TOOL_CODESIGN_IDENTITY:--}"
 FFMPEG_ARCHIVE_URL="${YT_TOOL_FFMPEG_MACOS_URL:-}"
 FFMPEG_ARCHIVE_SHA256="${YT_TOOL_FFMPEG_MACOS_SHA256:-}"
+FFPROBE_ARCHIVE_URL="${YT_TOOL_FFPROBE_MACOS_URL:-}"
+FFPROBE_ARCHIVE_SHA256="${YT_TOOL_FFPROBE_MACOS_SHA256:-}"
 
 usage() {
   cat <<EOF
 Usage: $0 [--clean] [--name APP_NAME] [--with-ffmpeg]
           [--codesign-identity IDENTITY] [--ffmpeg-url URL]
-          [--ffmpeg-sha256 HEX]
+          [--ffmpeg-sha256 HEX] [--ffprobe-url URL]
+          [--ffprobe-sha256 HEX]
 
 Options:
   --clean                     Run PyInstaller with --clean and refresh bundled binaries.
@@ -33,6 +37,10 @@ Options:
                               Can also be set by YT_TOOL_FFMPEG_MACOS_URL.
   --ffmpeg-sha256 HEX         Expected SHA256 for ffmpeg archive.
                               Can also be set by YT_TOOL_FFMPEG_MACOS_SHA256.
+  --ffprobe-url URL           Override ffprobe archive URL.
+                              Can also be set by YT_TOOL_FFPROBE_MACOS_URL.
+  --ffprobe-sha256 HEX        Expected SHA256 for ffprobe archive.
+                              Can also be set by YT_TOOL_FFPROBE_MACOS_SHA256.
 EOF
 }
 
@@ -82,6 +90,24 @@ while [[ $# -gt 0 ]]; do
       FFMPEG_ARCHIVE_SHA256="$2"
       shift 2
       ;;
+    --ffprobe-url)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --ffprobe-url" >&2
+        usage >&2
+        exit 2
+      fi
+      FFPROBE_ARCHIVE_URL="$2"
+      shift 2
+      ;;
+    --ffprobe-sha256)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --ffprobe-sha256" >&2
+        usage >&2
+        exit 2
+      fi
+      FFPROBE_ARCHIVE_SHA256="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -128,8 +154,21 @@ if [[ "$WITH_FFMPEG" -eq 1 ]]; then
     echo "Missing ffmpeg SHA256. Set --ffmpeg-sha256 or YT_TOOL_FFMPEG_MACOS_SHA256." >&2
     exit 2
   fi
+  if [[ -z "$FFPROBE_ARCHIVE_URL" ]]; then
+    echo "Missing ffprobe source URL. Set --ffprobe-url or YT_TOOL_FFPROBE_MACOS_URL." >&2
+    exit 2
+  fi
+  if [[ -z "$FFPROBE_ARCHIVE_SHA256" ]]; then
+    echo "Missing ffprobe SHA256. Set --ffprobe-sha256 or YT_TOOL_FFPROBE_MACOS_SHA256." >&2
+    exit 2
+  fi
   if [[ "$FFMPEG_ARCHIVE_URL" == *"/latest/"* ]]; then
     echo "Refuse mutable ffmpeg URL: $FFMPEG_ARCHIVE_URL" >&2
+    echo "Use a pinned, versioned archive URL instead of /latest/." >&2
+    exit 2
+  fi
+  if [[ "$FFPROBE_ARCHIVE_URL" == *"/latest/"* ]]; then
+    echo "Refuse mutable ffprobe URL: $FFPROBE_ARCHIVE_URL" >&2
     echo "Use a pinned, versioned archive URL instead of /latest/." >&2
     exit 2
   fi
@@ -169,24 +208,45 @@ if [[ "$WITH_FFMPEG" -eq 1 ]]; then
       unzip -q -o -j "$archive_path" "*/bin/ffprobe" -d "$VENDOR_BIN_DIR" || true
       unzip -q -o -j "$archive_path" "ffmpeg" -d "$VENDOR_BIN_DIR" || true
       unzip -q -o -j "$archive_path" "ffprobe" -d "$VENDOR_BIN_DIR" || true
+      if [[ ! -f "$FFPROBE_BIN" ]]; then
+        ffprobe_archive_path="$tmp_dir/ffprobe-macos.zip"
+        echo "Downloading ffprobe archive..."
+        curl --fail --location --progress-bar \
+          --retry 5 --retry-delay 2 --retry-all-errors \
+          "$FFPROBE_ARCHIVE_URL" -o "$ffprobe_archive_path"
+        if command -v shasum >/dev/null 2>&1; then
+          actual_ffprobe_sha="$(shasum -a 256 "$ffprobe_archive_path" | awk '{print $1}')"
+        elif command -v sha256sum >/dev/null 2>&1; then
+          actual_ffprobe_sha="$(sha256sum "$ffprobe_archive_path" | awk '{print $1}')"
+        else
+          echo "No SHA256 tool found (need shasum or sha256sum)." >&2
+          exit 2
+        fi
+        expected_ffprobe_sha="$(printf '%s' "$FFPROBE_ARCHIVE_SHA256" | tr '[:upper:]' '[:lower:]')"
+        actual_ffprobe_sha="$(printf '%s' "$actual_ffprobe_sha" | tr '[:upper:]' '[:lower:]')"
+        if [[ "$actual_ffprobe_sha" != "$expected_ffprobe_sha" ]]; then
+          echo "ffprobe archive SHA256 mismatch." >&2
+          echo "  expected: $expected_ffprobe_sha" >&2
+          echo "  actual  : $actual_ffprobe_sha" >&2
+          echo "  source  : $FFPROBE_ARCHIVE_URL" >&2
+          exit 2
+        fi
+        unzip -q -o -j "$ffprobe_archive_path" "*/bin/ffprobe" -d "$VENDOR_BIN_DIR" || true
+        unzip -q -o -j "$ffprobe_archive_path" "ffprobe" -d "$VENDOR_BIN_DIR" || true
+      fi
     )
     if [[ ! -f "$FFMPEG_BIN" ]]; then
       echo "ffmpeg archive does not contain ffmpeg: $FFMPEG_ARCHIVE_URL" >&2
       exit 2
     fi
-    if [[ ! -f "$FFPROBE_BIN" ]] && command -v ffprobe >/dev/null 2>&1; then
-      cp "$(command -v ffprobe)" "$FFPROBE_BIN"
+    if [[ ! -f "$FFPROBE_BIN" ]]; then
+      echo "ffprobe archive does not contain ffprobe: $FFPROBE_ARCHIVE_URL" >&2
+      exit 2
     fi
     chmod +x "$FFMPEG_BIN"
-    if [[ -f "$FFPROBE_BIN" ]]; then
-      chmod +x "$FFPROBE_BIN"
-    fi
+    chmod +x "$FFPROBE_BIN"
     echo "ffmpeg binary: $FFMPEG_BIN"
-    if [[ -f "$FFPROBE_BIN" ]]; then
-      echo "ffprobe binary: $FFPROBE_BIN"
-    else
-      echo "ffprobe binary not bundled (optional)"
-    fi
+    echo "ffprobe binary: $FFPROBE_BIN"
   else
     echo "ffmpeg binaries already present: $FFMPEG_BIN / $FFPROBE_BIN"
   fi

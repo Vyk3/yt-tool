@@ -233,6 +233,8 @@ scripts\build\windows\build_exe.bat yt-tool clean
 CI（Release workflow）读取以下 Repository Variables：
 * `YT_TOOL_FFMPEG_MACOS_URL`
 * `YT_TOOL_FFMPEG_MACOS_SHA256`
+* `YT_TOOL_FFPROBE_MACOS_URL`
+* `YT_TOOL_FFPROBE_MACOS_SHA256`
 * `YT_TOOL_FFMPEG_WINDOWS_URL`
 * `YT_TOOL_FFMPEG_WINDOWS_SHA256`
 
