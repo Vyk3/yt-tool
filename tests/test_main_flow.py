@@ -1,21 +1,9 @@
 """main.py 主流程编排测试。"""
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
 
 from app.cli.main import main
-
-from .test_format_detector import SAMPLE_YTDLP_JSON
-
-
-def _mock_detect_success():
-    """返回一个 mock subprocess.run，模拟 yt-dlp -J 成功。"""
-    fake = MagicMock()
-    fake.returncode = 0
-    fake.stdout = json.dumps(SAMPLE_YTDLP_JSON)
-    fake.stderr = ""
-    return fake
 
 
 class TestMainFlow:
@@ -28,27 +16,22 @@ class TestMainFlow:
     def test_detect_failure_returns_1(self, monkeypatch):
         """探测失败时返回 1。"""
         monkeypatch.setattr("builtins.input", lambda _: "0")  # Cookie 询问回答"不使用"
-        fake = MagicMock()
-        fake.returncode = 1
-        fake.stderr = "ERROR"
-        with patch("app.core.format_detector.subprocess.run", return_value=fake):
+        with patch("app.services.workflow.detect", side_effect=RuntimeError("ERROR")):
             result = main(["http://bad-url"])
             assert result == 1
 
-    def test_user_exits_returns_0(self, monkeypatch):
+    def test_user_exits_returns_0(self, monkeypatch, sample_detect_result):
         """用户在下载类型菜单选 0 退出，返回 0。"""
-        detect_proc = _mock_detect_success()
-
         with patch("app.cli.main._run_env_check", return_value=(True, True)), \
-             patch("app.core.format_detector.subprocess.run", return_value=detect_proc):
+             patch("app.services.workflow.detect", return_value=sample_detect_result), \
+             patch("app.services.workflow.validate_detected_formats", return_value=sample_detect_result):
             monkeypatch.setattr("builtins.input", lambda _: "0")
             result = main(["http://example.com"])
             assert result == 0
 
-    def test_audio_download_flow(self, monkeypatch, tmp_path):
+    def test_audio_download_flow(self, monkeypatch, tmp_path, sample_detect_result):
         """音频下载完整流程。"""
-        detect_proc = _mock_detect_success()
-        dl_proc = MagicMock(returncode=0, stdout="done", stderr="")
+        dl_result = MagicMock(ok=True, output="done", error="", saved_path=str(tmp_path / "x.m4a"))
 
         inputs = iter([
             "0",            # Cookie 询问：不使用
@@ -61,22 +44,16 @@ class TestMainFlow:
         ])
         monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-        def route_subprocess(*args, **kwargs):
-            cmd = args[0] if args else kwargs.get("args", [])
-            if "-J" in cmd:
-                return detect_proc
-            return dl_proc
-
         with patch("app.cli.main._run_env_check", return_value=(True, True)), \
-             patch("subprocess.run", side_effect=route_subprocess):
+             patch("app.services.workflow.detect", return_value=sample_detect_result), \
+             patch("app.services.workflow.validate_detected_formats", return_value=sample_detect_result), \
+             patch("app.services.workflow.download_audio", return_value=dl_result):
             result = main(["http://example.com"])
             assert result == 0
 
-    def test_prevalidate_formats_before_menu(self, monkeypatch):
-        detect_proc = _mock_detect_success()
-
+    def test_prevalidate_formats_before_menu(self, monkeypatch, sample_detect_result):
         with patch("app.cli.main._run_env_check", return_value=(True, True)), \
-             patch("app.core.format_detector.subprocess.run", return_value=detect_proc), \
+             patch("app.services.workflow.detect", return_value=sample_detect_result), \
              patch("app.services.workflow.validate_detected_formats") as mock_validate:
             mock_validate.side_effect = lambda url, info, **kwargs: info
             monkeypatch.setattr("builtins.input", lambda _: "0")
