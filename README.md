@@ -78,7 +78,7 @@ Python 依赖通过单一文件 `requirements.txt` 管理。
 `requirements.txt` 会安装：
 
 * `yt-dlp`
-* `PySide6_Essentials` + `shiboken6`（GUI 模式，覆盖当前项目所需 QtWidgets 能力）
+* `pywebview`（GUI 模式，基于系统原生 WebView 运行）
 
 ---
 
