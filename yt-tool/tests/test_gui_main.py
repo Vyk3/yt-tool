@@ -3,9 +3,15 @@ from __future__ import annotations
 from app.gui import main as gui_main
 
 
+class _FakeSignal:
+    def connect(self, slot):
+        pass
+
+
 class _FakeApp:
     def __init__(self, argv):
         self.argv = argv
+        self.aboutToQuit = _FakeSignal()
 
     def exec(self) -> int:
         return 7
@@ -26,6 +32,9 @@ class _FakeController:
 
     def startup(self) -> None:
         self.started = True
+
+    def cleanup(self) -> None:
+        pass
 
 
 def test_main_returns_error_when_pyside6_missing(monkeypatch, capsys):

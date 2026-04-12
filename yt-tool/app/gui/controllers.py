@@ -227,6 +227,18 @@ class AppController(QObject):
         self._download_log_buffer = ""
         self._window.show_error(message)
 
+    def cleanup(self) -> None:
+        """Quit and wait for any running worker thread.
+
+        Call this before the QApplication exits (e.g. on aboutToQuit) so that
+        the QThread is fully stopped before Qt tears down C++ objects.  Without
+        this, Python atexit destroys the thread while it is still running, which
+        causes Qt to call abort().
+        """
+        if self._active_thread is not None:
+            self._active_thread.quit()
+            self._active_thread.wait(3000)  # 3 s grace period
+
     def _on_thread_finished(self) -> None:
         self._active_thread = None
         self._window.set_busy(False)

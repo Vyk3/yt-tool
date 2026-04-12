@@ -33,6 +33,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     controller.startup()
     window.show()
     window._controller = controller  # keep controller alive with window lifecycle
+
+    # Ensure any running worker thread is stopped before Qt tears down C++ objects.
+    # Without this, Python atexit destroys a still-running QThread → Qt fatal abort.
+    app.aboutToQuit.connect(controller.cleanup)
+
     return int(app.exec())
 
 
