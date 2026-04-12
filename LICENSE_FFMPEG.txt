@@ -1,0 +1,29 @@
+FFmpeg License Notice
+=====================
+
+This project may bundle FFmpeg/FFprobe binaries in release artifacts.
+
+The bundled FFmpeg binaries are downloaded from pinned source URLs and
+verified with SHA256 checksums during the build process.
+
+License responsibility
+----------------------
+
+- FFmpeg is an independent upstream project.
+- Its licensing terms are defined by upstream FFmpeg and the specific
+  binary build provider used for distribution.
+- Maintainers must ensure the selected binary build is compatible with the
+  intended distribution policy (for example LGPL-focused builds), and must
+  preserve required attribution and license notices.
+
+References
+----------
+
+- FFmpeg project: https://ffmpeg.org/
+- FFmpeg legal overview: https://ffmpeg.org/legal.html
+
+Practical note
+--------------
+
+If your release process changes FFmpeg source/provider, update this notice
+and accompanying release documentation accordingly.
