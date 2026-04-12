@@ -1,14 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 from PyInstaller.utils.hooks import collect_all
 
 pyside6_d, pyside6_b, pyside6_h = collect_all('PySide6')
 shiboken6_d, shiboken6_b, shiboken6_h = collect_all('shiboken6')
 ytdlp_d, ytdlp_b, ytdlp_h = collect_all('yt_dlp')
 
+# Bundle the yt-dlp standalone binary so the app works without a system yt-dlp install.
+_ytdlp_bin = 'vendor/bin/yt-dlp'
+_extra_binaries = [(_ytdlp_bin, '.')] if os.path.isfile(_ytdlp_bin) else []
+
 a = Analysis(
     ['run.py'],
     pathex=['.', 'vendor'],
-    binaries=[*pyside6_b, *shiboken6_b, *ytdlp_b],
+    binaries=[*pyside6_b, *shiboken6_b, *ytdlp_b, *_extra_binaries],
     datas=[*pyside6_d, *shiboken6_d, *ytdlp_d],
     hiddenimports=[*pyside6_h, *shiboken6_h, *ytdlp_h],
     hookspath=[],
