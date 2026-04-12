@@ -5,6 +5,7 @@ import sys
 from types import ModuleType
 
 from app.core import config
+from app.core.env_check import CheckItem, CheckResult
 from app.services.models import AppSettings, DownloadRequest, ProgressEvent, TaskResult
 
 
@@ -136,6 +137,23 @@ class _FakeWindow:
 
     def append_log(self, msg: str) -> None:
         self.logs.append(msg)
+
+    def set_env_check_result(self, result: object) -> None:
+        if result.ok:
+            text = "环境检查通过"
+        else:
+            missing_names = [item.name for item in result.items if not item.found and item.required]
+            missing = ", ".join(missing_names) if missing_names else "未知"
+            text = f"环境检查失败: 缺少 {missing}"
+        self.append_log(text)
+        ffmpeg_item = next(
+            (item for item in result.items if item.name == "ffmpeg" and not item.found),
+            None,
+        )
+        if result.ok and ffmpeg_item is not None:
+            self.append_log(
+                f"⚠ ffmpeg 未安装（可选）：视频流合并和字幕嵌入不可用。安装：{ffmpeg_item.hint}"
+            )
 
     def show_result(self, path: str) -> None:
         self.logs.append(f"DONE:{path}")
@@ -271,6 +289,46 @@ def test_build_download_request_video_missing_selection_reports_error(monkeypatc
 
     assert req is None
     assert any("选择视频格式" in msg for msg in window.errors)
+
+
+def test_on_env_finished_logs_ffmpeg_hint_when_optional_missing(monkeypatch):
+    controllers, _ = _load_gui_modules(monkeypatch)
+    window = _FakeWindow()
+    workflow = _FakeWorkflow()
+    controller = _make_controller(controllers.AppController, window, workflow)
+    result = CheckResult(
+        ok=True,
+        fatal_missing=False,
+        warning_missing=True,
+        items=(
+            CheckItem(
+                name="python",
+                required=True,
+                found=True,
+                path="/usr/bin/python3",
+                hint="brew install python",
+            ),
+            CheckItem(
+                name="yt-dlp",
+                required=True,
+                found=True,
+                path="/usr/local/bin/yt-dlp",
+                hint="brew install yt-dlp",
+            ),
+            CheckItem(
+                name="ffmpeg",
+                required=False,
+                found=False,
+                path=None,
+                hint="brew install ffmpeg",
+            ),
+        ),
+    )
+
+    controller._on_env_finished(result)
+
+    assert any("ffmpeg 未安装（可选）" in msg for msg in window.logs)
+    assert any("brew install ffmpeg" in msg for msg in window.logs)
 
 
 def test_download_progress_flushes_by_newline(monkeypatch):

@@ -304,6 +304,14 @@ class MainWindow(QMainWindow):
             text = f"环境检查失败: 缺少 {missing}"
         self.env_label.setText(text)
         self.append_log(text)
+        ffmpeg_item = next(
+            (item for item in result.items if item.name == "ffmpeg" and not item.found),
+            None,
+        )
+        if result.ok and ffmpeg_item is not None:
+            self.append_log(
+                f"⚠ ffmpeg 未安装（可选）：视频流合并和字幕嵌入不可用。安装：{ffmpeg_item.hint}"
+            )
 
     def set_detect_response(self, response: DetectResponse) -> None:
         self.clear_detect_result()
