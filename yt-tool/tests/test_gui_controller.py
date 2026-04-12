@@ -33,12 +33,15 @@ def _make_fake_pyside6():
     class _QThread(_QObject):
         def __init__(self, parent=None):
             super().__init__(parent)
-            self.started = _Signal()
             self.finished = _Signal()
 
         def start(self):
-            self.started.emit()
+            # Workers are QThread subclasses; start() must invoke run() directly.
+            self.run()
             self.finished.emit()
+
+        def wait(self, msecs=None):
+            return True
 
         def quit(self):
             return None
@@ -49,20 +52,11 @@ def _make_fake_pyside6():
 
         return decorator
 
-    class _ConnectionType:
-        DirectConnection = 1
-        QueuedConnection = 2
-        AutoConnection = 0
-
-    class _Qt:
-        ConnectionType = _ConnectionType
-
     qtcore = ModuleType("PySide6.QtCore")
     qtcore.QObject = _QObject
     qtcore.QThread = _QThread
     qtcore.Signal = _Signal
     qtcore.Slot = _slot
-    qtcore.Qt = _Qt
 
     pyside6 = ModuleType("PySide6")
     pyside6.QtCore = qtcore
@@ -145,6 +139,12 @@ class _FakeWindow:
 
     def show_result(self, path: str) -> None:
         self.logs.append(f"DONE:{path}")
+
+    def set_detecting_status(self, text: str) -> None:
+        self.logs.append(f"DETECTING:{text}")
+
+    def current_save_dir(self) -> str:
+        return "/tmp/save"
 
 
 class _FakeWorkflow:
