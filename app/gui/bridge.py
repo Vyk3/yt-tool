@@ -5,9 +5,10 @@ import json
 import platform
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import webview
+if TYPE_CHECKING:  # pragma: no cover
+    import webview
 
 from ..core import config
 from ..services.models import DetectRequest, ProgressEvent
@@ -30,7 +31,7 @@ class Api:
 
     def __init__(self) -> None:
         self._workflow = AppWorkflow()
-        self._window: webview.Window | None = None
+        self._window: Any | None = None
 
     def set_window(self, window: webview.Window) -> None:
         self._window = window
@@ -116,8 +117,14 @@ class Api:
     def browse_directory(self, current: str = "") -> str | None:
         if not self._window:
             return None
+        try:
+            import webview as runtime_webview
+            folder_dialog = runtime_webview.FOLDER_DIALOG
+        except ModuleNotFoundError:
+            # CI/unit tests may import bridge without GUI extras installed.
+            folder_dialog = 1
         result = self._window.create_file_dialog(
-            webview.FOLDER_DIALOG,
+            folder_dialog,
             directory=current or str(Path.home() / "Downloads"),
         )
         if result and len(result) > 0:
