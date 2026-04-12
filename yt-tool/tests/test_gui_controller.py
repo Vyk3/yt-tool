@@ -140,6 +140,12 @@ class _FakeWindow:
     def show_result(self, path: str) -> None:
         self.logs.append(f"DONE:{path}")
 
+    def set_detecting_status(self, text: str) -> None:
+        self.logs.append(f"DETECTING:{text}")
+
+    def current_save_dir(self) -> str:
+        return "/tmp/save"
+
 
 class _FakeWorkflow:
     def __init__(self) -> None:

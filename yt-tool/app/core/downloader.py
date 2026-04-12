@@ -106,11 +106,16 @@ def _run_ytdlp(
     if (config.YT_SHOW_PROGRESS and sys.stdout.isatty()) or on_chunk is not None:
         returncode, output = _stream_process_output(cmd, on_chunk=on_chunk)
         if returncode != 0:
-            err = output.strip().splitlines()[-1][:300] if output.strip() else ""
+            lines = output.strip().splitlines()
+            # 优先取 ERROR: 开头的行，避免把 "Finished downloading playlist" 这类
+            # 成功摘要行误报为错误信息
+            error_lines = [l for l in lines if l.startswith("ERROR:")]
+            err = (error_lines[-1] if error_lines else lines[-1] if lines else "")[:300]
             return DownloadResult(
                 ok=False,
                 output=output,
                 error=f"yt-dlp exited {returncode}: {err}",
+                saved_path=_extract_saved_path(output),
             )
         return DownloadResult(
             ok=True,

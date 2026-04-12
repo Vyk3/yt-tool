@@ -48,10 +48,13 @@ class AppController(QObject):
             self._window.show_error("URL 不能为空")
             return
 
+        self._window.set_detecting_status("探测中...")
         self._window.append_log("开始探测格式...")
         req = DetectRequest(
             url=url,
             cookies_from=self._window.current_cookies_from(),
+            extra_args=("--no-playlist",),
+            validate_formats=False,
         )
         worker = DetectWorker(self._workflow, req)
         self._run_worker(
@@ -68,7 +71,8 @@ class AppController(QObject):
             return
 
         kind = self._window.current_download_kind()
-        request = self._build_download_request(kind=kind, url=url)
+        dest_dir = self._window.current_save_dir()
+        request = self._build_download_request(kind=kind, url=url, dest_dir=dest_dir)
         if request is None:
             return
 
@@ -82,7 +86,7 @@ class AppController(QObject):
             on_progress=self._on_download_progress,
         )
 
-    def _build_download_request(self, *, kind: str, url: str):
+    def _build_download_request(self, *, kind: str, url: str, dest_dir: str | None = None):
         cookies = self._window.current_cookies_from()
         extra_args = self._compose_extra_args(kind)
 
@@ -94,7 +98,7 @@ class AppController(QObject):
             return self._workflow.build_download_request(
                 kind="video",
                 url=url,
-                dest_dir=self._workflow.settings.download_dir_video,
+                dest_dir=dest_dir or self._workflow.settings.download_dir_video,
                 format_id=video_fmt,
                 audio_format_id=self._window.selected_audio_format_id(),
                 cookies_from=cookies,
@@ -109,7 +113,7 @@ class AppController(QObject):
             return self._workflow.build_download_request(
                 kind="audio",
                 url=url,
-                dest_dir=self._workflow.settings.download_dir_audio,
+                dest_dir=dest_dir or self._workflow.settings.download_dir_audio,
                 format_id=audio_fmt,
                 transcode_to=self._window.current_transcode_to(),
                 cookies_from=cookies,
@@ -124,7 +128,7 @@ class AppController(QObject):
             return self._workflow.build_download_request(
                 kind="subtitle",
                 url=url,
-                dest_dir=self._workflow.settings.download_dir_subtitle,
+                dest_dir=dest_dir or self._workflow.settings.download_dir_subtitle,
                 subtitle_lang=subtitle_lang,
                 cookies_from=cookies,
                 extra_args=extra_args,
@@ -134,7 +138,7 @@ class AppController(QObject):
             return self._workflow.build_download_request(
                 kind="playlist",
                 url=url,
-                dest_dir=self._workflow.settings.download_dir_video,
+                dest_dir=dest_dir or self._workflow.settings.download_dir_video,
                 format_id=self._window.current_playlist_mode(),
                 cookies_from=cookies,
                 extra_args=extra_args,
@@ -166,6 +170,11 @@ class AppController(QObject):
 
         # 手动参数放在最后，便于用户按需覆盖结构化默认参数。
         args += list(self._window.current_extra_args())
+
+        # 非播放列表模式默认单视频下载，除非用户已自行指定
+        if kind != "playlist" and "--no-playlist" not in args:
+            args.append("--no-playlist")
+
         return tuple(args)
 
     def _run_worker(
@@ -214,6 +223,10 @@ class AppController(QObject):
             self._window.append_log(self._download_log_buffer.strip())
         self._download_log_buffer = ""
         if result.ok:
+            self._window.show_result(result.saved_path)
+            return
+        # 部分成功（如播放列表个别项失败但已有文件落盘）：不报错，打开目录
+        if result.saved_path:
             self._window.show_result(result.saved_path)
             return
         self._window.show_error(result.error or "下载失败")
