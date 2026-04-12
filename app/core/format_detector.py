@@ -180,7 +180,6 @@ def detect(url: str, *, cookies_from: str | None = None, no_playlist: bool = Fal
 
         if has_v:
             tag = "v+a" if has_a else "video only"
-            note = str(f.get("format_note", "") or "")
             video_formats.append(
                 VideoFormat(
                     id=fid,
@@ -265,9 +264,7 @@ def _probe_format_available(
     # 仅在 stderr 明确指出格式不可用时才删除候选；
     # 网络抖动、限速、认证失败等瞬时错误不应误删有效格式。
     err = proc.stderr.lower()
-    if "format is not available" in err or "requested format is not available" in err:
-        return False
-    return True  # 其他错误：保守保留，让用户实际下载时自行判断
+    return not ("format is not available" in err or "requested format is not available" in err)  # 其他错误：保守保留，让用户实际下载时自行判断
 
 
 def validate_detected_formats(
@@ -353,10 +350,7 @@ def _video_codec_matches(codec: str, pref: str) -> bool:
         "vp9":  ("vp09",),
         "av1":  ("av01",),
     }
-    for alias in _ALIASES.get(p, ()):
-        if c.startswith(alias):
-            return True
-    return False
+    return any(c.startswith(alias) for alias in _ALIASES.get(p, ()))
 
 
 def _audio_codec_matches(fmt: AudioFormat, pref: str) -> bool:
@@ -370,9 +364,7 @@ def _audio_codec_matches(fmt: AudioFormat, pref: str) -> bool:
     if p in fmt.ext.lower():
         return True
     # m4a ↔ mp4a 家族
-    if p == "m4a" and fmt.codec.lower().startswith("mp4a"):
-        return True
-    return False
+    return p == "m4a" and fmt.codec.lower().startswith("mp4a")
 
 
 def _sort_video_formats(

@@ -314,8 +314,8 @@ def menu_select(
     # 尝试方向键模式（仅 Unix TTY，且菜单足够简单）
     if sys.stdin.isatty() and sys.stdout.isatty() and _should_use_arrow_menu(labels, column_hint):
         try:
-            import tty   # noqa: F401
             import termios  # noqa: F401
+            import tty  # noqa: F401
             return _menu_arrow(prompt, labels, values, column_hint=column_hint)
         except (ImportError, Exception):
             pass

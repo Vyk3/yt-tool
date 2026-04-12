@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from app.core.env_check import CheckResult, check_env
+from app.core.env_check import check_env
 
 
 class TestCheckEnv:

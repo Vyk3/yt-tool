@@ -1,8 +1,7 @@
 """GUI 控制器。"""
 from __future__ import annotations
 
-from typing import Literal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from PySide6.QtCore import QObject, QThread
 
