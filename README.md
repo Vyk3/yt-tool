@@ -91,7 +91,7 @@ RELEASE_CHECKLIST.md
 1. 从 Release 页面下载对应平台产物：macOS `.dmg` / Windows `.zip`
 2. macOS：挂载 `.dmg`，将 `yt-tool.app` 拖入 Applications，双击启动
 3. Windows：解压 `.zip`，双击 `yt-tool.exe` 启动
-4. 首次运行如提示缺少 `ffmpeg`，请先安装 `ffmpeg` 后重试
+4. 正式发布产物默认已捆绑 `ffmpeg`/`ffprobe`，可直接使用
 
 ### macOS 首次运行提示"无法验证开发者"
 
@@ -113,7 +113,7 @@ RELEASE_CHECKLIST.md
 ### macOS
 
 ```bash
-brew install python yt-dlp ffmpeg
+brew install python ffmpeg
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -U pip
@@ -124,7 +124,6 @@ python3 -m pip install -r requirements.txt
 
 ```powershell
 winget install Python.Python.3
-winget install yt-dlp
 winget install Gyan.FFmpeg
 py -m venv .venv
 .venv\Scripts\Activate.ps1
@@ -190,7 +189,7 @@ scripts/build/macos/build_app.sh --clean
 
 * `--name <APP_NAME>`：设置应用名（默认 `yt-tool`）
 * `--clean`：清理后打包
-* `--with-ffmpeg`：下载并捆绑 `ffmpeg` + `ffprobe`（默认不启用）
+* `--with-ffmpeg`：下载并捆绑 `ffmpeg` + `ffprobe`
 * `--codesign-identity <IDENTITY>`：签名身份（默认 `-`，即 ad-hoc）
 * `--ffmpeg-url <URL>`：覆盖 ffmpeg 下载地址（也可通过 `YT_TOOL_FFMPEG_MACOS_URL` 环境变量）
 * `--ffmpeg-sha256 <HEX>`：校验 ffmpeg 压缩包 SHA256（或用 `YT_TOOL_FFMPEG_MACOS_SHA256`）
@@ -224,7 +223,9 @@ scripts\build\windows\build_exe.bat yt-tool clean
 
 注意：
 
-* 默认只捆绑 `yt-dlp`；`ffmpeg` 需在打包时显式开启（`--with-ffmpeg` / `-WithFfmpeg`）
+* `yt-dlp` 通过 Python 包形式内置在应用运行时中，不再额外捆绑 standalone 二进制
+* 本地打包默认不捆绑 `ffmpeg`，可通过 `--with-ffmpeg` / `-WithFfmpeg` 显式开启
+* Release 工作流在正式发布（tag）时默认捆绑 `ffmpeg`/`ffprobe`
 * 启用 `with_ffmpeg` 时，必须提供**固定版本 URL + SHA256**；脚本会拒绝 `/latest/` 可变地址并在校验失败时中止
 * 若未启用 ffmpeg 捆绑，目标机器仍需自行安装 `ffmpeg`
 

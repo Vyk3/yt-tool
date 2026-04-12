@@ -7,15 +7,15 @@
 """
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import re
 import shutil
-import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+import yt_dlp
 
 from . import config
 from .path_utils import ensure_dir, expand_path
@@ -38,6 +38,92 @@ _DEST_RE = re.compile(
 )
 
 
+@dataclass
+class _RunState:
+    returncode: int
+    output: str
+    saved_path: str
+    error_line: str
+
+
+class _OutputCollector:
+    """收集 yt-dlp 过程输出，并按需转发到 stdout/on_chunk。"""
+
+    def __init__(
+        self,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+        emit_stdout: bool = False,
+    ) -> None:
+        self._on_chunk = on_chunk
+        self._emit_stdout = emit_stdout
+        self._chunks: list[str] = []
+        self.saved_path = ""
+        self.error_line = ""
+
+    def emit(self, text: str) -> None:
+        if not text:
+            return
+        payload = text if text.endswith("\n") else f"{text}\n"
+        self._chunks.append(payload)
+        if payload.startswith("ERROR:"):
+            self.error_line = payload.strip()
+
+        if self._on_chunk is not None:
+            self._on_chunk(payload)
+            return
+
+        if self._emit_stdout:
+            sys.stdout.write(payload)
+            sys.stdout.flush()
+
+    def maybe_set_saved_path(self, candidate: str | None) -> None:
+        if candidate:
+            self.saved_path = str(candidate)
+
+    def capture_info_saved_path(self, info: object) -> None:
+        if isinstance(info, dict):
+            for key in ("filepath", "_filename", "filename"):
+                value = info.get(key)
+                if isinstance(value, str) and value:
+                    self.maybe_set_saved_path(value)
+            requested = info.get("requested_downloads")
+            if isinstance(requested, list):
+                for item in requested:
+                    self.capture_info_saved_path(item)
+            entries = info.get("entries")
+            if isinstance(entries, list):
+                for entry in entries:
+                    self.capture_info_saved_path(entry)
+
+    @property
+    def output(self) -> str:
+        return "".join(self._chunks)
+
+
+class _YtdlpLogger:
+    """把 yt-dlp logger 输出统一导入 collector。"""
+
+    def __init__(self, collector: _OutputCollector) -> None:
+        self._collector = collector
+
+    def debug(self, msg: str) -> None:
+        # debug 里会包含 [download]/[info] 等关键行
+        self._collector.emit(str(msg))
+
+    def info(self, msg: str) -> None:
+        self._collector.emit(str(msg))
+
+    def warning(self, msg: str) -> None:
+        self._collector.emit(str(msg))
+
+    def error(self, msg: str) -> None:
+        text = str(msg)
+        if text and not text.startswith("ERROR:"):
+            text = f"ERROR: {text}"
+        self._collector.emit(text)
+
+
 def _common_args() -> list[str]:
     """所有下载共用的 yt-dlp 参数。"""
     args = ["--no-warnings"]
@@ -57,41 +143,122 @@ def _extract_saved_path(output: str) -> str:
     return path.strip().strip("\"'")
 
 
+def _progress_to_line(status: dict) -> str:
+    state = status.get("status")
+    if state == "downloading":
+        percent = str(status.get("_percent_str", "")).strip()
+        total = str(
+            status.get("_total_bytes_str")
+            or status.get("_total_bytes_estimate_str")
+            or ""
+        ).strip()
+        speed = str(status.get("_speed_str", "")).strip()
+        eta = str(status.get("_eta_str", "")).strip()
+        line = f"[download] {percent}"
+        if total:
+            line += f" of {total}"
+        if speed:
+            line += f" at {speed}"
+        if eta:
+            line += f" ETA {eta}"
+        return line
+    if state == "finished":
+        filename = status.get("filename")
+        if isinstance(filename, str) and filename:
+            return f"[download] Destination: {filename}"
+        return "[download] Finished downloading"
+    return ""
+
+
+def _run_with_yt_dlp_api(
+    cmd: list[str],
+    *,
+    on_chunk: Callable[[str], None] | None = None,
+    emit_stdout: bool = False,
+) -> _RunState:
+    collector = _OutputCollector(on_chunk=on_chunk, emit_stdout=emit_stdout)
+    argv = cmd[1:] if cmd and cmd[0] == "yt-dlp" else cmd
+
+    try:
+        parsed = yt_dlp.parse_options(argv)
+    except SystemExit as e:
+        return _RunState(
+            returncode=2,
+            output=collector.output,
+            saved_path="",
+            error_line=f"ERROR: invalid yt-dlp options ({e})",
+        )
+
+    ydl_opts = dict(parsed.ydl_opts)
+    urls = list(parsed.urls)
+    if not urls:
+        return _RunState(
+            returncode=2,
+            output=collector.output,
+            saved_path="",
+            error_line="ERROR: missing download URL",
+        )
+
+    ydl_opts["logger"] = _YtdlpLogger(collector)
+
+    progress_hooks = list(ydl_opts.get("progress_hooks") or [])
+    post_hooks = list(ydl_opts.get("postprocessor_hooks") or [])
+
+    def progress_hook(status: dict) -> None:
+        line = _progress_to_line(status)
+        if line:
+            collector.emit(line)
+            if "Destination:" in line:
+                collector.maybe_set_saved_path(line.split("Destination:", 1)[1].strip())
+
+    def postprocessor_hook(status: dict) -> None:
+        filepath = status.get("filepath")
+        if isinstance(filepath, str):
+            collector.maybe_set_saved_path(filepath)
+
+    progress_hooks.append(progress_hook)
+    post_hooks.append(postprocessor_hook)
+    ydl_opts["progress_hooks"] = progress_hooks
+    ydl_opts["postprocessor_hooks"] = post_hooks
+
+    error_line = ""
+    returncode = 0
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            for url in urls:
+                info = ydl.extract_info(url, download=True)
+                collector.capture_info_saved_path(info)
+    except yt_dlp.utils.DownloadError as e:
+        returncode = 1
+        error_line = str(e).strip()
+    except Exception as e:  # pragma: no cover - 防御式兜底
+        returncode = 1
+        error_line = str(e).strip()
+
+    output = collector.output
+    saved_path = collector.saved_path or _extract_saved_path(output)
+    final_error = collector.error_line or error_line
+    if final_error and not final_error.startswith("ERROR:"):
+        final_error = f"ERROR: {final_error}"
+
+    return _RunState(
+        returncode=returncode,
+        output=output,
+        saved_path=saved_path,
+        error_line=final_error,
+    )
+
+
 def _stream_process_output(
     cmd: list[str],
     on_chunk: Callable[[str], None] | None = None,
 ) -> tuple[int, str]:
-    """流式转发 yt-dlp 输出，保留进度条，同时捕获完整文本。
+    """流式执行 yt-dlp（API 路径），并转发文本输出。
 
     on_chunk: 若提供，每个字符块调用此回调；否则直接写 sys.stdout（CLI 默认行为）。
     """
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=0,
-    )
-
-    chunks: list[str] = []
-    assert proc.stdout is not None
-
-    while True:
-        chunk = proc.stdout.read(1)
-        if chunk == "":
-            break
-        chunks.append(chunk)
-        if on_chunk is not None:
-            with contextlib.suppress(Exception):
-                on_chunk(chunk)
-        else:
-            sys.stdout.write(chunk)
-            sys.stdout.flush()
-
-    returncode = proc.wait()
-    return returncode, "".join(chunks)
+    state = _run_with_yt_dlp_api(cmd, on_chunk=on_chunk, emit_stdout=on_chunk is None)
+    return state.returncode, state.output
 
 
 def _run_ytdlp(
@@ -103,45 +270,29 @@ def _run_ytdlp(
     cmd = ["yt-dlp", *args]
 
     if (config.YT_SHOW_PROGRESS and sys.stdout.isatty()) or on_chunk is not None:
-        returncode, output = _stream_process_output(cmd, on_chunk=on_chunk)
-        if returncode != 0:
-            lines = output.strip().splitlines()
-            # 优先取 ERROR: 开头的行，避免把 "Finished downloading playlist" 这类
-            # 成功摘要行误报为错误信息
-            error_lines = [ln for ln in lines if ln.startswith("ERROR:")]
-            err = (error_lines[-1] if error_lines else lines[-1] if lines else "")[:300]
-            return DownloadResult(
-                ok=False,
-                output=output,
-                error=f"yt-dlp exited {returncode}: {err}",
-                saved_path=_extract_saved_path(output),
-            )
-        return DownloadResult(
-            ok=True,
-            output=output,
-            error="",
-            saved_path=_extract_saved_path(output),
-        )
+        state = _run_with_yt_dlp_api(cmd, on_chunk=on_chunk, emit_stdout=on_chunk is None)
+    else:
+        state = _run_with_yt_dlp_api(cmd, on_chunk=None, emit_stdout=False)
 
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    if proc.returncode != 0:
-        err = proc.stderr.strip()[:300]
+    if state.returncode != 0:
+        lines = state.output.strip().splitlines()
+        # 优先取 ERROR: 开头的行，避免把成功摘要行误报为错误信息
+        error_lines = [ln for ln in lines if ln.startswith("ERROR:")]
+        err = (
+            state.error_line
+            or (error_lines[-1] if error_lines else lines[-1] if lines else "ERROR")
+        )[:300]
         return DownloadResult(
             ok=False,
-            output=proc.stdout,
-            error=f"yt-dlp exited {proc.returncode}: {err}",
+            output=state.output,
+            error=f"yt-dlp exited {state.returncode}: {err}",
+            saved_path=state.saved_path,
         )
     return DownloadResult(
         ok=True,
-        output=proc.stdout,
+        output=state.output,
         error="",
-        saved_path=_extract_saved_path(proc.stdout + proc.stderr),
+        saved_path=state.saved_path,
     )
 
 

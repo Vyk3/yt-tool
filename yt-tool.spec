@@ -1,13 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 
-# Bundle the yt-dlp and ffmpeg binaries so the app works without system installs.
-# Optional bundled helper binaries:
-# - yt-dlp is expected by default.
-# - ffmpeg/ffprobe are optional and included when present in vendor/bin.
+# Bundle optional helper binaries into the app.
+# ffmpeg/ffprobe are included when present in vendor/bin.
 _ext = '.exe' if os.name == 'nt' else ''
 _optional_bins = [
-    f'vendor/bin/yt-dlp{_ext}',
     f'vendor/bin/ffmpeg{_ext}',
     f'vendor/bin/ffprobe{_ext}',
 ]

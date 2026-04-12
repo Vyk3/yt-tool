@@ -25,7 +25,7 @@ def test_patch_frozen_path_adds_bundle_and_exec_bits(monkeypatch, tmp_path):
     run_mod = _load_run_module()
     ext = ".exe" if os.name == "nt" else ""
 
-    helper_paths = [tmp_path / f"{name}{ext}" for name in ("yt-dlp", "ffmpeg", "ffprobe")]
+    helper_paths = [tmp_path / f"{name}{ext}" for name in ("ffmpeg", "ffprobe")]
     for helper_path in helper_paths:
         helper_path.write_text("x", encoding="utf-8")
         if os.name != "nt":
