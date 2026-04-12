@@ -106,6 +106,7 @@ jobs:
       - name: Smoke yt.ps1
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $env:YT_TOOL_MODE = 'cli'
           $env:YT_TOOL_NO_PAUSE = '1'
           $env:PY_PYTHON = '3.12'
