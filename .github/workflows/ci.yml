@@ -94,9 +94,12 @@ jobs:
         run: |
           set YT_TOOL_MODE=cli
           set YT_TOOL_NO_PAUSE=1
+          set PY_PYTHON=3.12
+          set PYTHONUTF8=1
           echo.| call launcher\windows\yt.cmd
-          if not "%ERRORLEVEL%"=="1" (
-            echo Unexpected exit code from yt.cmd: %ERRORLEVEL%
+          set RC=%ERRORLEVEL%
+          if not "%RC%"=="1" (
+            echo Unexpected exit code from yt.cmd: %RC%
             exit /b 1
           )
 
@@ -105,6 +108,8 @@ jobs:
         run: |
           $env:YT_TOOL_MODE = 'cli'
           $env:YT_TOOL_NO_PAUSE = '1'
+          $env:PY_PYTHON = '3.12'
+          $env:PYTHONUTF8 = '1'
           '' | & .\launcher\windows\yt.ps1
           if ($LASTEXITCODE -ne 1) {
             throw "Unexpected exit code from yt.ps1: $LASTEXITCODE"
