@@ -111,22 +111,8 @@ fi
 
 cd "$PROJECT_DIR"
 
-# Download the yt-dlp standalone macOS binary (universal, no Python required by the binary itself).
-# This binary is bundled into the .app so users don't need yt-dlp installed separately.
-YTDLP_BIN="$PROJECT_DIR/vendor/bin/yt-dlp"
 VENDOR_BIN_DIR="$PROJECT_DIR/vendor/bin"
 mkdir -p "$VENDOR_BIN_DIR"
-if [[ -n "$CLEAN_FLAG" || ! -x "$YTDLP_BIN" ]]; then
-  echo "Downloading yt-dlp macOS binary..."
-  curl --fail --location --progress-bar \
-    --retry 5 --retry-delay 2 --retry-all-errors \
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" \
-  -o "$YTDLP_BIN"
-  chmod +x "$YTDLP_BIN"
-  echo "yt-dlp binary: $YTDLP_BIN"
-else
-  echo "yt-dlp binary already present: $YTDLP_BIN"
-fi
 
 if [[ "$WITH_FFMPEG" -eq 1 ]]; then
   if ! command -v unzip >/dev/null 2>&1; then

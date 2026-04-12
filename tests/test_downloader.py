@@ -1,11 +1,13 @@
 """downloader.py 单元测试。"""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from app.core.downloader import (
+    DownloadResult,
     _common_args,
     _run_ytdlp,
+    _RunState,
     _stream_process_output,
     download_audio,
     download_auto_subs,
@@ -13,6 +15,10 @@ from app.core.downloader import (
     download_subs,
     download_video,
 )
+
+
+def _ok_result(saved_path: str = "") -> DownloadResult:
+    return DownloadResult(ok=True, output="ok", error="", saved_path=saved_path)
 
 
 class TestCommonArgs:
@@ -34,24 +40,53 @@ class TestCommonArgs:
 
 
 class TestRunYtdlp:
-    def test_tty_progress_uses_streaming_path(self, monkeypatch):
+    def test_tty_progress_uses_streaming_mode(self, monkeypatch):
         monkeypatch.setattr("app.core.downloader.config.YT_SHOW_PROGRESS", True)
         monkeypatch.setattr("app.core.downloader.sys.stdout.isatty", lambda: True)
-        with patch("app.core.downloader._stream_process_output", return_value=(0, "[download] Destination: /tmp/x.mp4\n")) as mock_stream:
+        state = _RunState(
+            returncode=0,
+            output='[download] Destination: "/tmp/x.mp4"\n',
+            saved_path="/tmp/x.mp4",
+            error_line="",
+        )
+        with patch("app.core.downloader._run_with_yt_dlp_api", return_value=state) as mock_run:
             result = _run_ytdlp(["http://example.com"])
             assert result.ok is True
             assert result.saved_path == "/tmp/x.mp4"
-            mock_stream.assert_called_once_with(["yt-dlp", "http://example.com"], on_chunk=None)
+            mock_run.assert_called_once_with(
+                ["yt-dlp", "http://example.com"],
+                on_chunk=None,
+                emit_stdout=True,
+            )
 
     def test_on_chunk_forces_streaming_in_non_tty(self, monkeypatch):
-        """on_chunk 提供时即使非 TTY 也应走流式路径。"""
         monkeypatch.setattr("app.core.downloader.config.YT_SHOW_PROGRESS", False)
         monkeypatch.setattr("app.core.downloader.sys.stdout.isatty", lambda: False)
         chunks: list[str] = []
-        with patch("app.core.downloader._stream_process_output", return_value=(0, "ok\n")) as mock_stream:
+        state = _RunState(returncode=0, output="ok\n", saved_path="", error_line="")
+        with patch("app.core.downloader._run_with_yt_dlp_api", return_value=state) as mock_run:
             result = _run_ytdlp(["http://example.com"], on_chunk=chunks.append)
             assert result.ok is True
-            mock_stream.assert_called_once_with(["yt-dlp", "http://example.com"], on_chunk=chunks.append)
+            mock_run.assert_called_once_with(
+                ["yt-dlp", "http://example.com"],
+                on_chunk=chunks.append,
+                emit_stdout=False,
+            )
+
+    def test_failure_uses_error_line(self, monkeypatch):
+        monkeypatch.setattr("app.core.downloader.config.YT_SHOW_PROGRESS", False)
+        monkeypatch.setattr("app.core.downloader.sys.stdout.isatty", lambda: False)
+        state = _RunState(
+            returncode=1,
+            output="line1\nERROR: bad\n",
+            saved_path="",
+            error_line="ERROR: bad",
+        )
+        with patch("app.core.downloader._run_with_yt_dlp_api", return_value=state):
+            result = _run_ytdlp(["http://example.com"])
+            assert result.ok is False
+            assert "yt-dlp exited 1" in result.error
+            assert "ERROR: bad" in result.error
 
 
 class TestDownloadVideo:
@@ -64,27 +99,19 @@ class TestDownloadVideo:
         result = download_video("http://example.com", "", "/tmp")
         assert result.ok is False
 
-    def test_success(self, tmp_path):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = "downloaded ok"
-        fake_proc.stderr = ""
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc):
+    def test_success_forwards_args(self, tmp_path):
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result("/tmp/out.mp4")) as mock_run:
             result = download_video("http://example.com/v", "137", str(tmp_path))
             assert result.ok is True
-
-    def test_success_extracts_saved_path(self, tmp_path):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = '[download] Destination: "/tmp/out.mp4"\n'
-        fake_proc.stderr = ""
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc):
-            result = download_video("http://example.com/v", "137", str(tmp_path))
             assert result.saved_path == "/tmp/out.mp4"
+            args = mock_run.call_args.args[0]
+            assert "-f" in args
+            assert "137" in args
+            assert "--merge-output-format" in args
+            assert str(tmp_path / "%(title)s.%(ext)s") in args
 
     def test_embed_subs_adds_required_args(self, tmp_path):
-        fake_proc = MagicMock(returncode=0, stdout="ok", stderr="")
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc) as mock_run:
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_video(
                 "http://example.com/v",
                 "137",
@@ -100,23 +127,11 @@ class TestDownloadVideo:
             assert "--sub-format" in args
 
     def test_no_download_archive_for_single_video(self, tmp_path):
-        """单条视频下载不应使用归档，避免同一视频不同格式/片段被静默跳过。"""
-        fake_proc = MagicMock(returncode=0, stdout="ok", stderr="")
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc) as mock_run:
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_video("http://example.com/v", "137", str(tmp_path))
             assert result.ok is True
             args = mock_run.call_args.args[0]
             assert "--download-archive" not in args
-
-    def test_ytdlp_failure(self, tmp_path):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 1
-        fake_proc.stdout = ""
-        fake_proc.stderr = "ERROR: video not found"
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc):
-            result = download_video("http://example.com/v", "137", str(tmp_path))
-            assert result.ok is False
-            assert "video not found" in result.error
 
     def test_bad_dir_fails(self, tmp_path):
         file_path = tmp_path / "afile"
@@ -132,17 +147,15 @@ class TestDownloadAudio:
         assert download_audio("http://x", "", "/tmp").ok is False
 
     def test_success(self, tmp_path):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = "ok"
-        fake_proc.stderr = ""
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc):
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_audio("http://x", "140", str(tmp_path))
             assert result.ok is True
+            args = mock_run.call_args.args[0]
+            assert "-f" in args
+            assert "140" in args
 
     def test_transcode_adds_args(self, tmp_path):
-        fake_proc = MagicMock(returncode=0, stdout="ok", stderr="")
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc) as mock_run:
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_audio("http://x", "140", str(tmp_path), transcode_to="mp3")
             assert result.ok is True
             args = mock_run.call_args.args[0]
@@ -157,18 +170,15 @@ class TestDownloadSubs:
         assert download_subs("http://x", "", "/tmp").ok is False
 
     def test_success(self, tmp_path):
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.stdout = "ok"
-        fake_proc.stderr = ""
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc):
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_subs("http://x", "en", str(tmp_path))
             assert result.ok is True
-            # 验证 --skip-download 参数存在
+            args = mock_run.call_args.args[0]
+            assert "--write-subs" in args
+            assert "--skip-download" in args
 
     def test_auto_subs_uses_auto_flag(self, tmp_path):
-        fake_proc = MagicMock(returncode=0, stdout="ok", stderr="")
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc) as mock_run:
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_auto_subs("http://x", "en", str(tmp_path))
             assert result.ok is True
             args = mock_run.call_args.args[0]
@@ -178,9 +188,8 @@ class TestDownloadSubs:
 
 class TestDownloadPlaylist:
     def test_continue_on_error_config_is_applied(self, tmp_path):
-        fake_proc = MagicMock(returncode=0, stdout="ok", stderr="")
         with patch("app.core.downloader.config.YT_PLAYLIST_CONTINUE_ON_ERROR", False), \
-             patch("app.core.downloader.subprocess.run", return_value=fake_proc) as mock_run:
+             patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_playlist("http://example.com/list", "video", str(tmp_path))
             assert result.ok is True
             args = mock_run.call_args.args[0]
@@ -188,8 +197,7 @@ class TestDownloadPlaylist:
             assert "--no-abort-on-error" not in args
 
     def test_extra_args_are_forwarded(self, tmp_path):
-        fake_proc = MagicMock(returncode=0, stdout="ok", stderr="")
-        with patch("app.core.downloader.subprocess.run", return_value=fake_proc) as mock_run:
+        with patch("app.core.downloader._run_ytdlp", return_value=_ok_result()) as mock_run:
             result = download_playlist(
                 "http://example.com/list",
                 "video",
@@ -201,42 +209,28 @@ class TestDownloadPlaylist:
             assert "--sponsorblock-mark" in args
 
 
-class TestStreamProcessOutputOnChunk:
-    def test_on_chunk_called_instead_of_stdout(self, monkeypatch):
-        """on_chunk 提供时调用回调而非写 sys.stdout。"""
-        mock_stdout = MagicMock()
-        mock_stdout.read.side_effect = ["h", "i", ""]
-        mock_proc = MagicMock()
-        mock_proc.stdout = mock_stdout
-        mock_proc.wait.return_value = 0
+class TestStreamProcessOutput:
+    def test_on_chunk_mode(self):
+        chunks: list[str] = []
+        state = _RunState(returncode=0, output="h\ni\n", saved_path="", error_line="")
+        with patch("app.core.downloader._run_with_yt_dlp_api", return_value=state) as mock_run:
+            rc, output = _stream_process_output(["yt-dlp", "http://example.com"], on_chunk=chunks.append)
+            assert rc == 0
+            assert output == "h\ni\n"
+            mock_run.assert_called_once_with(
+                ["yt-dlp", "http://example.com"],
+                on_chunk=chunks.append,
+                emit_stdout=False,
+            )
 
-        chunks_received: list[str] = []
-        stdout_written: list[str] = []
-        monkeypatch.setattr("app.core.downloader.sys.stdout.write", lambda s: stdout_written.append(s))
-
-        with patch("app.core.downloader.subprocess.Popen", return_value=mock_proc):
-            returncode, output = _stream_process_output(["cmd"], on_chunk=lambda c: chunks_received.append(c))
-
-        assert returncode == 0
-        assert output == "hi"
-        assert chunks_received == ["h", "i"]
-        assert stdout_written == []
-
-    def test_default_writes_stdout(self, monkeypatch):
-        """on_chunk=None 时走 sys.stdout.write 路径（CLI 默认行为）。"""
-        mock_stdout = MagicMock()
-        mock_stdout.read.side_effect = ["x", ""]
-        mock_proc = MagicMock()
-        mock_proc.stdout = mock_stdout
-        mock_proc.wait.return_value = 0
-
-        stdout_written: list[str] = []
-        monkeypatch.setattr("app.core.downloader.sys.stdout.write", lambda s: stdout_written.append(s))
-        monkeypatch.setattr("app.core.downloader.sys.stdout.flush", lambda: None)
-
-        with patch("app.core.downloader.subprocess.Popen", return_value=mock_proc):
-            returncode, output = _stream_process_output(["cmd"])
-
-        assert returncode == 0
-        assert output == "x"
-        assert stdout_written == ["x"]
+    def test_stdout_mode(self):
+        state = _RunState(returncode=0, output="x\n", saved_path="", error_line="")
+        with patch("app.core.downloader._run_with_yt_dlp_api", return_value=state) as mock_run:
+            rc, output = _stream_process_output(["yt-dlp", "http://example.com"])
+            assert rc == 0
+            assert output == "x\n"
+            mock_run.assert_called_once_with(
+                ["yt-dlp", "http://example.com"],
+                on_chunk=None,
+                emit_stdout=True,
+            )
