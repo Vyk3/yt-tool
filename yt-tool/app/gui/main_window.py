@@ -26,11 +26,11 @@ from ..services.models import DetectResponse
 
 
 class MainWindow(QMainWindow):
-    """M4 GUI：环境检查、格式探测与多类型下载。"""
+    """主窗口：环境检查、格式探测与多类型下载。"""
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("yt-tool GUI (M4)")
+        self.setWindowTitle("yt-tool")
         self.resize(900, 640)
 
         root = QWidget(self)
@@ -154,7 +154,8 @@ class MainWindow(QMainWindow):
         if result.ok:
             text = "环境检查通过"
         else:
-            missing = ", ".join(result.missing) if result.missing else "未知"
+            missing_names = [item.name for item in result.items if not item.found and item.required]
+            missing = ", ".join(missing_names) if missing_names else "未知"
             text = f"环境检查失败: 缺少 {missing}"
         self.env_label.setText(text)
         self.append_log(text)
