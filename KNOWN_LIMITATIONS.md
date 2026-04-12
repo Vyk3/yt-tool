@@ -121,3 +121,36 @@
 ### 后续建议
 - 增加统一结果摘要对象
 - 为播放列表输出保存清单或汇总报告
+
+---
+
+## 7. macOS Gatekeeper / 分发签名
+
+### 现状
+`scripts/build/macos/build_app.sh` 使用 ad-hoc 签名（`codesign --sign -`）。
+
+### 影响
+用户首次启动会看到“未经验证的开发者”弹窗；需右键点击 -> 打开 绕过。
+尽管如此，app 可正常运行，不会被系统实际阻断。
+
+### 后续建议
+申请 Apple Developer Program 证书（$99/年），在 `build_app.sh` 中
+将 `--sign -` 替换为开发者 ID（Developer ID Application: ...）。
+
+---
+
+## 8. ffmpeg 未捆绑分发
+
+### 现状
+打包的 `.app` / `.exe` 中只捆绑了 yt-dlp 二进制；ffmpeg 需用户自行安装。
+GUI 启动时的环境检查会提示安装方式（需 ffmpeg 安装提示修复后可见）。
+
+### 影响
+以下功能在 ffmpeg 缺失时不可用：
+- 视频流与音频流合并（video-only 格式下载）
+- 字幕嵌入（`--embed-subs`）
+- SponsorBlock 片段删除（`--sponsorblock-remove`）
+
+### 后续建议
+若需开箱即用，可将 ffmpeg 静态二进制加入 `yt-tool.spec` 的 `binaries` 列表，
+并在 `build_app.sh` / `build_exe.ps1` 中增加下载步骤（包体积将增加约 60-80 MB）。
