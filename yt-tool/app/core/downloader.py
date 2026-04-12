@@ -109,7 +109,7 @@ def _run_ytdlp(
             lines = output.strip().splitlines()
             # 优先取 ERROR: 开头的行，避免把 "Finished downloading playlist" 这类
             # 成功摘要行误报为错误信息
-            error_lines = [l for l in lines if l.startswith("ERROR:")]
+            error_lines = [ln for ln in lines if ln.startswith("ERROR:")]
             err = (error_lines[-1] if error_lines else lines[-1] if lines else "")[:300]
             return DownloadResult(
                 ok=False,

@@ -7,7 +7,8 @@ shiboken6_d, shiboken6_b, shiboken6_h = collect_all('shiboken6')
 ytdlp_d, ytdlp_b, ytdlp_h = collect_all('yt_dlp')
 
 # Bundle the yt-dlp standalone binary so the app works without a system yt-dlp install.
-_ytdlp_bin = 'vendor/bin/yt-dlp'
+# macOS uses 'yt-dlp' (no extension); Windows uses 'yt-dlp.exe'.
+_ytdlp_bin = 'vendor/bin/yt-dlp.exe' if os.name == 'nt' else 'vendor/bin/yt-dlp'
 _extra_binaries = [(_ytdlp_bin, '.')] if os.path.isfile(_ytdlp_bin) else []
 
 a = Analysis(

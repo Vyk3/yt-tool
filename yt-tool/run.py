@@ -16,12 +16,13 @@ def _patch_frozen_path() -> None:
     if not (getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")):
         return
     bundle_dir: str = sys._MEIPASS  # type: ignore[attr-defined]
-    # Ensure bundled executables have execute permission (PyInstaller may strip it).
-    for name in ("yt-dlp", "ffmpeg"):
-        path = os.path.join(bundle_dir, name)
-        if os.path.isfile(path):
-            mode = os.stat(path).st_mode
-            os.chmod(path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    # Ensure the bundled yt-dlp binary has execute permission (PyInstaller may strip it).
+    # Windows uses yt-dlp.exe; Unix uses yt-dlp (no extension). chmod is a no-op on Windows.
+    ext = ".exe" if os.name == "nt" else ""
+    ytdlp_path = os.path.join(bundle_dir, f"yt-dlp{ext}")
+    if os.path.isfile(ytdlp_path):
+        mode = os.stat(ytdlp_path).st_mode
+        os.chmod(ytdlp_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     os.environ["PATH"] = bundle_dir + os.pathsep + os.environ.get("PATH", "")
 
 
