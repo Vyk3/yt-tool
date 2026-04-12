@@ -48,26 +48,9 @@ if ($LASTEXITCODE -ne 0) {
 
 Set-Location $ProjectDir
 
-# Download the yt-dlp standalone Windows binary so the .exe works without a system yt-dlp install.
 $VendorBinDir = Join-Path $ProjectDir 'vendor\bin'
-$YtdlpBin = Join-Path $VendorBinDir 'yt-dlp.exe'
 if (-not (Test-Path $VendorBinDir)) {
     New-Item -ItemType Directory -Path $VendorBinDir | Out-Null
-}
-if ($Clean -or -not (Test-Path $YtdlpBin)) {
-    Write-Host 'Downloading yt-dlp Windows binary...'
-    $oldProgressPreference = $ProgressPreference
-    try {
-        $ProgressPreference = 'SilentlyContinue'  # speed up Invoke-WebRequest
-        Invoke-WebRequest `
-            -Uri 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe' `
-            -OutFile $YtdlpBin
-    } finally {
-        $ProgressPreference = $oldProgressPreference
-    }
-    Write-Host "yt-dlp binary: $YtdlpBin"
-} else {
-    Write-Host "yt-dlp binary already present: $YtdlpBin"
 }
 
 if ($WithFfmpeg) {
@@ -130,7 +113,7 @@ if ($WithFfmpeg) {
 }
 
 # Use the project spec file — it handles collect_all(PySide6/shiboken6/yt_dlp)
-# and bundles optional helper binaries (yt-dlp / ffmpeg / ffprobe) via _extra_binaries.
+# and bundles optional helper binaries (ffmpeg / ffprobe) via _extra_binaries.
 $pyArgs = @('-m', 'PyInstaller', '--noconfirm')
 if ($Clean) {
     $pyArgs += '--clean'

@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import importlib.util
 import platform
 import shutil
 import sys
@@ -11,11 +12,11 @@ from dataclasses import dataclass
 
 _SYSTEM: str = platform.system()
 
-# (逻辑名, 是否必需, 候选命令名)
-TARGETS: tuple[tuple[str, bool, tuple[str, ...]], ...] = (
-    ("python", True, ("python3", "python", "py")),
-    ("yt-dlp", True, ("yt-dlp",)),
-    ("ffmpeg", False, ("ffmpeg",)),
+# (逻辑名, 是否必需, 候选命令名, 可选 Python 模块名)
+TARGETS: tuple[tuple[str, bool, tuple[str, ...], str | None], ...] = (
+    ("python", True, ("python3", "python", "py"), None),
+    ("yt-dlp", True, (), "yt_dlp"),
+    ("ffmpeg", False, ("ffmpeg",), None),
 )
 
 
@@ -40,12 +41,12 @@ def _install_hint(dep: str) -> str:
     hints_map: dict[str, dict[str, str]] = {
         "Darwin": {
             "python": "brew install python",
-            "yt-dlp": "brew install yt-dlp  或  python3 -m pip install -U yt-dlp",
+            "yt-dlp": "python3 -m pip install -U yt-dlp",
             "ffmpeg": "brew install ffmpeg",
         },
         "Windows": {
             "python": "winget install Python.Python.3",
-            "yt-dlp": "winget install yt-dlp  或  python -m pip install -U yt-dlp",
+            "yt-dlp": "python -m pip install -U yt-dlp",
             "ffmpeg": "winget install Gyan.FFmpeg",
         },
     }
@@ -61,17 +62,21 @@ def _install_hint(dep: str) -> str:
 
 
 def check_env() -> CheckResult:
-    """检查后续子进程调用所需命令是否在 PATH 中可用。"""
+    """检查后续调用依赖是否可用。"""
     items: list[CheckItem] = []
     fatal_missing = False
     warning_missing = False
 
-    for logical_name, required, cmds in TARGETS:
+    for logical_name, required, cmds, module_name in TARGETS:
         found_path: str | None = None
 
         # In a PyInstaller bundle Python is obviously present — skip the which() check.
         if logical_name == "python" and getattr(sys, "frozen", False):
             found_path = sys.executable
+        elif module_name:
+            spec = importlib.util.find_spec(module_name)
+            if spec is not None:
+                found_path = spec.origin or module_name
         else:
             for cmd in cmds:
                 found_path = shutil.which(cmd)

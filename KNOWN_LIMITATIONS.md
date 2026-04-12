@@ -141,22 +141,21 @@
 
 ---
 
-## 8. ffmpeg 默认未捆绑分发
+## 8. ffmpeg 在源码运行场景仍可能缺失
 
 ### 现状
-打包产物默认只捆绑 yt-dlp 二进制；ffmpeg 需用户自行安装。
-当前构建脚本已支持可选捆绑（`--with-ffmpeg` / `-WithFfmpeg`），
-但默认不开启，避免发布包体积大幅增加。
-当启用 `with_ffmpeg` 时，现已要求固定版本来源 URL + SHA256 校验，
+正式发布产物默认捆绑 `ffmpeg` / `ffprobe`，开箱即用。
+但源码运行（`python -m app`）以及本地未开启 `--with-ffmpeg` 的自定义打包场景，
+仍依赖机器本地可用的 `ffmpeg`。
+当启用 ffmpeg 捆绑时，构建链路要求固定版本来源 URL + SHA256 校验，
 并拒绝 `/latest/` 这类可变地址。
-GUI 启动时的环境检查会提示安装方式（需 ffmpeg 安装提示修复后可见）。
 
 ### 影响
-以下功能在 ffmpeg 缺失时不可用：
+在“源码运行 / 未捆绑 ffmpeg”的场景下，以下功能会受限：
 - 视频流与音频流合并（video-only 格式下载）
 - 字幕嵌入（`--embed-subs`）
 - SponsorBlock 片段删除（`--sponsorblock-remove`）
 
 ### 后续建议
-若决定默认开箱即用，可在 release 流程中固定开启 ffmpeg 捆绑，
-并持续维护来源版本、校验和与许可证说明（包体积将增加约 60-80 MB）。
+- 在应用内增加更明确的“当前是否已捆绑 ffmpeg”提示
+- 持续维护 ffmpeg 来源版本、校验和与许可证说明
