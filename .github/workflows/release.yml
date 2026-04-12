@@ -20,6 +20,8 @@ env:
   # Pinned ffmpeg source + checksum (configure as repository variables).
   FFMPEG_MACOS_URL: ${{ vars.YT_TOOL_FFMPEG_MACOS_URL }}
   FFMPEG_MACOS_SHA256: ${{ vars.YT_TOOL_FFMPEG_MACOS_SHA256 }}
+  FFPROBE_MACOS_URL: ${{ vars.YT_TOOL_FFPROBE_MACOS_URL }}
+  FFPROBE_MACOS_SHA256: ${{ vars.YT_TOOL_FFPROBE_MACOS_SHA256 }}
   FFMPEG_WINDOWS_URL: ${{ vars.YT_TOOL_FFMPEG_WINDOWS_URL }}
   FFMPEG_WINDOWS_SHA256: ${{ vars.YT_TOOL_FFMPEG_WINDOWS_SHA256 }}
 
@@ -39,7 +41,7 @@ jobs:
         if: env.WITH_FFMPEG == 'true'
         run: |
           missing=0
-          for key in FFMPEG_MACOS_URL FFMPEG_MACOS_SHA256 FFMPEG_WINDOWS_URL FFMPEG_WINDOWS_SHA256; do
+          for key in FFMPEG_MACOS_URL FFMPEG_MACOS_SHA256 FFPROBE_MACOS_URL FFPROBE_MACOS_SHA256 FFMPEG_WINDOWS_URL FFMPEG_WINDOWS_SHA256; do
             if [[ -z "${!key:-}" ]]; then
               echo "::error::Missing required repository variable: $key"
               missing=1
@@ -48,7 +50,7 @@ jobs:
           if [[ "$missing" -ne 0 ]]; then
             exit 1
           fi
-          for url_key in FFMPEG_MACOS_URL FFMPEG_WINDOWS_URL; do
+          for url_key in FFMPEG_MACOS_URL FFPROBE_MACOS_URL FFMPEG_WINDOWS_URL; do
             url="${!url_key}"
             if [[ "$url" == *"/latest/"* ]]; then
               echo "::error::Mutable URL is not allowed for $url_key: $url"
@@ -76,7 +78,9 @@ jobs:
               --clean \
               --with-ffmpeg \
               --ffmpeg-url "$FFMPEG_MACOS_URL" \
-              --ffmpeg-sha256 "$FFMPEG_MACOS_SHA256"
+              --ffmpeg-sha256 "$FFMPEG_MACOS_SHA256" \
+              --ffprobe-url "$FFPROBE_MACOS_URL" \
+              --ffprobe-sha256 "$FFPROBE_MACOS_SHA256"
           else
             bash scripts/build/macos/build_app.sh --clean
           fi
