@@ -8,22 +8,22 @@ from app.core.env_check import check_env
 
 class TestCheckEnv:
     def test_all_found(self):
-        """正常环境下 python 和 yt-dlp 应该都能找到。"""
+        """正常环境下 python 和 yt-dlp 模块应可用。"""
         result = check_env()
         # python 必然存在
         python_item = next(i for i in result.items if i.name == "python")
         assert python_item.found is True
 
     def test_missing_required_sets_fatal(self):
-        """mock shutil.which 让 yt-dlp 找不到。"""
-        original_which = __import__("shutil").which
+        """mock importlib.find_spec 让 yt_dlp 模块找不到。"""
+        original_find_spec = __import__("importlib.util").util.find_spec
 
-        def fake_which(cmd):
-            if cmd == "yt-dlp":
+        def fake_find_spec(name):
+            if name == "yt_dlp":
                 return None
-            return original_which(cmd)
+            return original_find_spec(name)
 
-        with patch("app.core.env_check.shutil.which", side_effect=fake_which):
+        with patch("app.core.env_check.importlib.util.find_spec", side_effect=fake_find_spec):
             result = check_env()
             assert result.fatal_missing is True
             assert result.ok is False

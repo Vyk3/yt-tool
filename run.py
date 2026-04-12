@@ -28,7 +28,6 @@ def _patch_frozen_path() -> None:
     bundle_dir: str = sys._MEIPASS  # type: ignore[attr-defined]
     # Ensure bundled helper binaries keep executable permissions in frozen builds.
     # PyInstaller packaging can strip execute bits on Unix-like targets.
-    _ensure_executable(bundle_dir, "yt-dlp")
     _ensure_executable(bundle_dir, "ffmpeg")
     _ensure_executable(bundle_dir, "ffprobe")
     os.environ["PATH"] = bundle_dir + os.pathsep + os.environ.get("PATH", "")
