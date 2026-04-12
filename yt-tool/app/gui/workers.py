@@ -1,58 +1,56 @@
 """GUI 后台 worker。"""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QThread, Signal
 
 from ..services.models import DetectRequest, DownloadRequest
 from ..services.workflow import AppWorkflow
 
 
-class EnvCheckWorker(QObject):
+class EnvCheckWorker(QThread):
     """后台执行环境检查。"""
 
-    finished = Signal(object)
-    failed = Signal(str)
+    task_finished = Signal(object)
+    task_failed = Signal(str)
 
     def __init__(self, workflow: AppWorkflow) -> None:
         super().__init__()
         self._workflow = workflow
 
-    @Slot()
     def run(self) -> None:
         try:
             result = self._workflow.check_environment()
         except Exception as exc:  # pragma: no cover - defensive branch
-            self.failed.emit(str(exc))
+            self.task_failed.emit(str(exc))
             return
-        self.finished.emit(result)
+        self.task_finished.emit(result)
 
 
-class DetectWorker(QObject):
+class DetectWorker(QThread):
     """后台执行格式探测。"""
 
-    finished = Signal(object)
-    failed = Signal(str)
+    task_finished = Signal(object)
+    task_failed = Signal(str)
 
     def __init__(self, workflow: AppWorkflow, request: DetectRequest) -> None:
         super().__init__()
         self._workflow = workflow
         self._request = request
 
-    @Slot()
     def run(self) -> None:
         try:
             result = self._workflow.detect_formats(self._request)
         except Exception as exc:
-            self.failed.emit(str(exc))
+            self.task_failed.emit(str(exc))
             return
-        self.finished.emit(result)
+        self.task_finished.emit(result)
 
 
-class DownloadWorker(QObject):
+class DownloadWorker(QThread):
     """后台执行下载任务（带格式失效重探测重试）。"""
 
-    finished = Signal(object)
-    failed = Signal(str)
+    task_finished = Signal(object)
+    task_failed = Signal(str)
     progress = Signal(object)
 
     def __init__(self, workflow: AppWorkflow, request: DownloadRequest) -> None:
@@ -60,7 +58,6 @@ class DownloadWorker(QObject):
         self._workflow = workflow
         self._request = request
 
-    @Slot()
     def run(self) -> None:
         try:
             result = self._workflow.retry_with_redetect(
@@ -68,6 +65,6 @@ class DownloadWorker(QObject):
                 on_progress=self.progress.emit,
             )
         except Exception as exc:
-            self.failed.emit(str(exc))
+            self.task_failed.emit(str(exc))
             return
-        self.finished.emit(result)
+        self.task_finished.emit(result)

@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Literal
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QThread, Qt
+from PySide6.QtCore import QObject, QThread
 
 from ..core import config
 from ..services.models import DetectRequest, ProgressEvent
@@ -170,7 +170,7 @@ class AppController(QObject):
 
     def _run_worker(
         self,
-        worker: QObject,
+        worker: QThread,
         *,
         task_name: Literal["env", "detect", "download"],
         on_finished,
@@ -181,29 +181,19 @@ class AppController(QObject):
             self._window.append_log("上一个任务仍在进行，忽略本次请求")
             return
 
-        thread = QThread(self)
-        worker.moveToThread(thread)
-
-        thread.started.connect(worker.run)
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
+        # Workers are QThread subclasses — run() executes directly in the thread
+        # and returns when done.  No moveToThread, no exec(), no quit() needed.
+        worker.task_finished.connect(on_finished)
+        worker.task_failed.connect(on_failed)
         if on_progress is not None and hasattr(worker, "progress"):
             worker.progress.connect(on_progress)
-        # DirectConnection so thread.quit() is called from the worker thread
-        # itself without needing a round-trip through the main event loop.
-        # AutoConnection (the default) delivers quit() via the main thread's
-        # event loop; on Python 3.14 + PySide6 6.11 that delivery can stall,
-        # leaving the thread alive and the UI permanently in busy state.
-        worker.finished.connect(thread.quit, Qt.ConnectionType.DirectConnection)
-        worker.failed.connect(thread.quit, Qt.ConnectionType.DirectConnection)
-        thread.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(self._on_thread_finished)
+        worker.finished.connect(self._on_thread_finished)
+        worker.finished.connect(worker.deleteLater)
 
-        self._active_thread = thread
+        self._active_thread = worker
         self._window.set_busy(True)
         self._window.append_log(f"任务开始: {task_name}")
-        thread.start()
+        worker.start()
 
     def _on_env_finished(self, result) -> None:
         self._window.set_env_check_result(result)
@@ -233,15 +223,14 @@ class AppController(QObject):
         self._window.show_error(message)
 
     def cleanup(self) -> None:
-        """Quit and wait for any running worker thread.
+        """Wait for any running worker thread before Qt tears down C++ objects.
 
-        Call this before the QApplication exits (e.g. on aboutToQuit) so that
-        the QThread is fully stopped before Qt tears down C++ objects.  Without
-        this, Python atexit destroys the thread while it is still running, which
-        causes Qt to call abort().
+        Workers are QThread subclasses whose run() returns naturally; wait() is
+        sufficient.  Calling quit() is harmless — it posts a quit event to the
+        thread's event loop, which workers don't use, but wait() will return as
+        soon as run() finishes regardless.
         """
         if self._active_thread is not None:
-            self._active_thread.quit()
             self._active_thread.wait(3000)  # 3 s grace period
 
     def _on_thread_finished(self) -> None:
