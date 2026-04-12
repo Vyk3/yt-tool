@@ -6,10 +6,7 @@ import sys
 from types import ModuleType
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.services.models import DetectRequest, DownloadRequest, ProgressEvent, TaskResult
-
 
 # ---------------------------------------------------------------------------
 # Fake PySide6 (same pattern as test_gui_controller.py)

@@ -1,13 +1,9 @@
 """downloader.py 单元测试。"""
 from __future__ import annotations
 
-import subprocess
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.core.downloader import (
-    DownloadResult,
     _common_args,
     _run_ytdlp,
     _stream_process_output,

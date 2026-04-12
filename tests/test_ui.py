@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.format_detector import SubtitleTrack, VideoFormat
 from app.cli.ui import (
-    ask_download_type,
     ask_download_sections,
+    ask_download_type,
     ask_sponsorblock_categories,
     ask_sponsorblock_mode,
     build_audio_labels,
@@ -15,6 +14,7 @@ from app.cli.ui import (
     is_video_only,
     menu_select,
 )
+from app.core.format_detector import SubtitleTrack
 
 
 class TestMenuSelect:

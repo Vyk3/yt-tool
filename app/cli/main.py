@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import contextlib
 import sys
 
 from ..core import config
@@ -312,12 +313,10 @@ def main(argv: list[str] | None = None) -> int:
             # 纯播放列表 URL（无具体视频 ID）：改用 --playlist-items 1 并重新预检，
             # 确保格式可用性检查与下载时的参数一致（修复原代码在 extra_dl_args 确定后才 validate 的行为）
             extra_dl_args = ["--playlist-items", "1"]
-            try:
+            with contextlib.suppress(RuntimeError, ValueError):
                 resp = workflow.detect_formats(
                     DetectRequest(url, cookies_from=cookies_from, extra_args=("--playlist-items", "1"))
-                )
-            except (RuntimeError, ValueError):
-                pass  # 回退到初次探测结果，不阻断流程
+                )  # 回退到初次探测结果，不阻断流程
 
     # 5. 展示探测结果
     show_detect_result(

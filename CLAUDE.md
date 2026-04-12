@@ -207,8 +207,9 @@ git diff --cached
 # test: python -m pytest tests/ -q
 # typecheck: mypy .
 
-# 本仓库 (monorepo)
-# yt-tool: cd yt-tool && python -m pytest tests/ -q
+# 本仓库
+# lint: ruff check app/ tests/
+# test: python -m pytest tests/ -q
 ```
 
 验证结果分类：**Passed** / **Failed** / **Not Run** / **Unavailable** / **Not Configured**

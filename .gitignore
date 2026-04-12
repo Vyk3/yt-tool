@@ -1,14 +1,37 @@
+# OS
 .DS_Store
 .DS_Store?
 *.swp
 *.swo
-.env
-node_modules/
 
 # Python
+.venv/
 __pycache__/
 *.pyc
+*.pyz
 .pytest_cache/
+
+# Build artifacts
+/build/
+/dist/
+
+# PyInstaller
+*.spec
+!yt-tool.spec
+
+# Dependencies
+vendor/bin/
+node_modules/
+
+# Environment
+.env
+
+# Editor
 .vscode/
+
+# Local config (machine-specific, not for VCS)
 .mcp.json
 .claude/settings.local.json
+
+# Local-only docs
+GUI_ARCHITECTURE.md

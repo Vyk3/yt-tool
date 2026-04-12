@@ -1,7 +1,6 @@
 """path_utils.py 单元测试。"""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest

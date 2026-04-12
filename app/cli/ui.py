@@ -15,8 +15,9 @@ from __future__ import annotations
 import platform
 import sys
 
-from ..core.format_detector import AudioFormat, SubtitleTrack, VideoFormat
 from wcwidth import wcswidth, wcwidth
+
+from ..core.format_detector import AudioFormat, SubtitleTrack, VideoFormat
 
 # ---- ANSI 颜色常量 ----
 
@@ -145,8 +146,8 @@ def _menu_arrow(
 ) -> str | None:
     """用 ↑/↓/Enter 选择的交互菜单（仅 Unix TTY）。返回选中 value 或 None（跳过）。"""
     import shutil
-    import tty
     import termios
+    import tty
 
     term_size = shutil.get_terminal_size((80, 24))
     term_cols, term_rows = term_size.columns, term_size.lines
@@ -313,8 +314,8 @@ def menu_select(
     # 尝试方向键模式（仅 Unix TTY，且菜单足够简单）
     if sys.stdin.isatty() and sys.stdout.isatty() and _should_use_arrow_menu(labels, column_hint):
         try:
-            import tty   # noqa: F401
             import termios  # noqa: F401
+            import tty  # noqa: F401
             return _menu_arrow(prompt, labels, values, column_hint=column_hint)
         except (ImportError, Exception):
             pass

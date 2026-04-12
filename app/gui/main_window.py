@@ -29,7 +29,6 @@ from PySide6.QtWidgets import (
 from ..core import config
 from ..services.models import DetectResponse
 
-
 # ── 辅助函数 ──────────────────────────────────────────────────────────────────
 
 def _fmt_size(bytes_val: int) -> str:
