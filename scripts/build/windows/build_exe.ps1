@@ -23,7 +23,8 @@ $VenvPython = Join-Path $ProjectDir '.venv\Scripts\python.exe'
 if (Test-Path $VenvPython) {
     $Python = $VenvPython
 } else {
-    foreach ($cmd in @('py', 'python', 'python3')) {
+    # Prefer setup-python managed interpreter on CI runners.
+    foreach ($cmd in @('python', 'python3', 'py')) {
         if (Get-Command $cmd -ErrorAction SilentlyContinue) {
             $Python = $cmd
             break
