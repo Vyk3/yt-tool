@@ -15,8 +15,9 @@ from __future__ import annotations
 import platform
 import sys
 
-from ..core.format_detector import AudioFormat, SubtitleTrack, VideoFormat
 from wcwidth import wcswidth, wcwidth
+
+from ..core.format_detector import AudioFormat, SubtitleTrack, VideoFormat
 
 # ---- ANSI 颜色常量 ----
 
@@ -145,8 +146,8 @@ def _menu_arrow(
 ) -> str | None:
     """用 ↑/↓/Enter 选择的交互菜单（仅 Unix TTY）。返回选中 value 或 None（跳过）。"""
     import shutil
-    import tty
     import termios
+    import tty
 
     term_size = shutil.get_terminal_size((80, 24))
     term_cols, term_rows = term_size.columns, term_size.lines
