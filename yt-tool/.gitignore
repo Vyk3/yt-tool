@@ -8,3 +8,4 @@ GUI_ARCHITECTURE.md
 .pytest_cache/
 __pycache__/
 .DS_Store
+vendor/bin/

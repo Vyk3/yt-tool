@@ -29,6 +29,7 @@ class DetectRequest:
     url: str
     cookies_from: str | None = None
     extra_args: tuple[str, ...] = ()
+    validate_formats: bool = True  # GUI 可设为 False 跳过预检，加快探测速度
 
 
 @dataclass(frozen=True)

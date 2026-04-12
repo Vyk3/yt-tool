@@ -59,7 +59,7 @@ class AppWorkflow:
         no_playlist = "--no-playlist" in request.extra_args
         cookies = self._effective_cookies(request.cookies_from)
         info = detect(request.url, cookies_from=cookies, no_playlist=no_playlist)
-        if config.YT_VALIDATE_FORMATS_BEFORE_MENU:
+        if config.YT_VALIDATE_FORMATS_BEFORE_MENU and request.validate_formats:
             info = validate_detected_formats(
                 request.url,
                 info,

@@ -31,6 +31,24 @@ def _make_fake_pyside6():
         def __init__(self, parent=None):
             self._parent = parent
 
+        def deleteLater(self):
+            return None
+
+    class _QThread(_QObject):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.finished = _Signal()
+
+        def start(self):
+            self.run()
+            self.finished.emit()
+
+        def wait(self, msecs=None):
+            return True
+
+        def quit(self):
+            return None
+
     def _slot(*args, **kwargs):
         def decorator(func):
             return func
@@ -38,6 +56,7 @@ def _make_fake_pyside6():
 
     qtcore = ModuleType("PySide6.QtCore")
     qtcore.QObject = _QObject
+    qtcore.QThread = _QThread
     qtcore.Signal = _Signal
     qtcore.Slot = _slot
 
@@ -69,7 +88,7 @@ class TestEnvCheckWorker:
 
         w = workers.EnvCheckWorker(workflow)
         captured = []
-        w.finished.connect(captured.append)
+        w.task_finished.connect(captured.append)
 
         w.run()
 
@@ -83,7 +102,7 @@ class TestEnvCheckWorker:
 
         w = workers.EnvCheckWorker(workflow)
         errors = []
-        w.failed.connect(errors.append)
+        w.task_failed.connect(errors.append)
 
         w.run()
 
@@ -107,7 +126,7 @@ class TestDetectWorker:
 
         w = workers.DetectWorker(workflow, req)
         captured = []
-        w.finished.connect(captured.append)
+        w.task_finished.connect(captured.append)
 
         w.run()
 
@@ -123,8 +142,8 @@ class TestDetectWorker:
         w = workers.DetectWorker(workflow, req)
         errors = []
         finished = []
-        w.failed.connect(errors.append)
-        w.finished.connect(finished.append)
+        w.task_failed.connect(errors.append)
+        w.task_finished.connect(finished.append)
 
         w.run()
 
@@ -153,7 +172,7 @@ class TestDownloadWorker:
 
         w = workers.DownloadWorker(workflow, req)
         captured = []
-        w.finished.connect(captured.append)
+        w.task_finished.connect(captured.append)
 
         w.run()
 
@@ -171,8 +190,8 @@ class TestDownloadWorker:
         w = workers.DownloadWorker(workflow, req)
         errors = []
         finished = []
-        w.failed.connect(errors.append)
-        w.finished.connect(finished.append)
+        w.task_failed.connect(errors.append)
+        w.task_finished.connect(finished.append)
 
         w.run()
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import platform
 import shutil
+import sys
 from dataclasses import dataclass
 
 _SYSTEM: str = platform.system()
@@ -67,10 +68,15 @@ def check_env() -> CheckResult:
 
     for logical_name, required, cmds in TARGETS:
         found_path: str | None = None
-        for cmd in cmds:
-            found_path = shutil.which(cmd)
-            if found_path:
-                break
+
+        # In a PyInstaller bundle Python is obviously present — skip the which() check.
+        if logical_name == "python" and getattr(sys, "frozen", False):
+            found_path = sys.executable
+        else:
+            for cmd in cmds:
+                found_path = shutil.which(cmd)
+                if found_path:
+                    break
 
         found = found_path is not None
         items.append(
