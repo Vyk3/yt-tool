@@ -7,9 +7,16 @@ shiboken6_d, shiboken6_b, shiboken6_h = collect_all('shiboken6')
 ytdlp_d, ytdlp_b, ytdlp_h = collect_all('yt_dlp')
 
 # Bundle the yt-dlp standalone binary so the app works without a system yt-dlp install.
-# macOS uses 'yt-dlp' (no extension); Windows uses 'yt-dlp.exe'.
-_ytdlp_bin = 'vendor/bin/yt-dlp.exe' if os.name == 'nt' else 'vendor/bin/yt-dlp'
-_extra_binaries = [(_ytdlp_bin, '.')] if os.path.isfile(_ytdlp_bin) else []
+# Optional bundled helper binaries:
+# - yt-dlp is expected by default.
+# - ffmpeg/ffprobe are optional and included when present in vendor/bin.
+_ext = '.exe' if os.name == 'nt' else ''
+_optional_bins = [
+    f'vendor/bin/yt-dlp{_ext}',
+    f'vendor/bin/ffmpeg{_ext}',
+    f'vendor/bin/ffprobe{_ext}',
+]
+_extra_binaries = [(path, '.') for path in _optional_bins if os.path.isfile(path)]
 
 a = Analysis(
     ['run.py'],
