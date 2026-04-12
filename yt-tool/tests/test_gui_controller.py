@@ -49,11 +49,20 @@ def _make_fake_pyside6():
 
         return decorator
 
+    class _ConnectionType:
+        DirectConnection = 1
+        QueuedConnection = 2
+        AutoConnection = 0
+
+    class _Qt:
+        ConnectionType = _ConnectionType
+
     qtcore = ModuleType("PySide6.QtCore")
     qtcore.QObject = _QObject
     qtcore.QThread = _QThread
     qtcore.Signal = _Signal
     qtcore.Slot = _slot
+    qtcore.Qt = _Qt
 
     pyside6 = ModuleType("PySide6")
     pyside6.QtCore = qtcore

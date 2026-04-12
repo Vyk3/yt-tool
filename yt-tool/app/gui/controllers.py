@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Literal
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QThread
+from PySide6.QtCore import QObject, QThread, Qt
 
 from ..core import config
 from ..services.models import DetectRequest, ProgressEvent
@@ -189,8 +189,13 @@ class AppController(QObject):
         worker.failed.connect(on_failed)
         if on_progress is not None and hasattr(worker, "progress"):
             worker.progress.connect(on_progress)
-        worker.finished.connect(thread.quit)
-        worker.failed.connect(thread.quit)
+        # DirectConnection so thread.quit() is called from the worker thread
+        # itself without needing a round-trip through the main event loop.
+        # AutoConnection (the default) delivers quit() via the main thread's
+        # event loop; on Python 3.14 + PySide6 6.11 that delivery can stall,
+        # leaving the thread alive and the UI permanently in busy state.
+        worker.finished.connect(thread.quit, Qt.ConnectionType.DirectConnection)
+        worker.failed.connect(thread.quit, Qt.ConnectionType.DirectConnection)
         thread.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         thread.finished.connect(self._on_thread_finished)
