@@ -110,7 +110,7 @@ jobs:
           $env:YT_TOOL_NO_PAUSE = '1'
           $env:PY_PYTHON = '3.12'
           $env:PYTHONUTF8 = '1'
-          '' | & .\launcher\windows\yt.ps1
+          '' | pwsh -NoProfile -ExecutionPolicy Bypass -File .\launcher\windows\yt.ps1
           if ($LASTEXITCODE -ne 1) {
             throw "Unexpected exit code from yt.ps1: $LASTEXITCODE"
           }
