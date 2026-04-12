@@ -110,6 +110,7 @@ mkdir -p "$VENDOR_BIN_DIR"
 if [[ -n "$CLEAN_FLAG" || ! -x "$YTDLP_BIN" ]]; then
   echo "Downloading yt-dlp macOS binary..."
   curl --fail --location --progress-bar \
+    --retry 5 --retry-delay 2 --retry-all-errors \
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" \
   -o "$YTDLP_BIN"
   chmod +x "$YTDLP_BIN"
@@ -133,7 +134,9 @@ if [[ "$WITH_FFMPEG" -eq 1 ]]; then
       trap 'rm -rf "$tmp_dir"' EXIT
       archive_path="$tmp_dir/ffmpeg-macos.zip"
       echo "Downloading ffmpeg archive..."
-      curl --fail --location --progress-bar "$FFMPEG_ARCHIVE_URL" -o "$archive_path"
+      curl --fail --location --progress-bar \
+        --retry 5 --retry-delay 2 --retry-all-errors \
+        "$FFMPEG_ARCHIVE_URL" -o "$archive_path"
       # Support both archive layouts:
       # 1) FFmpeg-Builds style: */bin/ffmpeg + */bin/ffprobe
       # 2) evermeet style: top-level "ffmpeg" only
