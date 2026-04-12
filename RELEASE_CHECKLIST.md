@@ -33,10 +33,11 @@
 - [x] 支持平台已写清
 
 ## 5. 发布准备
-- [x] 确认版本号 (v0.0.1)
-- [x] 提交 git commit
-- [x] 打 git tag (v0.0.1)
-- [x] 准备 release note
+- [x] 确认发布版本号（当前稳定版：v0.0.4）
+- [x] 提交 git commit（v0.0.4 发布前）
+- [x] 打 git tag（v0.0.4）
+- [x] 准备 release note（v0.0.4）
+- [x] 记录中间尝试版本（v0.0.2 / v0.0.3，含失败历史）
 
 ## 6. Packaging
 - [ ] 验证 launcher 与 `python -m app` 入口策略一致（GUI 优先，失败回退 CLI）
@@ -46,5 +47,5 @@
 - [x] macOS 冒烟（启用 ffmpeg 捆绑）已通过
 - [x] 体积对比已记录（macOS）：`.app` 265M -> 370M；`.dmg` 134M -> 175M
 - [x] 发布策略已确认：Release 默认轻量包；`workflow_dispatch` 可选开启 ffmpeg 捆绑
-- [ ] 若需发布带 ffmpeg 产物：先完成来源固定与校验和（SHA256）策略
-- [ ] Windows 真机验收（含 with/without ffmpeg）仍为阻塞项，未完成前不勾选
+- [x] with_ffmpeg 来源固定与 SHA256 校验策略已落地（脚本 + release workflow 双重门禁）
+- [ ] Windows 真机验收（含 with/without ffmpeg）仍为阻塞项，未完成前不勾选（执行模板：`WINDOWS_ACCEPTANCE_TEMPLATE.md`）

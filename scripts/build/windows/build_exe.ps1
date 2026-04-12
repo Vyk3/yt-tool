@@ -2,20 +2,18 @@
 # Usage:
 #   .\scripts\build\windows\build_exe.ps1 [-Name yt-tool] [-Clean]
 #                                          [-WithFfmpeg] [-FfmpegUrl <url>]
+#                                          [-FfmpegSha256 <hex>]
 
 param(
     [string]$Name = "yt-tool",
     [switch]$Clean,
     [switch]$WithFfmpeg,
-    [string]$FfmpegUrl = $env:YT_TOOL_FFMPEG_WINDOWS_URL
+    [string]$FfmpegUrl = $env:YT_TOOL_FFMPEG_WINDOWS_URL,
+    [string]$FfmpegSha256 = $env:YT_TOOL_FFMPEG_WINDOWS_SHA256
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-
-if ([string]::IsNullOrWhiteSpace($FfmpegUrl)) {
-    $FfmpegUrl = 'https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip'
-}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $ProjectDir = (Resolve-Path (Join-Path $ScriptDir '..\..\..')).Path
@@ -73,6 +71,16 @@ if ($Clean -or -not (Test-Path $YtdlpBin)) {
 }
 
 if ($WithFfmpeg) {
+    if ([string]::IsNullOrWhiteSpace($FfmpegUrl)) {
+        throw 'Missing ffmpeg source URL. Set -FfmpegUrl or YT_TOOL_FFMPEG_WINDOWS_URL.'
+    }
+    if ([string]::IsNullOrWhiteSpace($FfmpegSha256)) {
+        throw 'Missing ffmpeg SHA256. Set -FfmpegSha256 or YT_TOOL_FFMPEG_WINDOWS_SHA256.'
+    }
+    if ($FfmpegUrl -match '/latest/') {
+        throw "Refuse mutable ffmpeg URL: $FfmpegUrl. Use a pinned, versioned archive URL."
+    }
+
     $FfmpegBin = Join-Path $VendorBinDir 'ffmpeg.exe'
     $FfprobeBin = Join-Path $VendorBinDir 'ffprobe.exe'
 
@@ -88,6 +96,16 @@ if ($WithFfmpeg) {
                 Invoke-WebRequest -Uri $FfmpegUrl -OutFile $archivePath
             } finally {
                 $ProgressPreference = $oldProgressPreference
+            }
+            $actualSha = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+            $expectedSha = $FfmpegSha256.Trim().ToLowerInvariant()
+            if ($actualSha -ne $expectedSha) {
+                throw @(
+                    'ffmpeg archive SHA256 mismatch.',
+                    "  expected: $expectedSha",
+                    "  actual  : $actualSha",
+                    "  source  : $FfmpegUrl"
+                ) -join [Environment]::NewLine
             }
 
             $extractDir = Join-Path $tempDir 'extract'

@@ -13,6 +13,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Wait-IfInteractive {
+    if ($env:YT_TOOL_NO_PAUSE -eq '1') {
+        return
+    }
+    Write-Host ''
+    Read-Host '按回车键退出' | Out-Null
+}
+
 # 定位脚本自身所在目录，再向上两级到 yt-tool\
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $ProjectDir = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
@@ -31,8 +39,7 @@ if (-not $Python) {
     Write-Host '错误: 未找到 Python 解释器'
     Write-Host '请安装 Python 3: winget install Python.Python.3'
     Write-Host '或访问: https://www.python.org/downloads/'
-    Write-Host ''
-    Read-Host '按回车键退出'
+    Wait-IfInteractive
     exit 1
 }
 
@@ -46,6 +53,5 @@ if ($Python -eq 'py') {
 
 $ExitCode = $LASTEXITCODE
 
-Write-Host ''
-Read-Host '按回车键退出'
+Wait-IfInteractive
 exit $ExitCode

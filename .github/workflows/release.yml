@@ -15,6 +15,11 @@ on:
 env:
   # Only workflow_dispatch can opt into ffmpeg bundling; push(tag) always stays lightweight.
   WITH_FFMPEG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.with_ffmpeg == 'true' && 'true' || 'false' }}
+  # Pinned ffmpeg source + checksum (configure as repository variables).
+  FFMPEG_MACOS_URL: ${{ vars.YT_TOOL_FFMPEG_MACOS_URL }}
+  FFMPEG_MACOS_SHA256: ${{ vars.YT_TOOL_FFMPEG_MACOS_SHA256 }}
+  FFMPEG_WINDOWS_URL: ${{ vars.YT_TOOL_FFMPEG_WINDOWS_URL }}
+  FFMPEG_WINDOWS_SHA256: ${{ vars.YT_TOOL_FFMPEG_WINDOWS_SHA256 }}
 
 jobs:
   dispatch-summary:
@@ -27,8 +32,30 @@ jobs:
           if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
             echo "::notice::This run is build-only (non-tag ref). publish job will be skipped."
           elif [[ "$WITH_FFMPEG" == "true" ]]; then
-            echo "::notice::with_ffmpeg=true is build-only for now. publish job will be skipped until checksum policy is in place."
+            echo "::notice::with_ffmpeg=true remains build-only by current release policy. publish job will be skipped."
           fi
+
+      - name: Validate pinned ffmpeg lock
+        if: env.WITH_FFMPEG == 'true'
+        run: |
+          missing=0
+          for key in FFMPEG_MACOS_URL FFMPEG_MACOS_SHA256 FFMPEG_WINDOWS_URL FFMPEG_WINDOWS_SHA256; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "::error::Missing required repository variable: $key"
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+          for url_key in FFMPEG_MACOS_URL FFMPEG_WINDOWS_URL; do
+            url="${!url_key}"
+            if [[ "$url" == *"/latest/"* ]]; then
+              echo "::error::Mutable URL is not allowed for $url_key: $url"
+              exit 1
+            fi
+          done
+          echo "Pinned ffmpeg source/sha variables are configured."
 
   build-macos:
     runs-on: macos-latest
@@ -44,11 +71,15 @@ jobs:
 
       - name: Build .app and .dmg
         run: |
-          ARGS="--clean"
           if [[ "$WITH_FFMPEG" == "true" ]]; then
-            ARGS="$ARGS --with-ffmpeg"
+            bash scripts/build/macos/build_app.sh \
+              --clean \
+              --with-ffmpeg \
+              --ffmpeg-url "$FFMPEG_MACOS_URL" \
+              --ffmpeg-sha256 "$FFMPEG_MACOS_SHA256"
+          else
+            bash scripts/build/macos/build_app.sh --clean
           fi
-          bash scripts/build/macos/build_app.sh $ARGS
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
@@ -72,7 +103,11 @@ jobs:
         run: |
           $buildArgs = @("-Clean", "-Name", "yt-tool")
           if ("$env:WITH_FFMPEG" -eq "true") {
-            $buildArgs += "-WithFfmpeg"
+            $buildArgs += @(
+              "-WithFfmpeg",
+              "-FfmpegUrl", "$env:FFMPEG_WINDOWS_URL",
+              "-FfmpegSha256", "$env:FFMPEG_WINDOWS_SHA256"
+            )
           }
           & ./scripts/build/windows/build_exe.ps1 @buildArgs
 
