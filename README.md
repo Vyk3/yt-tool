@@ -190,6 +190,9 @@ scripts/build/macos/build_app.sh --clean
 
 * `--name <APP_NAME>`：设置应用名（默认 `yt-tool`）
 * `--clean`：清理后打包
+* `--with-ffmpeg`：下载并捆绑 `ffmpeg` + `ffprobe`（默认不启用）
+* `--codesign-identity <IDENTITY>`：签名身份（默认 `-`，即 ad-hoc）
+* `--ffmpeg-url <URL>`：覆盖 ffmpeg 下载地址（也可通过 `YT_TOOL_FFMPEG_MACOS_URL` 环境变量）
 
 产物路径：
 
@@ -211,7 +214,7 @@ scripts\build\windows\build_exe.bat yt-tool clean
 
 参数说明：
 
-* PowerShell: `-Name <name>`、`-Clean`
+* PowerShell: `-Name <name>`、`-Clean`、`-WithFfmpeg`、`-FfmpegUrl <url>`
 * Batch: 第一个参数是 name，第二个参数填 `clean` 启用清理
 
 默认产物路径（PyInstaller onedir）：
@@ -220,7 +223,8 @@ scripts\build\windows\build_exe.bat yt-tool clean
 
 注意：
 
-* 系统依赖（如 `ffmpeg`）仍需在目标机器安装并验证
+* 默认只捆绑 `yt-dlp`；`ffmpeg` 需在打包时显式开启（`--with-ffmpeg` / `-WithFfmpeg`）
+* 若未启用 ffmpeg 捆绑，目标机器仍需自行安装 `ffmpeg`
 
 ---
 
