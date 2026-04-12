@@ -1,7 +1,7 @@
 """AppWorkflow 单元测试。"""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -9,7 +9,6 @@ from app.core.downloader import DownloadResult
 from app.core.env_check import CheckResult
 from app.services.models import DetectRequest, DownloadRequest, ProgressEvent, TaskResult
 from app.services.workflow import AppWorkflow, _is_format_unavailable_error
-
 
 # ---------------------------------------------------------------------------
 # Helper

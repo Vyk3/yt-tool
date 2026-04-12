@@ -7,12 +7,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.core.format_detector import (
-    DetectResult,
     _parse_subtitle_tracks,
     detect,
     validate_detected_formats,
 )
-
 
 SAMPLE_YTDLP_JSON = {
     "title": "Test Video",
@@ -73,9 +71,8 @@ class TestDetect:
         fake_proc = MagicMock()
         fake_proc.returncode = 1
         fake_proc.stderr = "ERROR: not a video"
-        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc):
-            with pytest.raises(RuntimeError, match="format detect failed"):
-                detect("http://example.com")
+        with patch("app.core.format_detector.subprocess.run", return_value=fake_proc), pytest.raises(RuntimeError, match="format detect failed"):
+            detect("http://example.com")
 
     def test_success_parses_formats(self):
         fake_proc = MagicMock()

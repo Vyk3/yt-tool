@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import re
 import shutil
@@ -83,10 +84,8 @@ def _stream_process_output(
             break
         chunks.append(chunk)
         if on_chunk is not None:
-            try:
+            with contextlib.suppress(Exception):
                 on_chunk(chunk)
-            except Exception:
-                pass
         else:
             sys.stdout.write(chunk)
             sys.stdout.flush()

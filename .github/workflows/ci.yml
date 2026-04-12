@@ -2,18 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
 
 jobs:
-  test:
-    name: pytest (${{ matrix.python-version }})
+  pytest-linux:
+    name: pytest (${{ matrix.python-version }}, linux)
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.12"]
-
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -26,8 +24,30 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yt-dlp>=2025.1.0
-          pip install pytest
+          pip install yt-dlp>=2025.1.0 pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+  pytest-macos:
+    name: pytest (${{ matrix.python-version }}, macos)
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yt-dlp>=2025.1.0 pytest
 
       - name: Run tests
         run: python -m pytest tests/ -q
@@ -35,7 +55,6 @@ jobs:
   lint:
     name: ruff
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
