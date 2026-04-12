@@ -50,12 +50,7 @@ launcher/
   windows/
 
 tests/
-  test_ui.py
-  test_path_utils.py
-  test_env_check.py
-  test_downloader.py
-  test_format_detector.py
-  test_main_flow.py
+  ...（单元测试与契约/烟雾测试，详见 tests/ 目录）
 
 requirements.txt
 README.md
@@ -68,7 +63,10 @@ RELEASE_CHECKLIST.md
 
 ## 运行依赖
 
-Python 依赖通过单一文件 `requirements.txt` 管理。
+依赖管理采用两层：
+
+* `requirements.txt`：源码运行与 CI 的安装入口（当前推荐）
+* `pyproject.toml`：项目元数据、脚本入口与可选依赖（如 `gui` extras）
 
 运行时外部依赖：
 
