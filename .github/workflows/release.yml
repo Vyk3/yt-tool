@@ -4,8 +4,32 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      with_ffmpeg:
+        description: 'Bundle ffmpeg/ffprobe into artifacts'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  # Only workflow_dispatch can opt into ffmpeg bundling; push(tag) always stays lightweight.
+  WITH_FFMPEG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.with_ffmpeg == 'true' && 'true' || 'false' }}
 
 jobs:
+  dispatch-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain dispatch mode
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "workflow_dispatch with_ffmpeg=$WITH_FFMPEG ref=$GITHUB_REF"
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo "::notice::This run is build-only (non-tag ref). publish job will be skipped."
+          elif [[ "$WITH_FFMPEG" == "true" ]]; then
+            echo "::notice::with_ffmpeg=true is build-only for now. publish job will be skipped until checksum policy is in place."
+          fi
+
   build-macos:
     runs-on: macos-latest
     steps:
@@ -19,7 +43,12 @@ jobs:
         run: pip install -r requirements.txt pyinstaller
 
       - name: Build .app and .dmg
-        run: bash scripts/build/macos/build_app.sh --clean
+        run: |
+          ARGS="--clean"
+          if [[ "$WITH_FFMPEG" == "true" ]]; then
+            ARGS="$ARGS --with-ffmpeg"
+          fi
+          bash scripts/build/macos/build_app.sh $ARGS
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
@@ -40,7 +69,12 @@ jobs:
         run: pip install -r requirements.txt pyinstaller
 
       - name: Build .exe
-        run: pwsh scripts/build/windows/build_exe.ps1 -Clean -Name yt-tool
+        run: |
+          $buildArgs = @("-Clean", "-Name", "yt-tool")
+          if ("$env:WITH_FFMPEG" -eq "true") {
+            $buildArgs += "-WithFfmpeg"
+          }
+          & ./scripts/build/windows/build_exe.ps1 @buildArgs
 
       - name: Zip dist folder
         run: Compress-Archive -Path dist\yt-tool -DestinationPath dist\yt-tool-Windows.zip
@@ -52,6 +86,7 @@ jobs:
           path: dist/yt-tool-Windows.zip
 
   publish:
+    if: startsWith(github.ref, 'refs/tags/v') && !(github.event_name == 'workflow_dispatch' && github.event.inputs.with_ffmpeg == 'true')
     needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
     permissions:

@@ -19,7 +19,7 @@
 - [x] 不带参数时可进入交互模式
 
 ## 3. 测试
-- [x] pytest 全部通过 (122/122)
+- [x] pytest 全部通过（以本次 CI 结果为准）
 - [x] 关键冒烟联调已通过 (7/7)
 - [x] 关键异常联调已通过 (9/9)
 - [x] 回归测试已通过
@@ -42,4 +42,9 @@
 - [ ] 验证 launcher 与 `python -m app` 入口策略一致（GUI 优先，失败回退 CLI）
 - [ ] 验证 `--cli` 与 `YT_TOOL_MODE=cli` 在 macOS/Windows 可用
 - [ ] 验证 `requirements.txt`（含 GUI 依赖）可在干净环境安装
-- [ ] 验证 ffmpeg 在目标分发机器可用
+- [x] macOS 冒烟（默认轻量，不捆绑 ffmpeg）已通过
+- [x] macOS 冒烟（启用 ffmpeg 捆绑）已通过
+- [x] 体积对比已记录（macOS）：`.app` 265M -> 370M；`.dmg` 134M -> 175M
+- [x] 发布策略已确认：Release 默认轻量包；`workflow_dispatch` 可选开启 ffmpeg 捆绑
+- [ ] 若需发布带 ffmpeg 产物：先完成来源固定与校验和（SHA256）策略
+- [ ] Windows 真机验收（含 with/without ffmpeg）仍为阻塞项，未完成前不勾选
