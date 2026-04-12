@@ -1,7 +1,8 @@
 #!/bin/zsh
 # Build macOS .app with PyInstaller using the unified app entry.
 # Usage:
-#   scripts/build/macos/build_app.sh [--clean] [--name APP_NAME]
+#   scripts/build/macos/build_app.sh [--clean] [--name APP_NAME] [--with-ffmpeg]
+#                                   [--codesign-identity IDENTITY] [--ffmpeg-url URL]
 
 set -euo pipefail
 
@@ -10,6 +11,33 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 APP_NAME="yt-tool"
 CLEAN_FLAG=""
+WITH_FFMPEG=0
+CODESIGN_IDENTITY="${YT_TOOL_CODESIGN_IDENTITY:--}"
+if [[ -n "${YT_TOOL_FFMPEG_MACOS_URL:-}" ]]; then
+  FFMPEG_ARCHIVE_URL="$YT_TOOL_FFMPEG_MACOS_URL"
+else
+  FFMPEG_ASSET="ffmpeg-master-latest-macos64-gpl.zip"
+  if [[ "$(uname -m)" == "arm64" ]]; then
+    FFMPEG_ASSET="ffmpeg-master-latest-macosarm64-gpl.zip"
+  fi
+  FFMPEG_ARCHIVE_URL="https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/$FFMPEG_ASSET"
+fi
+
+usage() {
+  cat <<EOF
+Usage: $0 [--clean] [--name APP_NAME] [--with-ffmpeg]
+          [--codesign-identity IDENTITY] [--ffmpeg-url URL]
+
+Options:
+  --clean                     Run PyInstaller with --clean and refresh bundled binaries.
+  --name APP_NAME             App name (default: yt-tool).
+  --with-ffmpeg               Download ffmpeg/ffprobe and bundle into app.
+  --codesign-identity VALUE   codesign identity (default: '-' for ad-hoc).
+                              Can also be set by YT_TOOL_CODESIGN_IDENTITY.
+  --ffmpeg-url URL            Override ffmpeg archive URL.
+                              Can also be set by YT_TOOL_FFMPEG_MACOS_URL.
+EOF
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -20,18 +48,41 @@ while [[ $# -gt 0 ]]; do
     --name)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         echo "Missing value for --name" >&2
-        echo "Usage: $0 [--clean] [--name APP_NAME]" >&2
+        usage >&2
         exit 2
       fi
       APP_NAME="$2"
       shift 2
       ;;
+    --with-ffmpeg)
+      WITH_FFMPEG=1
+      shift
+      ;;
+    --codesign-identity)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --codesign-identity" >&2
+        usage >&2
+        exit 2
+      fi
+      CODESIGN_IDENTITY="$2"
+      shift 2
+      ;;
+    --ffmpeg-url)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --ffmpeg-url" >&2
+        usage >&2
+        exit 2
+      fi
+      FFMPEG_ARCHIVE_URL="$2"
+      shift 2
+      ;;
     -h|--help)
-      echo "Usage: $0 [--clean] [--name APP_NAME]"
+      usage
       exit 0
       ;;
     *)
       echo "Unknown argument: $1" >&2
+      usage >&2
       exit 2
       ;;
   esac
@@ -57,16 +108,47 @@ cd "$PROJECT_DIR"
 # Download the yt-dlp standalone macOS binary (universal, no Python required by the binary itself).
 # This binary is bundled into the .app so users don't need yt-dlp installed separately.
 YTDLP_BIN="$PROJECT_DIR/vendor/bin/yt-dlp"
-mkdir -p "$PROJECT_DIR/vendor/bin"
+VENDOR_BIN_DIR="$PROJECT_DIR/vendor/bin"
+mkdir -p "$VENDOR_BIN_DIR"
 if [[ -n "$CLEAN_FLAG" || ! -x "$YTDLP_BIN" ]]; then
   echo "Downloading yt-dlp macOS binary..."
   curl --fail --location --progress-bar \
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" \
-    -o "$YTDLP_BIN"
+  -o "$YTDLP_BIN"
   chmod +x "$YTDLP_BIN"
   echo "yt-dlp binary: $YTDLP_BIN"
 else
   echo "yt-dlp binary already present: $YTDLP_BIN"
+fi
+
+if [[ "$WITH_FFMPEG" -eq 1 ]]; then
+  if ! command -v unzip >/dev/null 2>&1; then
+    echo "unzip not found; required for --with-ffmpeg." >&2
+    echo "Install it via Xcode Command Line Tools or your package manager." >&2
+    exit 2
+  fi
+
+  FFMPEG_BIN="$VENDOR_BIN_DIR/ffmpeg"
+  FFPROBE_BIN="$VENDOR_BIN_DIR/ffprobe"
+  if [[ -n "$CLEAN_FLAG" || ! -x "$FFMPEG_BIN" || ! -x "$FFPROBE_BIN" ]]; then
+    (
+      tmp_dir="$(mktemp -d)"
+      trap 'rm -rf "$tmp_dir"' EXIT
+      archive_path="$tmp_dir/ffmpeg-macos.zip"
+      echo "Downloading ffmpeg archive..."
+      curl --fail --location --progress-bar "$FFMPEG_ARCHIVE_URL" -o "$archive_path"
+      unzip -q -o -j "$archive_path" "*/bin/ffmpeg" "*/bin/ffprobe" -d "$VENDOR_BIN_DIR"
+    )
+    if [[ ! -f "$FFMPEG_BIN" || ! -f "$FFPROBE_BIN" ]]; then
+      echo "ffmpeg archive does not contain ffmpeg + ffprobe: $FFMPEG_ARCHIVE_URL" >&2
+      exit 2
+    fi
+    chmod +x "$FFMPEG_BIN" "$FFPROBE_BIN"
+    echo "ffmpeg binary: $FFMPEG_BIN"
+    echo "ffprobe binary: $FFPROBE_BIN"
+  else
+    echo "ffmpeg binaries already present: $FFMPEG_BIN / $FFPROBE_BIN"
+  fi
 fi
 
 "$PYTHON" -m PyInstaller \
@@ -76,10 +158,14 @@ fi
 
 echo "Built app: $PROJECT_DIR/dist/$APP_NAME.app"
 
-# Ad-hoc codesign — resolves "app is damaged" Gatekeeper error without a paid certificate.
-# Users will still see "unverified developer" on first launch; right-click → Open to proceed.
-codesign --force --deep --sign - "$PROJECT_DIR/dist/$APP_NAME.app"
-echo "Codesigned (ad-hoc): $APP_NAME.app"
+# Default ad-hoc codesign resolves "app is damaged" Gatekeeper error without a paid certificate.
+# You can pass --codesign-identity "Developer ID Application: ..." for signed distribution builds.
+codesign --force --deep --sign "$CODESIGN_IDENTITY" "$PROJECT_DIR/dist/$APP_NAME.app"
+if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
+  echo "Codesigned (ad-hoc): $APP_NAME.app"
+else
+  echo "Codesigned with identity '$CODESIGN_IDENTITY': $APP_NAME.app"
+fi
 
 # Package as DMG for distribution.
 hdiutil create \
