@@ -227,6 +227,7 @@ scripts\build\windows\build_exe.bat yt-tool clean
 * 本地打包默认不捆绑 `ffmpeg`，可通过 `--with-ffmpeg` / `-WithFfmpeg` 显式开启
 * Release 工作流在正式发布（tag）时默认捆绑 `ffmpeg`/`ffprobe`
 * 启用 `with_ffmpeg` 时，必须提供**固定版本 URL + SHA256**；脚本会拒绝 `/latest/` 可变地址并在校验失败时中止
+* 仓库提供 [`LICENSE_FFMPEG.txt`](LICENSE_FFMPEG.txt) 用于记录 ffmpeg 分发声明；切换来源时请同步更新
 * 若未启用 ffmpeg 捆绑，目标机器仍需自行安装 `ffmpeg`
 
 CI（Release workflow）读取以下 Repository Variables：

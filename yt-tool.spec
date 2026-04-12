@@ -9,12 +9,15 @@ _optional_bins = [
     f'vendor/bin/ffprobe{_ext}',
 ]
 _extra_binaries = [(path, '.') for path in _optional_bins if os.path.isfile(path)]
+_extra_datas = []
+if os.path.isfile('LICENSE_FFMPEG.txt'):
+    _extra_datas.append(('LICENSE_FFMPEG.txt', '.'))
 
 a = Analysis(
     ['run.py'],
     pathex=['.', 'vendor'],
     binaries=_extra_binaries,
-    datas=[],
+    datas=_extra_datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
