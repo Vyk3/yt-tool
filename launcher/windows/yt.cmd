@@ -26,7 +26,7 @@ echo 错误: 未找到 Python 解释器
 echo 请安装 Python 3: winget install Python.Python.3
 echo 或访问: https://www.python.org/downloads/
 echo.
-pause
+if /I not "%YT_TOOL_NO_PAUSE%"=="1" pause
 exit /b 1
 
 :use_py
@@ -48,6 +48,8 @@ set "EXITCODE=%ERRORLEVEL%"
 goto :end
 
 :end
-echo.
-pause
+if /I not "%YT_TOOL_NO_PAUSE%"=="1" (
+  echo.
+  pause
+)
 exit /b %EXITCODE%

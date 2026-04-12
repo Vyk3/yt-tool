@@ -3,6 +3,7 @@
 # Usage:
 #   scripts/build/macos/build_app.sh [--clean] [--name APP_NAME] [--with-ffmpeg]
 #                                   [--codesign-identity IDENTITY] [--ffmpeg-url URL]
+#                                   [--ffmpeg-sha256 HEX]
 
 set -euo pipefail
 
@@ -13,17 +14,14 @@ APP_NAME="yt-tool"
 CLEAN_FLAG=""
 WITH_FFMPEG=0
 CODESIGN_IDENTITY="${YT_TOOL_CODESIGN_IDENTITY:--}"
-if [[ -n "${YT_TOOL_FFMPEG_MACOS_URL:-}" ]]; then
-  FFMPEG_ARCHIVE_URL="$YT_TOOL_FFMPEG_MACOS_URL"
-else
-  # macOS builds are provided by evermeet; URL redirects to the latest ffmpeg zip.
-  FFMPEG_ARCHIVE_URL="https://evermeet.cx/ffmpeg/getrelease/zip"
-fi
+FFMPEG_ARCHIVE_URL="${YT_TOOL_FFMPEG_MACOS_URL:-}"
+FFMPEG_ARCHIVE_SHA256="${YT_TOOL_FFMPEG_MACOS_SHA256:-}"
 
 usage() {
   cat <<EOF
 Usage: $0 [--clean] [--name APP_NAME] [--with-ffmpeg]
           [--codesign-identity IDENTITY] [--ffmpeg-url URL]
+          [--ffmpeg-sha256 HEX]
 
 Options:
   --clean                     Run PyInstaller with --clean and refresh bundled binaries.
@@ -33,6 +31,8 @@ Options:
                               Can also be set by YT_TOOL_CODESIGN_IDENTITY.
   --ffmpeg-url URL            Override ffmpeg archive URL.
                               Can also be set by YT_TOOL_FFMPEG_MACOS_URL.
+  --ffmpeg-sha256 HEX         Expected SHA256 for ffmpeg archive.
+                              Can also be set by YT_TOOL_FFMPEG_MACOS_SHA256.
 EOF
 }
 
@@ -71,6 +71,15 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       FFMPEG_ARCHIVE_URL="$2"
+      shift 2
+      ;;
+    --ffmpeg-sha256)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --ffmpeg-sha256" >&2
+        usage >&2
+        exit 2
+      fi
+      FFMPEG_ARCHIVE_SHA256="$2"
       shift 2
       ;;
     -h|--help)
@@ -125,6 +134,19 @@ if [[ "$WITH_FFMPEG" -eq 1 ]]; then
     echo "Install it via Xcode Command Line Tools or your package manager." >&2
     exit 2
   fi
+  if [[ -z "$FFMPEG_ARCHIVE_URL" ]]; then
+    echo "Missing ffmpeg source URL. Set --ffmpeg-url or YT_TOOL_FFMPEG_MACOS_URL." >&2
+    exit 2
+  fi
+  if [[ -z "$FFMPEG_ARCHIVE_SHA256" ]]; then
+    echo "Missing ffmpeg SHA256. Set --ffmpeg-sha256 or YT_TOOL_FFMPEG_MACOS_SHA256." >&2
+    exit 2
+  fi
+  if [[ "$FFMPEG_ARCHIVE_URL" == *"/latest/"* ]]; then
+    echo "Refuse mutable ffmpeg URL: $FFMPEG_ARCHIVE_URL" >&2
+    echo "Use a pinned, versioned archive URL instead of /latest/." >&2
+    exit 2
+  fi
 
   FFMPEG_BIN="$VENDOR_BIN_DIR/ffmpeg"
   FFPROBE_BIN="$VENDOR_BIN_DIR/ffprobe"
@@ -137,6 +159,23 @@ if [[ "$WITH_FFMPEG" -eq 1 ]]; then
       curl --fail --location --progress-bar \
         --retry 5 --retry-delay 2 --retry-all-errors \
         "$FFMPEG_ARCHIVE_URL" -o "$archive_path"
+      if command -v shasum >/dev/null 2>&1; then
+        actual_sha="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
+      elif command -v sha256sum >/dev/null 2>&1; then
+        actual_sha="$(sha256sum "$archive_path" | awk '{print $1}')"
+      else
+        echo "No SHA256 tool found (need shasum or sha256sum)." >&2
+        exit 2
+      fi
+      expected_sha="$(printf '%s' "$FFMPEG_ARCHIVE_SHA256" | tr '[:upper:]' '[:lower:]')"
+      actual_sha="$(printf '%s' "$actual_sha" | tr '[:upper:]' '[:lower:]')"
+      if [[ "$actual_sha" != "$expected_sha" ]]; then
+        echo "ffmpeg archive SHA256 mismatch." >&2
+        echo "  expected: $expected_sha" >&2
+        echo "  actual  : $actual_sha" >&2
+        echo "  source  : $FFMPEG_ARCHIVE_URL" >&2
+        exit 2
+      fi
       # Support both archive layouts:
       # 1) FFmpeg-Builds style: */bin/ffmpeg + */bin/ffprobe
       # 2) evermeet style: top-level "ffmpeg" only

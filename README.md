@@ -166,6 +166,8 @@ launcher\windows\yt.cmd "https://www.youtube.com/watch?v=xxxx"
 .\launcher\windows\yt.ps1 "https://www.youtube.com/watch?v=xxxx"
 ```
 
+自动化环境可设置 `YT_TOOL_NO_PAUSE=1` 跳过 Windows launcher 末尾的“按回车退出”暂停。
+
 ---
 
 ## 打包（M5）
@@ -193,6 +195,7 @@ scripts/build/macos/build_app.sh --clean
 * `--with-ffmpeg`：下载并捆绑 `ffmpeg` + `ffprobe`（默认不启用）
 * `--codesign-identity <IDENTITY>`：签名身份（默认 `-`，即 ad-hoc）
 * `--ffmpeg-url <URL>`：覆盖 ffmpeg 下载地址（也可通过 `YT_TOOL_FFMPEG_MACOS_URL` 环境变量）
+* `--ffmpeg-sha256 <HEX>`：校验 ffmpeg 压缩包 SHA256（或用 `YT_TOOL_FFMPEG_MACOS_SHA256`）
 
 产物路径：
 
@@ -214,7 +217,7 @@ scripts\build\windows\build_exe.bat yt-tool clean
 
 参数说明：
 
-* PowerShell: `-Name <name>`、`-Clean`、`-WithFfmpeg`、`-FfmpegUrl <url>`
+* PowerShell: `-Name <name>`、`-Clean`、`-WithFfmpeg`、`-FfmpegUrl <url>`、`-FfmpegSha256 <hex>`
 * Batch: 第一个参数是 name，第二个参数填 `clean` 启用清理
 
 默认产物路径（PyInstaller onedir）：
@@ -224,7 +227,14 @@ scripts\build\windows\build_exe.bat yt-tool clean
 注意：
 
 * 默认只捆绑 `yt-dlp`；`ffmpeg` 需在打包时显式开启（`--with-ffmpeg` / `-WithFfmpeg`）
+* 启用 `with_ffmpeg` 时，必须提供**固定版本 URL + SHA256**；脚本会拒绝 `/latest/` 可变地址并在校验失败时中止
 * 若未启用 ffmpeg 捆绑，目标机器仍需自行安装 `ffmpeg`
+
+CI（Release workflow）读取以下 Repository Variables：
+* `YT_TOOL_FFMPEG_MACOS_URL`
+* `YT_TOOL_FFMPEG_MACOS_SHA256`
+* `YT_TOOL_FFMPEG_WINDOWS_URL`
+* `YT_TOOL_FFMPEG_WINDOWS_SHA256`
 
 ---
 
