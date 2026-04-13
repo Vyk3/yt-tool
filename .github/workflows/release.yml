@@ -145,6 +145,15 @@ jobs:
           name: yt-tool-Windows
           path: dist/
 
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --notes "Release $TAG"
+          fi
+
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
