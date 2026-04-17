@@ -61,6 +61,22 @@ RELEASE_CHECKLIST.md
 
 ---
 
+## Agent 规则单源（Claude + Codex）
+
+为避免 `AGENTS.md` / `CLAUDE.md` 双维护漂移，本仓库采用：
+
+- `AGENTS.md` 作为规则单一来源（SSOT）
+- `CLAUDE.md` 作为指向 `AGENTS.md` 的软链接
+- 本地/CI 可执行：
+
+```bash
+bash scripts/check_agent_docs.sh
+```
+
+若环境不支持软链接，允许临时降级为两文件同内容，但必须通过上述脚本的一致性检查。
+
+---
+
 ## 运行依赖
 
 依赖管理采用两层：
