@@ -2,7 +2,7 @@
 
 ## 角色分工
 
-角色定义与职责见 [`agents/`](agents/) 目录。
+角色说明见 [`agents/`](agents/)（人类参考，执行 agent 不自动加载）。执行约束已全部内联于本文件。
 调用方式因运行时不同：
 
 | 运行时 | Builder | Reviewer |
@@ -27,7 +27,7 @@ lint:  ruff check app/ tests/
 test:  python -m pytest tests/ -q
 ```
 
-详细工作流命令（commit 前格式整理、push 后 CI 确认、Playwright GUI 测试）见 `.claude/rules/workflow.md`。
+详细工作流命令（TDD 节奏、格式整理、CI 确认、Playwright GUI 测试）见 `skills/workflow.md`（按需加载）。
 
 ---
 
