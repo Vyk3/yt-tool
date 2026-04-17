@@ -16,3 +16,5 @@
 | Codex CLI | 替代实现子 agent | 需用户明确授权 |
 
 接手完成后，后续改动由 Builder 负责，不反复委托 Rescuer。
+
+返回格式与压缩要求见 [`output_contract.md`](output_contract.md)。
