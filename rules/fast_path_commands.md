@@ -132,17 +132,29 @@ bash scripts/fast_path.sh status
 bash scripts/fast_path.sh branch
 bash scripts/fast_path.sh diffstat
 bash scripts/fast_path.sh files
+bash scripts/fast_path.sh files app
 bash scripts/fast_path.sh lint
 bash scripts/fast_path.sh test
 bash scripts/fast_path.sh ci
+bash scripts/fast_path.sh ci --json
 bash scripts/fast_path.sh ci-watch
+bash scripts/fast_path.sh ci-watch --interval 30 --timeout 180
 ```
 
 该入口的约束是：
 
 - 只接受固定子命令
+- 只允许少量显式校验过的可选参数
 - 不接受任意 shell 片段
 - 超出模板能力时必须回退到常规命令调用
+
+当前已显式允许的变参：
+
+- `files [app|tests|scripts|rules|skills|agents]`
+- `ci [--json]`
+- `ci-watch [--interval N] [--timeout N]`
+
+不在以上列表内的参数，默认拒绝。
 
 ## 本轮是否实现
 
@@ -164,6 +176,6 @@ bash scripts/fast_path.sh ci-watch
 后续仍可继续补充：
 
 - 对模板输出补更细的摘要预算说明
-- 为少量允许变参的模板补显式参数校验
+- 为少量允许变参的模板继续做显式参数校验
 
 仍不建议在没有宿主支持的前提下，引入新的命令前缀语法或本地模拟层。

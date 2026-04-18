@@ -53,10 +53,13 @@ bash scripts/fast_path.sh status
 bash scripts/fast_path.sh branch
 bash scripts/fast_path.sh diffstat
 bash scripts/fast_path.sh files
+bash scripts/fast_path.sh files app
 bash scripts/fast_path.sh lint
 bash scripts/fast_path.sh test
 bash scripts/fast_path.sh ci
+bash scripts/fast_path.sh ci --json
 bash scripts/fast_path.sh ci-watch
+bash scripts/fast_path.sh ci-watch --interval 30 --timeout 180
 ```
 
 适用原则：
@@ -65,6 +68,7 @@ bash scripts/fast_path.sh ci-watch
 - 需要复杂参数时回退到常规命令调用
 - 不把该入口扩展成任意 shell 包装层
 - `lint` / `test` 模板默认复用当前仓库环境；依赖未安装时应先准备虚拟环境和运行依赖
+- 允许的变参只有文档中明确列出的少量选项，不接受任意扩展参数
 
 ## CI 状态确认（push 后 / PR merge 前）
 
