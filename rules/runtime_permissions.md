@@ -1,6 +1,6 @@
 # Runtime Permission Inventory
 
-本文件记录项目实际生效的运行时权限与 hook 清单，用于和文档规则保持同步。
+本文件记录项目运行时权限治理的当前状态，用于和实际配置保持同步。
 
 范围包括：
 
@@ -8,23 +8,39 @@
 - Claude Code 项目级 `permissions.allow`
 - Claude Code 项目级 hooks
 
-目标不是复制完整配置，而是记录当前治理结论：哪些保留，哪些待确认，哪些建议移除。
+目标不是复制完整配置，而是保留最值得维护的治理信息：
+
+- 当前事实源在哪里
+- 哪些项需要继续确认
+- 哪些项属于特殊保留
+- 最近一次修剪做了什么
+
+实际配置始终以运行时文件为准，不在本文件中追求完整枚举。
+
+## 事实源
+
+### Codex
+
+- 本地 prefix rules：`/Users/koa/.codex/rules/default.rules`
+
+### Claude
+
+- 项目权限配置：`/Users/koa/Desktop/yt-tool/.claude/settings.local.json`
+- 项目 hooks：`.claude/hooks/filter_bash_output.sh`
+- 项目 hooks：`.claude/hooks/post_compact_reminder.sh`
+
+## 当前治理状态
+
+### 已稳定保留的类型
+
+- 只读 Git 查询
+- 固定验证命令
+- 固定脚本入口
+- 与当前仓库直接相关、边界清晰的低风险本地操作
+
+这类项的长期约束见 `rules/allowlist.md`，不在本文件里逐条展开。
 
 ## Codex Prefix Rules
-
-### 建议保留
-
-- `["git", "add"]`
-- `["git", "checkout", "-b"]`
-- `[".venv/bin/python", "-m", "pytest"]`
-- `["scripts/build/macos/build_app.sh"]`
-- `["gh", "run", "list"]`
-- `["gh", "run", "view"]`
-- `["gh", "run", "watch"]`
-- `["gh", "variable", "list", "--repo", "Vyk3/yt-tool"]`
-- `["curl", "-sL", "https://evermeet.cx/ffmpeg/info/ffmpeg/release"]`
-- `["curl", "-sL", "https://evermeet.cx/ffmpeg/info/ffprobe/release"]`
-- `["curl", "-sL", "https://api.github.com/repos/yt-dlp/FFmpeg-Builds/releases/latest"]`
 
 ### 待确认
 
@@ -37,63 +53,39 @@
 
 - 以上四条当前继续保留，但属于后续 review 时需要再次确认的范围。
 
-### 建议移除
+### 最近一次修剪结果
 
-- 当前无。此前标记为建议移除的历史前缀已从本地 Codex 规则文件中删除。
+- 已删除旧 worktree 路径绑定前缀
+- 已删除旧 run id / 旧 PR 编号绑定前缀
+- 已删除一次性下载 URL 与历史环境准备前缀
 
-说明：
-
-- 已删除项主要是旧 worktree、旧 run id、一次性 URL 或历史环境准备动作。
+当前无“已知应立即删除但尚未处理”的 Codex 前缀项。
 
 ## Claude Permissions
 
 配置入口：`/Users/koa/Desktop/yt-tool/.claude/settings.local.json`
 
-### 建议保留
-
-- `Bash(claude plugin:*)`
-- `Skill(codex:review)`
-- `WebFetch(domain:www.anthropic.com)`
-- `Bash(git status*)`
-- `Bash(git diff*)`
-- `Bash(git log*)`
-- `Bash(git show*)`
-- `Bash(git branch --list*)`
-- `Bash(git branch -vv*)`
-- `Bash(git remote -v*)`
-- `Bash(git rev-parse*)`
-- `Bash(git ls-files*)`
-- `Bash(git blame*)`
-- `Bash(git config --get*)`
-- `Bash(git config --list*)`
-- `Bash(git add *)`
-- `Bash(git checkout -b *)`
-- `Bash(python3 -m pytest*)`
-- `Bash(ruff check*)`
-- `Bash(ruff format*)`
-- `Bash(python3 -c *)`
-- `Bash(which *)`
-- `Bash(command -v *)`
-- `Bash(bash scripts/fmt.sh*)`
-- `Bash(bash scripts/check_ci.sh*)`
-- `Bash(.venv/bin/python3 -m pytest*)`
-
 ### 待确认
 
-- `Bash(git commit *)`
+- `Bash(git commit -m *)`
 
 说明：
 
-- `python3 -c *` 经确认当前继续保留。
-- `git commit *` 仍建议在后续 review 时单独确认是否应长期低摩擦放行。
+- `git commit` 权限已从宽泛模式收窄为 `git commit -m *`
+- 该项当前可保留，但仍应在后续 review 中确认是否长期维持低摩擦放行
 
-### 建议移除
+### 特殊保留
 
-- 当前无必须立刻移除项。
+- `Bash(python3 -c *)`
+
+说明：
+
+- 该项经过讨论后决定继续保留
+- 它不属于默认推荐的宽权限模式，因此需要在本文件中显式标注，而不是埋在全量清单里
+
+当前无“已知应立即删除但尚未处理”的 Claude 权限项。
 
 ## Claude Hooks
-
-### 建议保留
 
 - `.claude/hooks/filter_bash_output.sh`
 - `.claude/hooks/post_compact_reminder.sh`
@@ -103,16 +95,11 @@
 - 前者已经承担 Bash 输出裁剪，与输出协议方向一致。
 - 后者在 compact 后重新注入关键提醒，能降低上下文压缩后的流程漂移。
 
-### 待确认
+当前无待确认或待移除的 hook 项。
 
-- 当前无。
+## 维护规则
 
-### 建议移除
-
-- 当前无。
-
-## 使用方式
-
-每次进行权限修剪时，先更新实际配置，再同步更新本文件中的状态。
-
-如果文档结论与实际配置不一致，以“需要补齐治理动作”视之，而不是默认文档已生效。
+- 先改实际配置，再更新本文件
+- 本文件只保留待确认项、特殊保留项和最近一次修剪结果
+- 已稳定保留的低风险项不再逐条抄录
+- 如果文档结论与实际配置不一致，以“需要补齐治理动作”视之，而不是默认文档已生效
