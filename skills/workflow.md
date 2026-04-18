@@ -44,6 +44,28 @@ bash scripts/fmt.sh app/gui  # 只整理指定路径
 
 执行 `ruff check --fix` + `ruff format`，优先使用 `.venv/bin/ruff`，回退到系统 ruff。
 
+## Fast Path 固定模板
+
+对高频、低风险、边界清晰的命令，优先走固定模板入口，而不是每次临场拼接：
+
+```bash
+bash scripts/fast_path.sh status
+bash scripts/fast_path.sh branch
+bash scripts/fast_path.sh diffstat
+bash scripts/fast_path.sh files
+bash scripts/fast_path.sh lint
+bash scripts/fast_path.sh test
+bash scripts/fast_path.sh ci
+bash scripts/fast_path.sh ci-watch
+```
+
+适用原则：
+
+- 只用于固定模板已覆盖的高频命令
+- 需要复杂参数时回退到常规命令调用
+- 不把该入口扩展成任意 shell 包装层
+- `lint` / `test` 模板默认复用当前仓库环境；依赖未安装时应先准备虚拟环境和运行依赖
+
 ## CI 状态确认（push 后 / PR merge 前）
 
 ```bash
