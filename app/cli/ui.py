@@ -12,11 +12,11 @@
 """
 from __future__ import annotations
 
-import platform
 import sys
 
 from wcwidth import wcswidth, wcwidth
 
+from ..core import config
 from ..core.format_detector import AudioFormat, SubtitleTrack, VideoFormat
 
 # ---- ANSI 颜色常量 ----
@@ -533,7 +533,7 @@ def ask_cookie_browser() -> str | None:
     print(_c(_DIM, "  用于下载需要登录的内容（YouTube Premium、私人视频等）"))
     print(f"  {_c(_BOLD, '1')}) Chrome")
     print(f"  {_c(_BOLD, '2')}) Firefox")
-    is_macos = platform.system() == "Darwin"
+    is_macos = config.IS_MAC
     if is_macos:
         print(f"  {_c(_BOLD, '3')}) Safari")
     print(f"  {_c(_BOLD, '4')}) Edge")

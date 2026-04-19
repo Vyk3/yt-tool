@@ -310,7 +310,7 @@ def _validate_top_candidates(
     cookies_from: str | None = None,
     extra_args: list[str] | None = None,
 ) -> tuple[VideoFormat, ...] | tuple[AudioFormat, ...]:
-    """只预检排序靠前的候选；若一个都没通过，则继续向后探测直到找到可用项。"""
+    """只预检前 N 个候选；若首轮都失败则继续探测，直到至少命中 1 个可用项。"""
     if not formats:
         return formats
 

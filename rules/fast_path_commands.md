@@ -22,7 +22,7 @@
 
 - `ruff check app/ tests/`
 - `python -m pytest tests/ -q`
-- `bash scripts/check_ci.sh`
+- `bash tools/check_ci.sh`
 
 ### 信息检索
 
@@ -110,7 +110,7 @@
 - `rg --files`
 - `ruff check app/ tests/`
 - `python -m pytest tests/ -q`
-- `bash scripts/check_ci.sh`
+- `bash tools/check_ci.sh`
 
 这些命令的共同特征是：高频、边界清晰、输出可压缩、失败副作用低。
 

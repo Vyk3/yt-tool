@@ -1,5 +1,5 @@
 # Python 包依赖（单文件方案）
-# 安装: python3 -m pip install -r requirements.txt
+# 安装: python3 -m pip install -r requirements-cli.txt
 # GUI 依赖（pywebview）见 pyproject.toml [gui] extra：pip install ".[gui]"
 yt-dlp>=2025.1.0
 

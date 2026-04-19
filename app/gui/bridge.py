@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import platform
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -139,4 +138,4 @@ class Api:
         }
 
     def get_platform(self) -> str:
-        return platform.system()
+        return config.SYSTEM
