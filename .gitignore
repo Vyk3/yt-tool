@@ -11,6 +11,7 @@ __pycache__/
 *.pyz
 *.egg-info/
 .pytest_cache/
+.ruff_cache/
 
 # Build artifacts
 /build/
@@ -32,7 +33,26 @@ node_modules/
 
 # Local config (machine-specific, not for VCS)
 .mcp.json
-.claude/settings.local.json
+.claude/
 
-# Local-only docs
+# Local-only design notes
 GUI_ARCHITECTURE.md
+
+# Cross-agent local workflow layer
+AGENTS.md
+CLAUDE.md
+agents/
+rules/
+skills/
+
+# Local-only maintenance docs
+MIGRATION_NOTES.md
+RELEASE_CHECKLIST.md
+TEST_REPORT.md
+WINDOWS_ACCEPTANCE_TEMPLATE.md
+.github/pull_request_template.md
+
+# Local-only helper scripts
+scripts/check_ci.sh
+scripts/fast_path.sh
+scripts/fmt.sh
