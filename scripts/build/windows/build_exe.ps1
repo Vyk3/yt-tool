@@ -55,61 +55,24 @@ if (-not (Test-Path $VendorBinDir)) {
 }
 
 if ($WithFfmpeg) {
-    if ([string]::IsNullOrWhiteSpace($FfmpegUrl)) {
-        throw 'Missing ffmpeg source URL. Set -FfmpegUrl or YT_TOOL_FFMPEG_WINDOWS_URL.'
+    $prepareScript = Join-Path $ProjectDir 'scripts\build\common\prepare_ffmpeg.py'
+    $prepareArgs = @(
+        $prepareScript,
+        '--platform', 'windows',
+        '--vendor-bin-dir', $VendorBinDir,
+        '--ffmpeg-url', $FfmpegUrl,
+        '--ffmpeg-sha256', $FfmpegSha256
+    )
+    if ($Clean) {
+        $prepareArgs += '--clean'
     }
-    if ([string]::IsNullOrWhiteSpace($FfmpegSha256)) {
-        throw 'Missing ffmpeg SHA256. Set -FfmpegSha256 or YT_TOOL_FFMPEG_WINDOWS_SHA256.'
-    }
-    if ($FfmpegUrl -match '/latest/') {
-        throw "Refuse mutable ffmpeg URL: $FfmpegUrl. Use a pinned, versioned archive URL."
-    }
-
-    $FfmpegBin = Join-Path $VendorBinDir 'ffmpeg.exe'
-    $FfprobeBin = Join-Path $VendorBinDir 'ffprobe.exe'
-
-    if ($Clean -or -not (Test-Path $FfmpegBin) -or -not (Test-Path $FfprobeBin)) {
-        Write-Host 'Downloading ffmpeg archive...'
-        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("yt-tool-ffmpeg-" + [System.Guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path $tempDir | Out-Null
-        try {
-            $archivePath = Join-Path $tempDir 'ffmpeg-win.zip'
-            $oldProgressPreference = $ProgressPreference
-            try {
-                $ProgressPreference = 'SilentlyContinue'
-                Invoke-WebRequest -Uri $FfmpegUrl -OutFile $archivePath
-            } finally {
-                $ProgressPreference = $oldProgressPreference
-            }
-            $actualSha = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
-            $expectedSha = $FfmpegSha256.Trim().ToLowerInvariant()
-            if ($actualSha -ne $expectedSha) {
-                throw @(
-                    'ffmpeg archive SHA256 mismatch.',
-                    "  expected: $expectedSha",
-                    "  actual  : $actualSha",
-                    "  source  : $FfmpegUrl"
-                ) -join [Environment]::NewLine
-            }
-
-            $extractDir = Join-Path $tempDir 'extract'
-            Expand-Archive -Path $archivePath -DestinationPath $extractDir -Force
-
-            $ffmpegSrc = Get-ChildItem -Path $extractDir -Recurse -File -Filter 'ffmpeg.exe' | Select-Object -First 1
-            $ffprobeSrc = Get-ChildItem -Path $extractDir -Recurse -File -Filter 'ffprobe.exe' | Select-Object -First 1
-            if ($null -eq $ffmpegSrc -or $null -eq $ffprobeSrc) {
-                throw "ffmpeg archive does not contain ffmpeg.exe + ffprobe.exe: $FfmpegUrl"
-            }
-
-            Copy-Item -Path $ffmpegSrc.FullName -Destination $FfmpegBin -Force
-            Copy-Item -Path $ffprobeSrc.FullName -Destination $FfprobeBin -Force
-        } finally {
-            Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
-        Write-Host "ffmpeg binary: $FfmpegBin"
-        Write-Host "ffprobe binary: $FfprobeBin"
+    if ($Python -eq 'py') {
+        & $Python -3 @prepareArgs
     } else {
-        Write-Host "ffmpeg binaries already present: $FfmpegBin / $FfprobeBin"
+        & $Python @prepareArgs
+    }
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
     }
 }
 

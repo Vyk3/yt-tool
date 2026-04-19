@@ -73,10 +73,10 @@ bash scripts/fast_path.sh ci-watch --interval 30 --timeout 180
 ## CI 状态确认（push 后 / PR merge 前）
 
 ```bash
-bash scripts/check_ci.sh                      # 查询一次当前分支 CI 状态
-bash scripts/check_ci.sh --watch              # 轮询直到终态（默认 60s 间隔，300s 超时）
-bash scripts/check_ci.sh --branch feat/xxx    # 查询指定分支
-bash scripts/check_ci.sh --json               # JSON 输出（适合自动化消费）
+bash tools/check_ci.sh                      # 查询一次当前分支 CI 状态
+bash tools/check_ci.sh --watch              # 轮询直到终态（默认 60s 间隔，300s 超时）
+bash tools/check_ci.sh --branch feat/xxx    # 查询指定分支
+bash tools/check_ci.sh --json               # JSON 输出（适合自动化消费）
 ```
 
 输出摘要：`passed` / `failed` / `pending` / `not_found` / `unavailable`
