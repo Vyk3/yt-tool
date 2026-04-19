@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import importlib.util
-import platform
 import shutil
 import sys
 from dataclasses import dataclass
 
-_SYSTEM: str = platform.system()
+from . import config
 
 # (逻辑名, 是否必需, 候选命令名, 可选 Python 模块名)
 TARGETS: tuple[tuple[str, bool, tuple[str, ...], str | None], ...] = (
@@ -57,7 +56,7 @@ def _install_hint(dep: str) -> str:
         "ffmpeg": "sudo apt install ffmpeg  或使用发行版对应包管理器安装",
     }
 
-    hints = hints_map.get(_SYSTEM, default_hints)
+    hints = hints_map.get(config.SYSTEM, default_hints)
     return hints.get(dep, f"请参考 {dep} 官方文档安装")
 
 

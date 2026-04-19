@@ -164,7 +164,7 @@ run_ci() {
         ;;
     esac
   done
-  bash scripts/check_ci.sh "${args[@]}"
+  bash tools/check_ci.sh "${args[@]}"
 }
 
 run_ci_watch() {
@@ -194,7 +194,7 @@ run_ci_watch() {
   local args=(--watch)
   [[ -n "${interval}" ]] && args+=(--interval "${interval}")
   [[ -n "${timeout}" ]] && args+=(--timeout "${timeout}")
-  bash scripts/check_ci.sh "${args[@]}"
+  bash tools/check_ci.sh "${args[@]}"
 }
 
 cmd="${1}"

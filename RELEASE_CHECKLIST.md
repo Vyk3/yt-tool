@@ -42,10 +42,16 @@
 ## 6. Packaging
 - [ ] 验证 launcher 与 `python -m app` 入口策略一致（GUI 优先，失败回退 CLI）
 - [ ] 验证 `--cli` 与 `YT_TOOL_MODE=cli` 在 macOS/Windows 可用
-- [ ] 验证 `requirements.txt`（含 GUI 依赖）可在干净环境安装
+- [ ] 验证 `requirements-cli.txt + .[gui]` 可在干净环境安装
 - [x] macOS 冒烟（默认轻量，不捆绑 ffmpeg）已通过
 - [x] macOS 冒烟（启用 ffmpeg 捆绑）已通过
 - [x] 体积对比已记录（macOS）：`.app` 265M -> 370M；`.dmg` 134M -> 175M
 - [x] 发布策略已确认：Release 默认轻量包；`workflow_dispatch` 可选开启 ffmpeg 捆绑
 - [x] with_ffmpeg 来源固定与 SHA256 校验策略已落地（脚本 + release workflow 双重门禁）
 - [ ] Windows 真机验收（含 with/without ffmpeg）仍为阻塞项，未完成前不勾选（执行模板：`WINDOWS_ACCEPTANCE_TEMPLATE.md`）
+
+## 7. CI Matrix 收敛观察（D1）
+- [x] 阶段一落地：主门禁 4 组合 -> 2 组合，保留 3.13 shadow
+- [ ] 连续观察窗口内确认无新增平台/版本回归
+- [ ] 满足回滚阈值检查（若 shadow 连续失败或出现仅被移除组合可复现缺陷，恢复上一档矩阵）
+- [ ] 决策是否进入阶段二（2 -> 1 组合）

@@ -2,7 +2,8 @@
 
 ## 角色分工
 
-角色说明见 [`agents/`](agents/)（人类参考，执行 agent 不自动加载）。执行约束已全部内联于本文件。
+`AGENTS.md` 仅承载跨 agent 公共约束；角色专属说明维护在 [`agents/`](agents/)（人类参考，执行 agent 不自动加载）。
+各角色返回格式约束见 [`agents/output_contract.md`](agents/output_contract.md)。
 调用方式因运行时不同：
 
 | 运行时 | Builder | Reviewer |

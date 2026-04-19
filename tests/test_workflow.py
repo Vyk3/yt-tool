@@ -7,7 +7,13 @@ import pytest
 
 from app.core.downloader import DownloadResult
 from app.core.env_check import CheckResult
-from app.services.models import DetectRequest, DownloadRequest, ProgressEvent, TaskResult
+from app.services.models import (
+    DetectRequest,
+    DownloadKind,
+    DownloadRequest,
+    ProgressEvent,
+    TaskResult,
+)
 from app.services.workflow import AppWorkflow, _is_format_unavailable_error
 
 # ---------------------------------------------------------------------------
@@ -97,12 +103,32 @@ class TestDetectFormats:
         assert resp.playlist_title == "My Playlist"
         assert resp.playlist_count == 5
 
+    def test_validate_formats_false_skips_prevalidation(self, sample_detect_result):
+        with patch("app.services.workflow.detect", return_value=sample_detect_result), \
+             patch("app.services.workflow.validate_detected_formats") as mock_validate:
+            resp = AppWorkflow().detect_formats(
+                DetectRequest(url="http://x.com", validate_formats=False)
+            )
+        assert resp.title == sample_detect_result.title
+        mock_validate.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # run_download
 # ---------------------------------------------------------------------------
 
 class TestRunDownload:
+    def test_download_request_accepts_legacy_string_kind(self, tmp_path):
+        req = DownloadRequest(kind="audio", url="http://x.com", dest_dir=str(tmp_path), format_id="140")
+        assert req.kind == DownloadKind.AUDIO
+
+    def test_invalid_kind_returns_structured_error(self, tmp_path):
+        req = DownloadRequest(kind="invalid-kind", url="http://x.com", dest_dir=str(tmp_path))
+        result = AppWorkflow().run_download(req)
+        assert result.ok is False
+        assert result.state == "error"
+        assert "Unknown kind" in result.error
+
     def test_audio_download_success(self, tmp_path):
         fake = _make_dl_result(ok=True, saved_path=str(tmp_path / "x.m4a"))
         with patch("app.services.workflow.download_audio", return_value=fake):

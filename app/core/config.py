@@ -4,11 +4,11 @@ from __future__ import annotations
 import platform
 from pathlib import Path
 
-# 平台判断只取一次
-_SYSTEM: str = platform.system()
-IS_WINDOWS: bool = _SYSTEM == "Windows"
-IS_MAC: bool = _SYSTEM == "Darwin"
-IS_LINUX: bool = _SYSTEM == "Linux"
+# 平台判断只取一次，其他模块统一复用这里的常量。
+SYSTEM: str = platform.system()
+IS_WINDOWS: bool = SYSTEM == "Windows"
+IS_MAC: bool = SYSTEM == "Darwin"
+IS_LINUX: bool = SYSTEM == "Linux"
 
 
 def _default_downloads() -> Path:

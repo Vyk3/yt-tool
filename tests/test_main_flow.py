@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from app.cli.main import main
+from app.cli.main import _retryable_refresh, main
 
 
 class TestMainFlow:
@@ -115,3 +115,39 @@ class TestMainFlow:
             result = main(["http://example.com"])
             assert result == 0
             assert mock_download.call_count == 2
+
+
+class TestRetryableRefresh:
+    def test_returns_refreshed_info_on_first_format_error(self, sample_detect_result):
+        with patch("app.cli.main._refresh_detect_info", return_value=sample_detect_result) as mock_refresh:
+            refreshed = _retryable_refresh(
+                attempt=0,
+                error="Requested format is not available",
+                workflow=MagicMock(),
+                url="http://example.com",
+                has_formats=lambda info: bool(info.audio_formats),
+            )
+        assert refreshed is sample_detect_result
+        mock_refresh.assert_called_once()
+
+    def test_returns_none_when_refreshed_info_has_no_usable_formats(self, sample_detect_result):
+        empty_audio = sample_detect_result.__class__(
+            title=sample_detect_result.title,
+            raw_json=sample_detect_result.raw_json,
+            video_formats=sample_detect_result.video_formats,
+            audio_formats=(),
+            subtitles=sample_detect_result.subtitles,
+            auto_subtitles=sample_detect_result.auto_subtitles,
+            is_playlist=sample_detect_result.is_playlist,
+            playlist_title=sample_detect_result.playlist_title,
+            playlist_count=sample_detect_result.playlist_count,
+        )
+        with patch("app.cli.main._refresh_detect_info", return_value=empty_audio):
+            refreshed = _retryable_refresh(
+                attempt=0,
+                error="Requested format is not available",
+                workflow=MagicMock(),
+                url="http://example.com",
+                has_formats=lambda info: bool(info.audio_formats),
+            )
+        assert refreshed is None
