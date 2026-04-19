@@ -58,6 +58,7 @@
 - 已删除旧 worktree 路径绑定前缀
 - 已删除旧 run id / 旧 PR 编号绑定前缀
 - 已删除一次性下载 URL 与历史环境准备前缀
+- 已建立 worktree 生命周期检查：任务收口前执行 `git worktree list`，清理已弃用 worktree（删除操作需二次确认）
 
 当前无“已知应立即删除但尚未处理”的 Codex 前缀项。
 
