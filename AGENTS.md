@@ -57,6 +57,7 @@ test:  python -m pytest tests/ -q
 - 同一分支连续 CI 失败 2 次 → 暂停推送，先完成失败归因
 - feature branch → main 优先 squash merge，保持 main 历史线性
 - PR 描述默认使用 [`.github/pull_request_template.md`](.github/pull_request_template.md) 并完整填写
+- PR 命令层约束见 [`rules/pr_operations.md`](rules/pr_operations.md)
 
 ---
 
