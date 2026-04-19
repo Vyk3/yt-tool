@@ -90,7 +90,7 @@ ruff check app/ tests/
 python -m pytest tests/ -q
 ```
 
-当前分支最近一次本地回归：`160 passed, 1 skipped`。
+当前分支最近一次本地回归：`159 passed, 1 skipped`。
 
 ## 打包（维护者）
 
