@@ -2,6 +2,11 @@
 
 `yt-tool` 是一个基于 `yt-dlp` 的下载工具，提供 GUI + CLI 双入口，支持视频、音频、字幕和播放列表下载。
 
+## License
+
+- 项目代码采用 `MIT` 许可证，见 [LICENSE](LICENSE)。
+- 发布产物中如捆绑 `ffmpeg` / `ffprobe`，其第三方许可证见 [LICENSE_FFMPEG.txt](LICENSE_FFMPEG.txt)。
+
 ## 给普通用户
 
 推荐直接使用 Release 产物：
