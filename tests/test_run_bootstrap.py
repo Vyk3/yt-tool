@@ -41,6 +41,4 @@ def test_patch_frozen_path_adds_bundle_and_exec_bits(monkeypatch, tmp_path):
     if os.name != "nt":
         for helper_path in helper_paths:
             mode = helper_path.stat().st_mode
-            assert mode & stat.S_IXUSR
-            assert mode & stat.S_IXGRP
-            assert mode & stat.S_IXOTH
+            assert mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
