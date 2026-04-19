@@ -136,6 +136,3 @@ python -m pip install -r requirements-cli.txt ".[gui]" pyinstaller
 
 - 变更记录：[CHANGELOG.md](CHANGELOG.md)
 - 已知限制：[KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)
-- 发布清单：[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
-- 迁移说明：[MIGRATION_NOTES.md](MIGRATION_NOTES.md)
-- Windows 验收模板：[WINDOWS_ACCEPTANCE_TEMPLATE.md](WINDOWS_ACCEPTANCE_TEMPLATE.md)
