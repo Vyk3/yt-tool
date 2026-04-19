@@ -5,13 +5,13 @@
 *.swo
 
 # Python
-.venv/
-__pycache__/
+/.venv/
+/__pycache__/
 *.pyc
 *.pyz
 *.egg-info/
-.pytest_cache/
-.ruff_cache/
+/.pytest_cache/
+/.ruff_cache/
 
 # Build artifacts
 /build/
@@ -22,37 +22,37 @@ __pycache__/
 !yt-tool.spec
 
 # Dependencies
-vendor/bin/
-node_modules/
+/vendor/bin/
+/node_modules/
 
 # Environment
-.env
+/.env
 
 # Editor
-.vscode/
+/.vscode/
 
 # Local config (machine-specific, not for VCS)
-.mcp.json
-.claude/
+/.mcp.json
+/.claude/
 
 # Local-only design notes
-GUI_ARCHITECTURE.md
+/GUI_ARCHITECTURE.md
 
 # Cross-agent local workflow layer
-AGENTS.md
-CLAUDE.md
-agents/
-rules/
-skills/
+/AGENTS.md
+/CLAUDE.md
+/agents/
+/rules/
+/skills/
 
 # Local-only maintenance docs
-MIGRATION_NOTES.md
-RELEASE_CHECKLIST.md
-TEST_REPORT.md
-WINDOWS_ACCEPTANCE_TEMPLATE.md
-.github/pull_request_template.md
+/MIGRATION_NOTES.md
+/RELEASE_CHECKLIST.md
+/TEST_REPORT.md
+/WINDOWS_ACCEPTANCE_TEMPLATE.md
+/.github/pull_request_template.md
 
 # Local-only helper scripts
-scripts/check_ci.sh
-scripts/fast_path.sh
-scripts/fmt.sh
+/scripts/check_ci.sh
+/scripts/fast_path.sh
+/scripts/fmt.sh
