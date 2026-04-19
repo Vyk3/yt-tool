@@ -347,6 +347,35 @@ def _archive_args(
     return ["--download-archive", str(archive_path)]
 
 
+def _build_download(
+    url: str,
+    output_dir: str | Path,
+    *,
+    cookies_from: str | None,
+    extra_args: list[str] | None,
+    on_chunk: Callable[[str], None] | None,
+    args_fn: Callable[[Path], list[str]],
+    output_template_fn: Callable[[Path], str],
+    post_output_args: list[str] | None = None,
+) -> DownloadResult:
+    """下载入口通用骨架：准备目录、拼参数、执行 yt-dlp。"""
+    dest = _prepare_output_dir(output_dir)
+    if isinstance(dest, DownloadResult):
+        return dest
+
+    args = _common_args()
+    args += _cookie_args(cookies_from)
+    args += args_fn(dest)
+    if extra_args:
+        args += extra_args
+    args += ["-o", output_template_fn(dest)]
+    if post_output_args:
+        args += post_output_args
+    args.append(url)
+
+    return _run_ytdlp(args, on_chunk=on_chunk)
+
+
 def download_video(
     url: str,
     format_id: str,
@@ -366,23 +395,22 @@ def download_video(
     if not url or not format_id:
         return DownloadResult(ok=False, output="", error="url and format_id required")
 
-    dest = _prepare_output_dir(output_dir)
-    if isinstance(dest, DownloadResult):
-        return dest
+    def _video_args(_: Path) -> list[str]:
+        args = ["-f", format_id, "--merge-output-format", config.YT_PREFER_VIDEO_CONTAINER]
+        if embed_subs_lang:
+            args += ["--write-subs", "--embed-subs", "--sub-langs", embed_subs_lang]
+            args += ["--sub-format", "best"]
+        return args
 
-    args = _common_args()
-    args += _cookie_args(cookies_from)
-    args += ["-f", format_id]
-    args += ["--merge-output-format", config.YT_PREFER_VIDEO_CONTAINER]
-    if embed_subs_lang:
-        args += ["--write-subs", "--embed-subs", "--sub-langs", embed_subs_lang]
-        args += ["--sub-format", "best"]
-    if extra_args:
-        args += extra_args
-    args += ["-o", str(dest / "%(title)s.%(ext)s")]
-    args.append(url)
-
-    return _run_ytdlp(args, on_chunk=on_chunk)
+    return _build_download(
+        url,
+        output_dir,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+        on_chunk=on_chunk,
+        args_fn=_video_args,
+        output_template_fn=lambda dest: str(dest / "%(title)s.%(ext)s"),
+    )
 
 
 def download_audio(
@@ -404,21 +432,21 @@ def download_audio(
     if not url or not format_id:
         return DownloadResult(ok=False, output="", error="url and format_id required")
 
-    dest = _prepare_output_dir(output_dir)
-    if isinstance(dest, DownloadResult):
-        return dest
+    def _audio_args(_: Path) -> list[str]:
+        args = ["-f", format_id]
+        if transcode_to:
+            args += ["-x", "--audio-format", transcode_to]
+        return args
 
-    args = _common_args()
-    args += _cookie_args(cookies_from)
-    args += ["-f", format_id]
-    if transcode_to:
-        args += ["-x", "--audio-format", transcode_to]
-    if extra_args:
-        args += extra_args
-    args += ["-o", str(dest / "%(title)s.%(ext)s")]
-    args.append(url)
-
-    return _run_ytdlp(args, on_chunk=on_chunk)
+    return _build_download(
+        url,
+        output_dir,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+        on_chunk=on_chunk,
+        args_fn=_audio_args,
+        output_template_fn=lambda dest: str(dest / "%(title)s.%(ext)s"),
+    )
 
 
 def download_subs(
@@ -434,22 +462,19 @@ def download_subs(
     if not url or not lang:
         return DownloadResult(ok=False, output="", error="url and lang required")
 
-    dest = _prepare_output_dir(output_dir)
-    if isinstance(dest, DownloadResult):
-        return dest
+    def _subs_args(_: Path) -> list[str]:
+        return ["--write-subs", "--sub-langs", lang, "--skip-download", "--sub-format", "best"]
 
-    args = _common_args()
-    args += _cookie_args(cookies_from)
-    args += ["--write-subs", "--sub-langs", lang]
-    args += ["--skip-download"]
-    args += ["--sub-format", "best"]
-    if extra_args:
-        args += extra_args
     # yt-dlp 会自动在文件名中插入语言码（如 title.zh-Hans.vtt）
-    args += ["-o", str(dest / "%(title)s.%(ext)s")]
-    args.append(url)
-
-    return _run_ytdlp(args, on_chunk=on_chunk)
+    return _build_download(
+        url,
+        output_dir,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+        on_chunk=on_chunk,
+        args_fn=_subs_args,
+        output_template_fn=lambda dest: str(dest / "%(title)s.%(ext)s"),
+    )
 
 
 def download_auto_subs(
@@ -465,21 +490,18 @@ def download_auto_subs(
     if not url or not lang:
         return DownloadResult(ok=False, output="", error="url and lang required")
 
-    dest = _prepare_output_dir(output_dir)
-    if isinstance(dest, DownloadResult):
-        return dest
+    def _auto_subs_args(_: Path) -> list[str]:
+        return ["--write-auto-subs", "--sub-langs", lang, "--skip-download", "--sub-format", "best"]
 
-    args = _common_args()
-    args += _cookie_args(cookies_from)
-    args += ["--write-auto-subs", "--sub-langs", lang]
-    args += ["--skip-download"]
-    args += ["--sub-format", "best"]
-    if extra_args:
-        args += extra_args
-    args += ["-o", str(dest / "%(title)s.%(ext)s")]
-    args.append(url)
-
-    return _run_ytdlp(args, on_chunk=on_chunk)
+    return _build_download(
+        url,
+        output_dir,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+        on_chunk=on_chunk,
+        args_fn=_auto_subs_args,
+        output_template_fn=lambda dest: str(dest / "%(title)s.%(ext)s"),
+    )
 
 
 def download_playlist(
@@ -499,33 +521,33 @@ def download_playlist(
     if not url or mode not in ("video", "audio"):
         return DownloadResult(ok=False, output="", error="url and valid mode required")
 
-    dest = _prepare_output_dir(output_dir)
-    if isinstance(dest, DownloadResult):
-        return dest
-
-    out_tmpl = str(dest / "%(playlist_title)s" / "%(playlist_index)s - %(title)s.%(ext)s")
-
-    args = _common_args()
-    args += _cookie_args(cookies_from)
-    extra_key = " ".join(extra_args) if extra_args else ""
-    args += _archive_args(mode, output_dir=dest, url=url, extra_key=extra_key)
-    args += _playlist_error_args()
-    if mode == "video":
-        if shutil.which("ffmpeg"):
-            args += ["-f", "bestvideo+bestaudio/best"]
-            args += ["--merge-output-format", config.YT_PREFER_VIDEO_CONTAINER]
+    def _playlist_args(dest: Path) -> list[str]:
+        args: list[str] = []
+        extra_key = " ".join(extra_args) if extra_args else ""
+        args += _archive_args(mode, output_dir=dest, url=url, extra_key=extra_key)
+        args += _playlist_error_args()
+        if mode == "video":
+            if shutil.which("ffmpeg"):
+                args += ["-f", "bestvideo+bestaudio/best"]
+                args += ["--merge-output-format", config.YT_PREFER_VIDEO_CONTAINER]
+            else:
+                # ffmpeg 不可用时回退到渐进式格式，避免选出无法合并的分离流
+                args += ["-f", "best"]
         else:
-            # ffmpeg 不可用时回退到渐进式格式，避免选出无法合并的分离流
-            args += ["-f", "best"]
-    else:
-        # bestaudio（不带 /best 回退）：若无纯音频流则报错，
-        # 避免静默下载完整视频文件违背"仅音频"的用户预期
-        args += ["-f", "bestaudio"]
+            # bestaudio（不带 /best 回退）：若无纯音频流则报错，
+            # 避免静默下载完整视频文件违背"仅音频"的用户预期
+            args += ["-f", "bestaudio"]
+        return args
 
-    if extra_args:
-        args += extra_args
-    args += ["-o", out_tmpl]
-    args += ["--yes-playlist"]
-    args.append(url)
-
-    return _run_ytdlp(args, on_chunk=on_chunk)
+    return _build_download(
+        url,
+        output_dir,
+        cookies_from=cookies_from,
+        extra_args=extra_args,
+        on_chunk=on_chunk,
+        args_fn=_playlist_args,
+        output_template_fn=lambda dest: str(
+            dest / "%(playlist_title)s" / "%(playlist_index)s - %(title)s.%(ext)s"
+        ),
+        post_output_args=["--yes-playlist"],
+    )

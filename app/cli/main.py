@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from collections.abc import Callable
 
 from ..core import config
 from ..core.path_utils import resolve_download_dir
 from ..services.models import DetectRequest, DetectResponse
-from ..services.workflow import AppWorkflow
+from ..services.workflow import AppWorkflow, _is_format_unavailable_error
 from .ui import (
     ask_audio_transcode,
     ask_cookie_browser,
@@ -51,12 +52,6 @@ def _build_media_extra_args(
         flag = "--sponsorblock-mark" if sponsorblock_mode == "mark" else "--sponsorblock-remove"
         args += [flag, cats]
     return args
-
-
-def _is_format_unavailable_error(error: str) -> bool:
-    """判断是否属于格式已失效、可尝试重探测的错误。"""
-    err = error.lower()
-    return "format is not available" in err or "requested format is not available" in err
 
 
 def _run_env_check(workflow: AppWorkflow) -> tuple[bool, bool]:
@@ -106,6 +101,31 @@ def _refresh_detect_info(
     except (RuntimeError, ValueError) as e:
         print(f"重新探测失败: {e}")
         return None
+
+
+def _retryable_refresh(
+    *,
+    attempt: int,
+    error: str,
+    workflow: AppWorkflow,
+    url: str,
+    cookies_from: str | None = None,
+    extra_dl_args: list[str] | None = None,
+    has_formats: Callable[[DetectResponse], bool],
+) -> DetectResponse | None:
+    """首次因格式失效失败时，按需重新探测并返回可继续使用的新结果。"""
+    if attempt != 0 or not _is_format_unavailable_error(error):
+        return None
+
+    refreshed = _refresh_detect_info(
+        workflow,
+        url,
+        cookies_from=cookies_from,
+        extra_dl_args=extra_dl_args,
+    )
+    if refreshed and has_formats(refreshed):
+        return refreshed
+    return None
 
 
 def _get_url(argv: list[str]) -> str | None:
@@ -184,15 +204,18 @@ def _handle_video(
             return dest, embed_lang
 
         show_download_fail("视频", result.error)
-        if attempt == 0 and _is_format_unavailable_error(result.error):
-            refreshed = _refresh_detect_info(
-                workflow, url,
-                cookies_from=cookies_from,
-                extra_dl_args=extra_dl_args,
-            )
-            if refreshed and (refreshed.video_formats or refreshed.audio_formats):
-                current_info = refreshed
-                continue
+        refreshed = _retryable_refresh(
+            attempt=attempt,
+            error=result.error,
+            workflow=workflow,
+            url=url,
+            cookies_from=cookies_from,
+            extra_dl_args=extra_dl_args,
+            has_formats=lambda info: bool(info.video_formats or info.audio_formats),
+        )
+        if refreshed:
+            current_info = refreshed
+            continue
         return dest, None
 
     return None, None
@@ -412,15 +435,18 @@ def main(argv: list[str] | None = None) -> int:
                 break
 
             show_download_fail("音频", result.error)
-            if attempt == 0 and _is_format_unavailable_error(result.error):
-                refreshed = _refresh_detect_info(
-                    workflow, url,
-                    cookies_from=cookies_from,
-                    extra_dl_args=extra_dl_args,
-                )
-                if refreshed and refreshed.audio_formats:
-                    current_info = refreshed
-                    continue
+            refreshed = _retryable_refresh(
+                attempt=attempt,
+                error=result.error,
+                workflow=workflow,
+                url=url,
+                cookies_from=cookies_from,
+                extra_dl_args=extra_dl_args,
+                has_formats=lambda info: bool(info.audio_formats),
+            )
+            if refreshed:
+                current_info = refreshed
+                continue
             break
 
     elif dtype == "subs":

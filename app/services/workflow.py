@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from ..core import config
 from ..core.downloader import (
@@ -24,6 +25,7 @@ from .models import (
     DownloadRequest,
     ProgressEvent,
     TaskResult,
+    TaskState,
 )
 
 
@@ -56,9 +58,10 @@ class AppWorkflow:
 
     def detect_formats(self, request: DetectRequest) -> DetectResponse:
         """探测格式，按配置可选执行预检，返回 DetectResponse。"""
-        no_playlist = "--no-playlist" in request.extra_args
+        no_playlist = request.has_extra_arg("--no-playlist")
         cookies = self._effective_cookies(request.cookies_from)
         info = detect(request.url, cookies_from=cookies, no_playlist=no_playlist)
+        # GUI 首次探测可显式关闭预检，缩短首屏等待时间。
         if config.YT_VALIDATE_FORMATS_BEFORE_MENU and request.validate_formats:
             info = validate_detected_formats(
                 request.url,
@@ -79,7 +82,7 @@ class AppWorkflow:
 
     def build_download_request(
         self,
-        kind: DownloadKind,
+        kind: DownloadKind | str,
         url: str,
         dest_dir: str,
         *,
@@ -119,7 +122,7 @@ class AppWorkflow:
                 _cb(ProgressEvent(stage="download", message=chunk, percent=None))
 
         dl_result = self._dispatch(request, on_chunk)
-        state = "success" if dl_result.ok else "error"
+        state = TaskState.SUCCESS if dl_result.ok else TaskState.ERROR
         return TaskResult(
             ok=dl_result.ok,
             state=state,
@@ -140,7 +143,7 @@ class AppWorkflow:
         """
         first = self.run_download(request, on_progress)
         if not first.ok and _is_format_unavailable_error(first.error):
-            no_playlist = "--no-playlist" in request.extra_args
+            no_playlist = request.has_extra_arg("--no-playlist")
             try:
                 info = detect(
                     request.url,
@@ -153,7 +156,7 @@ class AppWorkflow:
                 return first
             # playlist 的 format_id 是模式字符串（"video"/"audio"），不是真实格式 ID，
             # 跳过可用性检查；video/audio kind 才需要验证
-            if request.kind in ("video", "audio"):
+            if request.kind in (DownloadKind.VIDEO, DownloadKind.AUDIO):
                 available_ids = {f.id for f in (*info.video_formats, *info.audio_formats)}
                 if request.format_id and request.format_id not in available_ids:
                     return first
@@ -172,66 +175,98 @@ class AppWorkflow:
         on_chunk: Callable[[str], None] | None,
     ):  # -> DownloadResult (core type, not re-exported from services)
         """根据 kind 分派到对应的 core downloader 函数。"""
-        kind = request.kind
         cookies = self._effective_cookies(request.cookies_from)
+        try:
+            kind = request.kind if isinstance(request.kind, DownloadKind) else DownloadKind(request.kind)
+        except ValueError:
+            kind = None
 
-        if kind == "video":
-            combined_fmt = (
-                f"{request.format_id}+{request.audio_format_id}"
-                if request.audio_format_id
-                else request.format_id
-            )
-            return download_video(
-                request.url,
-                combined_fmt,
-                request.dest_dir,
-                cookies_from=cookies,
-                embed_subs_lang=request.embed_subs_lang or None,
-                extra_args=list(request.extra_args),
-                on_chunk=on_chunk,
-            )
-
-        if kind == "audio":
-            return download_audio(
-                request.url,
-                request.format_id,
-                request.dest_dir,
-                cookies_from=cookies,
-                transcode_to=request.transcode_to or None,
-                extra_args=list(request.extra_args),
-                on_chunk=on_chunk,
-            )
-
-        if kind == "subtitle":
-            if request.subtitle_lang.startswith("auto:"):
-                actual_lang = request.subtitle_lang[len("auto:"):]
-                return download_auto_subs(
-                    request.url,
-                    actual_lang,
-                    request.dest_dir,
-                    cookies_from=cookies,
-                    extra_args=list(request.extra_args),
-                    on_chunk=on_chunk,
-                )
-            return download_subs(
-                request.url,
-                request.subtitle_lang,
-                request.dest_dir,
-                cookies_from=cookies,
-                extra_args=list(request.extra_args),
-                on_chunk=on_chunk,
-            )
-
-        if kind == "playlist":
-            # format_id 复用为 playlist mode: "video" 或 "audio"
-            return download_playlist(
-                request.url,
-                request.format_id,
-                request.dest_dir,
-                cookies_from=cookies,
-                extra_args=list(request.extra_args),
-                on_chunk=on_chunk,
-            )
+        handlers: dict[DownloadKind, Callable[[str | None, DownloadRequest, Callable[[str], None] | None], Any]] = {
+            DownloadKind.VIDEO: self._dispatch_video,
+            DownloadKind.AUDIO: self._dispatch_audio,
+            DownloadKind.SUBTITLE: self._dispatch_subtitle,
+            DownloadKind.PLAYLIST: self._dispatch_playlist,
+        }
+        if kind in handlers:
+            return handlers[kind](cookies, request, on_chunk)
 
         from ..core.downloader import DownloadResult
-        return DownloadResult(ok=False, output="", error=f"Unknown kind: {kind}")
+        return DownloadResult(ok=False, output="", error=f"Unknown kind: {request.kind}")
+
+    def _dispatch_video(
+        self,
+        cookies: str | None,
+        request: DownloadRequest,
+        on_chunk: Callable[[str], None] | None,
+    ):
+        combined_fmt = (
+            f"{request.format_id}+{request.audio_format_id}"
+            if request.audio_format_id
+            else request.format_id
+        )
+        return download_video(
+            request.url,
+            combined_fmt,
+            request.dest_dir,
+            cookies_from=cookies,
+            embed_subs_lang=request.embed_subs_lang or None,
+            extra_args=list(request.extra_args),
+            on_chunk=on_chunk,
+        )
+
+    def _dispatch_audio(
+        self,
+        cookies: str | None,
+        request: DownloadRequest,
+        on_chunk: Callable[[str], None] | None,
+    ):
+        return download_audio(
+            request.url,
+            request.format_id,
+            request.dest_dir,
+            cookies_from=cookies,
+            transcode_to=request.transcode_to or None,
+            extra_args=list(request.extra_args),
+            on_chunk=on_chunk,
+        )
+
+    def _dispatch_subtitle(
+        self,
+        cookies: str | None,
+        request: DownloadRequest,
+        on_chunk: Callable[[str], None] | None,
+    ):
+        if request.subtitle_lang.startswith("auto:"):
+            actual_lang = request.subtitle_lang[len("auto:"):]
+            return download_auto_subs(
+                request.url,
+                actual_lang,
+                request.dest_dir,
+                cookies_from=cookies,
+                extra_args=list(request.extra_args),
+                on_chunk=on_chunk,
+            )
+        return download_subs(
+            request.url,
+            request.subtitle_lang,
+            request.dest_dir,
+            cookies_from=cookies,
+            extra_args=list(request.extra_args),
+            on_chunk=on_chunk,
+        )
+
+    def _dispatch_playlist(
+        self,
+        cookies: str | None,
+        request: DownloadRequest,
+        on_chunk: Callable[[str], None] | None,
+    ):
+        # format_id 复用为 playlist mode: "video" 或 "audio"
+        return download_playlist(
+            request.url,
+            request.format_id,
+            request.dest_dir,
+            cookies_from=cookies,
+            extra_args=list(request.extra_args),
+            on_chunk=on_chunk,
+        )

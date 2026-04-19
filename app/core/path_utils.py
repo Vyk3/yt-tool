@@ -8,10 +8,9 @@
 from __future__ import annotations
 
 import os
-import platform
 from pathlib import Path
 
-_SYSTEM: str = platform.system()
+from . import config
 
 
 def expand_path(p: str | Path) -> Path:
@@ -71,7 +70,7 @@ def _platform_candidates(subdir: str) -> tuple[Path, ...]:
     """
     home = Path.home()
 
-    if _SYSTEM == "Darwin":
+    if config.IS_MAC:
         return (
             home / "Downloads" / subdir,
             home / "Downloads",
@@ -79,7 +78,7 @@ def _platform_candidates(subdir: str) -> tuple[Path, ...]:
             home / "Movies",
         )
 
-    if _SYSTEM == "Windows":
+    if config.IS_WINDOWS:
         win_home = Path(os.environ.get("USERPROFILE", str(home)))
         return (
             win_home / "Downloads" / subdir,
