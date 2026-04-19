@@ -11,7 +11,6 @@
 - 平台检测统一来源：`platform.system()` 统一收敛到 `app/core/config.py` 常量。
 
 ### Added
-- `MIGRATION_NOTES.md`：记录本轮行为变更、升级步骤与回退方案。
 - `tests/test_prepare_ffmpeg.py`：覆盖 ffmpeg 预检约束与缓存命中语义回归。
 - 下载参数金样测试：`tests/test_downloader.py` 增加 5 类下载入口参数快照测试。
 
