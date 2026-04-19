@@ -42,6 +42,18 @@
 
 ## Codex Prefix Rules
 
+### 已纳入长期 allow（PR review 只读场景）
+
+- `["gh", "pr", "view"]`
+- `["gh", "pr", "checks"]`
+- `["gh", "pr", "diff"]`
+
+说明：
+
+- 上述三条属于 A 类只读查询，且在 PR merge-readiness 评估中高频复用。
+- 已确认纳入长期 allow，减少重复授权开销。
+- 边界约束：仅用于读取 PR 元数据、checks 与 diff；不覆盖 `gh pr edit/comment/merge` 等写操作。
+
 ### 待确认
 
 - `["gh", "variable", "set"]`

@@ -16,6 +16,7 @@
 - `ci.md` — CI/CD 配置变更的局部约束
 - `gui.md` — GUI 层变更的验证要求
 - `retrospective.md` — 复盘模板与长期资产去向判定
+- `retrospectives/` — 具体复盘记录（按日期/主题归档）
 - `pr_operations.md` — PR 创建/检查/合并环节的命令约束与门禁
 - `allowlist.md` — allow 候选的分级准入规则
 - `fast_path_commands.md` — 低延迟命令执行规范
