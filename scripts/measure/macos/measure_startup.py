@@ -279,6 +279,12 @@ def main() -> int:
         print("capture-trace requested: switching launcher to binary", file=sys.stderr)
 
     if args.compare_launchers:
+        if args.capture_trace:
+            print(
+                "compare-launchers ignores --capture-trace to keep open/binary timing symmetric; "
+                "run --launcher binary --capture-trace separately for internal trace data",
+                file=sys.stderr,
+            )
         print("== open launcher ==")
         _, open_summary, _ = run_measurements(
             app_path=app_path,
@@ -298,7 +304,7 @@ def main() -> int:
             timeout=args.timeout,
             interval=args.interval,
             launcher="binary",
-            capture_trace=True,
+            capture_trace=False,
         )
         print_summary(binary_summary, binary_trace_summary)
         print("\ncomparison:")

@@ -3,6 +3,7 @@ import os
 
 # Bundle optional helper binaries into the app.
 # ffmpeg/ffprobe are included when present in vendor/bin.
+_app_name = os.environ.get('YT_TOOL_BUILD_NAME', 'yt-tool')
 _ext = '.exe' if os.name == 'nt' else ''
 _optional_bins = [
     f'vendor/bin/ffmpeg{_ext}',
@@ -34,7 +35,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='yt-tool',
+    name=_app_name,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -53,11 +54,11 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='yt-tool',
+    name=_app_name,
 )
 app = BUNDLE(
     coll,
-    name='yt-tool.app',
+    name=f'{_app_name}.app',
     icon=None,
     bundle_identifier=None,
 )

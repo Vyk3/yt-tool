@@ -93,11 +93,17 @@ if ($Clean) {
     $pyArgs += '--clean'
 }
 $pyArgs += (Join-Path $ProjectDir 'yt-tool.spec')
+$env:YT_TOOL_BUILD_NAME = $Name
 
-if ($Python -eq 'py') {
-    & $Python -3 @pyArgs
-} else {
-    & $Python @pyArgs
+try {
+    if ($Python -eq 'py') {
+        & $Python -3 @pyArgs
+    } else {
+        & $Python @pyArgs
+    }
+}
+finally {
+    Remove-Item Env:\YT_TOOL_BUILD_NAME -ErrorAction SilentlyContinue
 }
 
 if ($LASTEXITCODE -ne 0) {

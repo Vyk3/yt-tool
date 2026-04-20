@@ -7,7 +7,6 @@ import textwrap
 from contextlib import contextmanager
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPEC_PATH = REPO_ROOT / "yt-tool.spec"
 MAC_BUILD_SCRIPT = REPO_ROOT / "scripts" / "build" / "macos" / "build_app.sh"
@@ -78,6 +77,20 @@ def test_spec_only_bundles_ffmpeg_license_when_helper_binaries_exist(tmp_path):
     globals_with_bin = _load_spec_globals(project_dir)
     assert globals_with_bin["_extra_binaries"] == [("vendor/bin/ffmpeg", ".")]
     assert globals_with_bin["_extra_datas"] == [("LICENSE_FFMPEG.txt", ".")]
+
+
+def test_spec_uses_env_override_for_bundle_name(tmp_path, monkeypatch):
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    (project_dir / "yt-tool.spec").write_text(SPEC_PATH.read_text())
+
+    monkeypatch.setenv("YT_TOOL_BUILD_NAME", "custom-tool")
+    spec_globals = _load_spec_globals(project_dir)
+
+    assert spec_globals["_app_name"] == "custom-tool"
+    assert spec_globals["exe"]["kwargs"]["name"] == "custom-tool"
+    assert spec_globals["coll"]["kwargs"]["name"] == "custom-tool"
+    assert spec_globals["app"]["kwargs"]["name"] == "custom-tool.app"
 
 
 def test_macos_clean_build_without_ffmpeg_removes_stale_vendor_binaries(tmp_path):
@@ -154,6 +167,12 @@ def test_windows_script_cleans_stale_vendor_binaries_for_clean_baseline_build():
     assert "if ($Clean -and -not $WithFfmpeg)" in text
     assert "@('ffmpeg.exe', 'ffprobe.exe')" in text
     assert "Remove-Item -Force $stalePath" in text
+
+
+def test_windows_script_passes_requested_name_through_env():
+    text = WINDOWS_BUILD_SCRIPT.read_text()
+    assert '$env:YT_TOOL_BUILD_NAME = $Name' in text
+    assert 'Remove-Item Env:\\YT_TOOL_BUILD_NAME' in text
 
 
 def test_windows_bat_wrapper_delegates_to_powershell_spec_entrypoint():
