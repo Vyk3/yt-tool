@@ -168,7 +168,11 @@ final class ProcessRunner: @unchecked Sendable {
         killpg(pid, SIGTERM)
         process.terminate()
 
-        let graceNanoseconds = UInt64(max(gracePeriod.components.seconds, 0)) * 1_000_000_000
+        // Duration.components.seconds truncates sub-second values, so we must
+        // also fold in the attoseconds portion (1 ns = 1_000_000_000 as).
+        let comps = gracePeriod.components
+        let graceNanoseconds = UInt64(max(comps.seconds, 0)) * 1_000_000_000
+            + UInt64(max(comps.attoseconds, 0)) / 1_000_000_000
         if graceNanoseconds > 0 {
             try await Task.sleep(nanoseconds: graceNanoseconds)
         }

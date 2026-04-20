@@ -44,6 +44,9 @@ struct YtDlpDownloadService: Sendable {
             Task {
                 do {
                     let ytDlp = try locator.locate(.ytDlp)
+                    // P1 fix: always pass the bundled ffmpeg so muxing works on
+                    // machines where ffmpeg is not installed in PATH.
+                    let ffmpeg = try locator.locate(.ffmpeg)
 
                     let formatSelector = buildFormatSelector(
                         videoId: videoFormatId,
@@ -58,6 +61,12 @@ struct YtDlpDownloadService: Sendable {
                         arguments: [
                             "-f", formatSelector,
                             "-o", outputTemplate,
+                            // P1 fix: point yt-dlp at the vendored ffmpeg binary.
+                            "--ffmpeg-location", ffmpeg.deletingLastPathComponent().path,
+                            // P3 fix: ask yt-dlp to print the actual final file path
+                            // to stdout after post-processing, so we don't have to
+                            // guess from directory mtime.
+                            "--print", "after_move:filepath",
                             "--progress",
                             "--newline",
                             "--no-playlist",
@@ -66,18 +75,28 @@ struct YtDlpDownloadService: Sendable {
                         terminationGracePeriod: .seconds(3)
                     )
 
-                    let parser = ProgressParser()
+                    // P2b fix: keep one ProgressParser per download so its line
+                    // buffer persists across pipe callbacks.
+                    var progressParser = ProgressParser()
                     var lastResult: ProcessResult?
+                    // Collect stdout lines to find the `--print after_move:filepath` output.
+                    var stdoutLines: [String] = []
 
                     for try await event in runner.stream(config) {
                         switch event {
+                        case .stdout(let chunk):
+                            // Accumulate stdout; filepath is printed after move.
+                            let lines = chunk.components(separatedBy: "\n")
+                                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                                .filter { !$0.isEmpty }
+                            stdoutLines.append(contentsOf: lines)
                         case .stderr(let chunk):
-                            if let progress = parser.parse(chunk: chunk) {
+                            if let progress = progressParser.parse(chunk: chunk) {
                                 continuation.yield(.progress(progress))
                             }
                         case .finished(let result):
                             lastResult = result
-                        case .stdout, .started:
+                        case .started:
                             break
                         }
                     }
@@ -101,9 +120,14 @@ struct YtDlpDownloadService: Sendable {
                         )
                     }
 
-                    // Best-effort: find the output file by scanning the directory.
-                    let outputURL = resolveOutputFile(in: outputDirectory)
-                    continuation.yield(.completed(DownloadResult(outputURL: outputURL ?? outputDirectory)))
+                    // P3 fix: use the filepath printed by --print after_move:filepath.
+                    // Fall back to the output directory if yt-dlp didn't emit one
+                    // (e.g. older yt-dlp version or no post-processing step).
+                    let outputURL = stdoutLines
+                        .compactMap { URL(filePath: $0) }
+                        .last(where: { FileManager.default.fileExists(atPath: $0.path) })
+                        ?? outputDirectory
+                    continuation.yield(.completed(DownloadResult(outputURL: outputURL)))
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -129,26 +153,5 @@ struct YtDlpDownloadService: Sendable {
         case (nil, nil):
             return "bestvideo+bestaudio/best"
         }
-    }
-
-    /// Heuristic: find the most recently modified file in `directory` added
-    /// in the last 30 seconds. Falls back to directory URL if nothing is found.
-    private func resolveOutputFile(in directory: URL) -> URL? {
-        let fm = FileManager.default
-        guard let contents = try? fm.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: .skipsHiddenFiles
-        ) else { return nil }
-
-        let cutoff = Date().addingTimeInterval(-30)
-        return contents
-            .compactMap { url -> (URL, Date)? in
-                guard let date = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-                else { return nil }
-                return date > cutoff ? (url, date) : nil
-            }
-            .max(by: { $0.1 < $1.1 })?
-            .0
     }
 }
