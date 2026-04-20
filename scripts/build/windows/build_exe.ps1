@@ -54,6 +54,16 @@ if (-not (Test-Path $VendorBinDir)) {
     New-Item -ItemType Directory -Path $VendorBinDir | Out-Null
 }
 
+if ($Clean -and -not $WithFfmpeg) {
+    # Prevent a prior -WithFfmpeg build from polluting the clean baseline build.
+    foreach ($staleBinary in @('ffmpeg.exe', 'ffprobe.exe')) {
+        $stalePath = Join-Path $VendorBinDir $staleBinary
+        if (Test-Path $stalePath) {
+            Remove-Item -Force $stalePath
+        }
+    }
+}
+
 if ($WithFfmpeg) {
     $prepareScript = Join-Path $ProjectDir 'scripts\build\common\prepare_ffmpeg.py'
     $prepareArgs = @(

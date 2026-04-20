@@ -1,6 +1,8 @@
 """Tests for pywebview GUI bridge."""
 from __future__ import annotations
 
+import contextlib
+import io
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -258,6 +260,16 @@ class TestApi:
     def test_browse_directory_no_window(self, api: Api) -> None:
         result = api.browse_directory()
         assert result is None
+
+    def test_trace_startup_disabled_by_default(self, api: Api) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            assert api.trace_startup("event", 0.123) is False
+
+    def test_trace_startup_writes_stderr_when_enabled(self, api: Api) -> None:
+        stderr = io.StringIO()
+        with patch.dict("os.environ", {"YT_TOOL_STARTUP_TRACE": "1"}), contextlib.redirect_stderr(stderr):
+            assert api.trace_startup("first animation frame", 0.456) is True
+        assert "[startup +0.456s] first animation frame" in stderr.getvalue()
 
     def test_browse_directory_with_window(self, api: Api) -> None:
         mock_window = Mock()

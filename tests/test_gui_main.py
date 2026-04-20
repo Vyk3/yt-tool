@@ -42,3 +42,28 @@ def test_main_creates_window_and_starts(monkeypatch) -> None:
         assert code == 0
         mock_webview.create_window.assert_called_once()
         mock_webview.start.assert_called_once()
+        callback = mock_loaded.__iadd__.call_args.args[0]
+        callback()
+        mock_window.evaluate_js.assert_called_once_with(
+            "setTimeout(() => checkEnvironment({ background: true }), 0)"
+        )
+
+
+def test_main_enables_startup_trace_in_html(monkeypatch) -> None:
+    mock_window = Mock()
+    mock_loaded = Mock()
+    mock_loaded.__iadd__ = Mock(return_value=mock_loaded)
+    mock_window.events.loaded = mock_loaded
+
+    mock_webview = Mock()
+    mock_webview.create_window.return_value = mock_window
+    mock_webview.FOLDER_DIALOG = 1
+    mock_webview.start = Mock()
+
+    monkeypatch.setenv("YT_TOOL_STARTUP_TRACE", "1")
+
+    with patch.dict("sys.modules", {"webview": mock_webview}):
+        code = gui_main.main(["app.gui.main"])
+        assert code == 0
+        html = mock_webview.create_window.call_args.kwargs["html"]
+        assert "const STARTUP_TRACE = true;" in html
