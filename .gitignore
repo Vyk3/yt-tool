@@ -50,7 +50,6 @@
 /RELEASE_CHECKLIST.md
 /TEST_REPORT.md
 /WINDOWS_ACCEPTANCE_TEMPLATE.md
-/.github/pull_request_template.md
 
 # Local-only helper scripts
 /scripts/check_ci.sh
