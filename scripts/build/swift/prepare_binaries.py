@@ -159,14 +159,18 @@ def _prepare_ffmpeg(
         _verify_sha256(ffmpeg_archive, ffmpeg_sha256, source_url=ffmpeg_url, label="ffmpeg")
 
         _extract_named_member(ffmpeg_archive, ["ffmpeg"], ffmpeg_bin)
+        # Attempt to pull ffprobe from the same archive (some bundles ship both).
         _extract_named_member(ffmpeg_archive, ["ffprobe"], ffprobe_bin)
 
-        if not ffprobe_bin.exists():
-            print("Downloading ffprobe archive...")
-            ffprobe_archive = tmp_dir / "ffprobe.zip"
-            _download(ffprobe_url, ffprobe_archive)
-            _verify_sha256(ffprobe_archive, ffprobe_sha256, source_url=ffprobe_url, label="ffprobe")
-            _extract_named_member(ffprobe_archive, ["ffprobe"], ffprobe_bin)
+        # Always download and verify the dedicated ffprobe archive so that:
+        # - sources that ship ffprobe separately (e.g. evermeet.cx) are handled, and
+        # - a stale ffprobe from a previous dev/release run is never reused without
+        #   SHA verification, even when ffmpeg came from the same archive.
+        print("Downloading ffprobe archive...")
+        ffprobe_archive = tmp_dir / "ffprobe.zip"
+        _download(ffprobe_url, ffprobe_archive)
+        _verify_sha256(ffprobe_archive, ffprobe_sha256, source_url=ffprobe_url, label="ffprobe")
+        _extract_named_member(ffprobe_archive, ["ffprobe"], ffprobe_bin)
 
     if not ffmpeg_bin.exists():
         _die(f"ffmpeg archive does not contain ffmpeg: {ffmpeg_url}")
