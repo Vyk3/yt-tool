@@ -54,6 +54,16 @@ if (-not (Test-Path $VendorBinDir)) {
     New-Item -ItemType Directory -Path $VendorBinDir | Out-Null
 }
 
+if ($Clean -and -not $WithFfmpeg) {
+    # Prevent a prior -WithFfmpeg build from polluting the clean baseline build.
+    foreach ($staleBinary in @('ffmpeg.exe', 'ffprobe.exe')) {
+        $stalePath = Join-Path $VendorBinDir $staleBinary
+        if (Test-Path $stalePath) {
+            Remove-Item -Force $stalePath
+        }
+    }
+}
+
 if ($WithFfmpeg) {
     $prepareScript = Join-Path $ProjectDir 'scripts\build\common\prepare_ffmpeg.py'
     $prepareArgs = @(
@@ -83,11 +93,17 @@ if ($Clean) {
     $pyArgs += '--clean'
 }
 $pyArgs += (Join-Path $ProjectDir 'yt-tool.spec')
+$env:YT_TOOL_BUILD_NAME = $Name
 
-if ($Python -eq 'py') {
-    & $Python -3 @pyArgs
-} else {
-    & $Python @pyArgs
+try {
+    if ($Python -eq 'py') {
+        & $Python -3 @pyArgs
+    } else {
+        & $Python @pyArgs
+    }
+}
+finally {
+    Remove-Item Env:\YT_TOOL_BUILD_NAME -ErrorAction SilentlyContinue
 }
 
 if ($LASTEXITCODE -ne 0) {

@@ -141,6 +141,11 @@ VENDOR_BIN_DIR="$PROJECT_DIR/vendor/bin"
 mkdir -p "$VENDOR_BIN_DIR"
 PREPARE_FFMPEG_PY="$PROJECT_DIR/scripts/build/common/prepare_ffmpeg.py"
 
+if [[ -n "$CLEAN_FLAG" && "$WITH_FFMPEG" -ne 1 ]]; then
+  # Prevent a prior --with-ffmpeg build from polluting the clean baseline build.
+  rm -f "$VENDOR_BIN_DIR/ffmpeg" "$VENDOR_BIN_DIR/ffprobe"
+fi
+
 if [[ "$WITH_FFMPEG" -eq 1 ]]; then
   PREPARE_ARGS=(
     "$PREPARE_FFMPEG_PY"

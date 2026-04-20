@@ -23,3 +23,24 @@ def test_frontend_kind_switch_and_playlist_controls_exist() -> None:
     assert "_syncKindUI();" in html
     assert 'id="playlistModeSection"' in html
     assert 'id="playlistMode"' in html
+
+
+def test_frontend_environment_check_supports_background_mode() -> None:
+    html = get_html()
+    assert "async function checkEnvironment(options = {})" in html
+    assert "const background = Boolean(options && options.background);" in html
+    assert "if (background) {" in html
+    assert "setBusy(true);" in html
+    assert "if (!background) {" in html
+
+
+def test_frontend_startup_trace_is_opt_in() -> None:
+    html_default = get_html()
+    html_traced = get_html(startup_trace=True)
+    assert "const STARTUP_TRACE = false;" in html_default
+    assert "const STARTUP_TRACE = true;" in html_traced
+    assert "traceStartup('window load event');" in html_traced
+    assert "traceStartup('first animation frame');" in html_traced
+    assert "traceStartup('second animation frame')" in html_traced
+    assert "window.pywebview.api.trace_startup(event, elapsed)" in html_traced
+    assert "traceStartup(background ? 'background env_check start' : 'manual env_check start');" in html_traced

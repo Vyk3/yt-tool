@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 
-def get_html() -> str:
+def get_html(*, startup_trace: bool = False) -> str:
     """Return complete HTML document with inline CSS and JS."""
-    return """
+    html = """
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -585,6 +585,8 @@ def get_html() -> str:
 
     <script>
         // Global state
+        const STARTUP_TRACE = __STARTUP_TRACE__;
+        const startupTraceT0 = performance.now();
         let currentKind = 'video';
         let playlistMode = 'video';
         let selectedVideoFormat = null;
@@ -593,6 +595,15 @@ def get_html() -> str:
         let defaultDirs = { video: '', audio: '', subtitle: '' };
         let lastAutoSaveDir = '';
         let isBusy = false;
+
+        function traceStartup(event) {
+            if (!STARTUP_TRACE) return;
+            const elapsed = (performance.now() - startupTraceT0) / 1000;
+            appendLog(`[startup +${elapsed.toFixed(3)}s] ${event}`);
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.trace_startup) {
+                Promise.resolve(window.pywebview.api.trace_startup(event, elapsed)).catch(() => {});
+            }
+        }
 
         // Utility functions
         function _shortCodec(codec) {
@@ -717,13 +728,21 @@ def get_html() -> str:
         });
 
         // API call handlers
-        async function checkEnvironment() {
-            setBusy(true);
-            clearLog();
-            try {
+        async function checkEnvironment(options = {}) {
+            const background = Boolean(options && options.background);
+            traceStartup(background ? 'background env_check start' : 'manual env_check start');
+            if (background) {
+                document.getElementById('envStatus').textContent = '检查中...';
+            } else {
+                setBusy(true);
+                clearLog();
                 appendLog('检查运行环境...');
+            }
+            try {
                 const result = await window.pywebview.api.check_environment();
-                appendLog('环境检查完成');
+                if (!background) {
+                    appendLog('环境检查完成');
+                }
                 const items = Array.isArray(result.items) ? result.items : [];
                 const pythonItem = items.find(item => item.name === 'python');
                 const ytdlpItem = items.find(item => item.name === 'yt-dlp');
@@ -739,6 +758,7 @@ def get_html() -> str:
                     } else if (ffmpegItem) {
                         appendLog('⚠ ffmpeg: 缺失（可选）');
                     }
+                    traceStartup(background ? 'background env_check ready' : 'manual env_check ready');
                 } else {
                     document.getElementById('envStatus').textContent = '⚠ 缺失';
                     const missing = items.filter(item => item.required && !item.found);
@@ -749,11 +769,16 @@ def get_html() -> str:
                             appendLog(`⚠ ${item.name}: 缺失`);
                         });
                     }
+                    traceStartup(background ? 'background env_check missing dependencies' : 'manual env_check missing dependencies');
                 }
             } catch (e) {
+                document.getElementById('envStatus').textContent = '⚠ 错误';
                 appendLog('错误: ' + e.message);
+                traceStartup(background ? 'background env_check error' : 'manual env_check error');
             } finally {
-                setBusy(false);
+                if (!background) {
+                    setBusy(false);
+                }
             }
         }
 
@@ -983,12 +1008,19 @@ def get_html() -> str:
 
         // Initialize on load
         async function initialize() {
+            traceStartup('window load event');
+            requestAnimationFrame(() => {
+                traceStartup('first animation frame');
+                requestAnimationFrame(() => traceStartup('second animation frame'));
+            });
             try {
                 const dirs = await window.pywebview.api.get_default_dirs();
                 defaultDirs = dirs;
                 _syncKindUI();
+                traceStartup('default dirs resolved');
             } catch (e) {
                 console.error('Failed to get default dirs:', e);
+                traceStartup('default dirs failed');
             }
         }
 
@@ -1004,3 +1036,4 @@ def get_html() -> str:
 </body>
 </html>
 """
+    return html.replace("__STARTUP_TRACE__", "true" if startup_trace else "false")

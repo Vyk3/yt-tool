@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -139,3 +141,9 @@ class Api:
 
     def get_platform(self) -> str:
         return config.SYSTEM
+
+    def trace_startup(self, event: str, elapsed_seconds: float) -> bool:
+        if os.environ.get("YT_TOOL_STARTUP_TRACE", "").strip().lower() not in {"1", "true", "yes", "on"}:
+            return False
+        print(f"[startup +{elapsed_seconds:.3f}s] {event}", file=sys.stderr, flush=True)
+        return True

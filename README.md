@@ -32,6 +32,7 @@
 ### 依赖
 
 - Python 3.10+
+- `pywebview>=6.2.1,<7`（GUI 模式）
 - `ffmpeg`（部分合并/转码路径需要）
 
 安装 Python 依赖：
