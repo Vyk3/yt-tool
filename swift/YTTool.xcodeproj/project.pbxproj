@@ -22,6 +22,8 @@
 		A0000000000000000000001C /* Binaries in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000D /* Binaries */; };
 		A0000000000000000000001D /* ProbeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000E /* ProbeParser.swift */; };
 		A0000000000000000000001F /* YtDlpProbeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000F /* YtDlpProbeService.swift */; };
+		A00000000000000000000021 /* ProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F0 /* ProgressParser.swift */; };
+		A00000000000000000000022 /* YtDlpDownloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000031 /* YtDlpDownloadService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +42,8 @@
 		A0000000000000000000000D /* Binaries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = YTTool/Resources/Binaries; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000000E /* ProbeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ProbeParser.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000000F /* YtDlpProbeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpProbeService.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000F0 /* ProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ProgressParser.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000031 /* YtDlpDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpDownloadService.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -120,6 +124,8 @@
 				A0000000000000000000000B /* ProcessRunner.swift */,
 				A0000000000000000000000E /* ProbeParser.swift */,
 				A0000000000000000000000F /* YtDlpProbeService.swift */,
+				A000000000000000000000F0 /* ProgressParser.swift */,
+				A00000000000000000000031 /* YtDlpDownloadService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -223,6 +229,8 @@
 				A0000000000000000000001B /* AppError.swift in Sources */,
 				A0000000000000000000001D /* ProbeParser.swift in Sources */,
 				A0000000000000000000001F /* YtDlpProbeService.swift in Sources */,
+				A00000000000000000000021 /* ProgressParser.swift in Sources */,
+				A00000000000000000000022 /* YtDlpDownloadService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

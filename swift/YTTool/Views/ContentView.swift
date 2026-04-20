@@ -13,8 +13,18 @@ struct ContentView: View {
                 onProbe: state.probe,
                 onSelectDirectory: selectOutputDirectory
             )
-            FormatPickerView(probeState: state.probeState)
-            DownloadProgressView(downloadState: state.downloadState)
+            FormatPickerView(
+                probeState: state.probeState,
+                selectedVideo: $state.selectedVideoFormat,
+                selectedAudio: $state.selectedAudioFormat
+            )
+            DownloadProgressView(
+                downloadState: state.downloadState,
+                canDownload: state.canDownload,
+                isDownloading: state.isDownloading,
+                onDownload: state.download,
+                onCancel: state.cancelDownload
+            )
 
             if let error = state.userFacingError {
                 Text(error.recoverySuggestion.map { "\(error.message) \($0)" } ?? error.message)

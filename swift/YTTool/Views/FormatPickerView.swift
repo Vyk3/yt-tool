@@ -2,6 +2,8 @@ import SwiftUI
 
 struct FormatPickerView: View {
     let probeState: ProbeState
+    @Binding var selectedVideo: VideoFormat?
+    @Binding var selectedAudio: AudioFormat?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -17,36 +19,37 @@ struct FormatPickerView: View {
                 placeholder(error.message)
             case .success(let mediaInfo):
                 HStack(alignment: .top, spacing: 16) {
-                    formatColumn(
-                        title: "Video",
-                        items: mediaInfo.videoFormats.map(\.displayLine)
-                    )
-                    formatColumn(
-                        title: "Audio",
-                        items: mediaInfo.audioFormats.map(\.displayLine)
-                    )
+                    videoColumn(formats: mediaInfo.videoFormats)
+                    audioColumn(formats: mediaInfo.audioFormats)
                 }
             }
         }
     }
 
-    private func formatColumn(title: String, items: [String]) -> some View {
+    // MARK: - Video column
+
+    private func videoColumn(formats: [VideoFormat]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text("Video")
                 .font(.subheadline.weight(.semibold))
 
-            if items.isEmpty {
-                placeholder("No \(title.lowercased()) formats detected.")
+            if formats.isEmpty {
+                placeholder("No video formats detected.")
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(items, id: \.self) { item in
-                            Text(item)
-                                .font(.callout.monospaced())
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+                        ForEach(formats) { fmt in
+                            formatRow(
+                                text: fmt.displayLine,
+                                isSelected: selectedVideo?.id == fmt.id
+                            )
+                            .onTapGesture {
+                                if selectedVideo?.id == fmt.id {
+                                    selectedVideo = nil
+                                } else {
+                                    selectedVideo = fmt
+                                }
+                            }
                         }
                     }
                 }
@@ -54,6 +57,62 @@ struct FormatPickerView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    // MARK: - Audio column
+
+    private func audioColumn(formats: [AudioFormat]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Audio")
+                .font(.subheadline.weight(.semibold))
+
+            if formats.isEmpty {
+                placeholder("No audio formats detected.")
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(formats) { fmt in
+                            formatRow(
+                                text: fmt.displayLine,
+                                isSelected: selectedAudio?.id == fmt.id
+                            )
+                            .onTapGesture {
+                                if selectedAudio?.id == fmt.id {
+                                    selectedAudio = nil
+                                } else {
+                                    selectedAudio = fmt
+                                }
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 220)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    // MARK: - Shared row
+
+    private func formatRow(text: String, isSelected: Bool) -> some View {
+        Text(text)
+            .font(.callout.monospaced())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.25)
+                    : Color.primary.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(
+                        isSelected ? Color.accentColor : Color.clear,
+                        lineWidth: 1.5
+                    )
+            )
     }
 
     private func placeholder(_ text: String) -> some View {
