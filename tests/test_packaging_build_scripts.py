@@ -3,9 +3,12 @@ from __future__ import annotations
 import os
 import runpy
 import subprocess
+import sys
 import textwrap
 from contextlib import contextmanager
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPEC_PATH = REPO_ROOT / "yt-tool.spec"
@@ -93,6 +96,7 @@ def test_spec_uses_env_override_for_bundle_name(tmp_path, monkeypatch):
     assert spec_globals["app"]["kwargs"]["name"] == "custom-tool.app"
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS build script subprocess coverage is macOS-only")
 def test_macos_clean_build_without_ffmpeg_removes_stale_vendor_binaries(tmp_path):
     project_dir = tmp_path / "project"
     script_dir = project_dir / "scripts" / "build" / "macos"
