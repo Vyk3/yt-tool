@@ -1,0 +1,23 @@
+#!/bin/sh
+
+case "$1" in
+  success)
+    echo "fixture stdout"
+    echo "fixture stderr" >&2
+    exit 0
+    ;;
+  fail)
+    echo "fixture failure" >&2
+    exit 17
+    ;;
+  sleep)
+    echo "fixture sleeping"
+    sleep "${2:-5}"
+    echo "fixture done"
+    exit 0
+    ;;
+  *)
+    echo "usage: probe-fixture {success|fail|sleep [seconds]}" >&2
+    exit 64
+    ;;
+esac

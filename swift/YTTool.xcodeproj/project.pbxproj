@@ -1,0 +1,290 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000010 /* YTToolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000001 /* YTToolApp.swift */; };
+		A00000000000000000000011 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* ContentView.swift */; };
+		A00000000000000000000012 /* URLInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* URLInputView.swift */; };
+		A00000000000000000000013 /* FormatPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* FormatPickerView.swift */; };
+		A00000000000000000000014 /* DownloadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* DownloadProgressView.swift */; };
+		A00000000000000000000015 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* AppState.swift */; };
+		A00000000000000000000016 /* ProbeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* ProbeState.swift */; };
+		A00000000000000000000017 /* DownloadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000008 /* DownloadState.swift */; };
+		A00000000000000000000018 /* MediaInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000009 /* MediaInfo.swift */; };
+		A00000000000000000000019 /* BundledToolLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000A /* BundledToolLocator.swift */; };
+		A0000000000000000000001A /* ProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000B /* ProcessRunner.swift */; };
+		A0000000000000000000001B /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000C /* AppError.swift */; };
+		A0000000000000000000001C /* Binaries in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000D /* Binaries */; };
+		A0000000000000000000001D /* ProbeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000E /* ProbeParser.swift */; };
+		A0000000000000000000001F /* YtDlpProbeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000F /* YtDlpProbeService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00000000000000000000001 /* YTToolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/App/YTToolApp.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/ContentView.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000003 /* URLInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/URLInputView.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000004 /* FormatPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/FormatPickerView.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000005 /* DownloadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/DownloadProgressView.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000006 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/AppState.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000007 /* ProbeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/ProbeState.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000008 /* DownloadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadState.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000009 /* MediaInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/MediaInfo.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000000A /* BundledToolLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/BundledToolLocator.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000000B /* ProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ProcessRunner.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000000C /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Support/AppError.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000000D /* Binaries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = YTTool/Resources/Binaries; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000000E /* ProbeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ProbeParser.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000000F /* YtDlpProbeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpProbeService.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000030 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000040 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000041 /* YTTool */,
+				A00000000000000000000042 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000041 /* YTTool */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000043 /* App */,
+				A00000000000000000000044 /* Views */,
+				A00000000000000000000045 /* Models */,
+				A00000000000000000000046 /* Services */,
+				A00000000000000000000047 /* Support */,
+				A00000000000000000000048 /* Resources */,
+			);
+			path = YTTool;
+			sourceTree = SOURCE_ROOT;
+		};
+		A00000000000000000000042 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000020 /* YTTool.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000043 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000001 /* YTToolApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000044 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000002 /* ContentView.swift */,
+				A00000000000000000000003 /* URLInputView.swift */,
+				A00000000000000000000004 /* FormatPickerView.swift */,
+				A00000000000000000000005 /* DownloadProgressView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000045 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000006 /* AppState.swift */,
+				A00000000000000000000007 /* ProbeState.swift */,
+				A00000000000000000000008 /* DownloadState.swift */,
+				A00000000000000000000009 /* MediaInfo.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000046 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000000A /* BundledToolLocator.swift */,
+				A0000000000000000000000B /* ProcessRunner.swift */,
+				A0000000000000000000000E /* ProbeParser.swift */,
+				A0000000000000000000000F /* YtDlpProbeService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000047 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000000C /* AppError.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000048 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000000D /* Binaries */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000050 /* YTTool */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000060 /* Build configuration list for PBXNativeTarget "YTTool" */;
+			buildPhases = (
+				A00000000000000000000070 /* Sources */,
+				A00000000000000000000030 /* Frameworks */,
+				A00000000000000000000071 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YTTool;
+			productName = YTTool;
+			productReference = A00000000000000000000020 /* YTTool.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000051 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A00000000000000000000050 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A00000000000000000000061 /* Build configuration list for PBXProject "YTTool" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A00000000000000000000040;
+			productRefGroup = A00000000000000000000042 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000050 /* YTTool */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000071 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0000000000000000000001C /* Binaries in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000070 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000010 /* YTToolApp.swift in Sources */,
+				A00000000000000000000011 /* ContentView.swift in Sources */,
+				A00000000000000000000012 /* URLInputView.swift in Sources */,
+				A00000000000000000000013 /* FormatPickerView.swift in Sources */,
+				A00000000000000000000014 /* DownloadProgressView.swift in Sources */,
+				A00000000000000000000015 /* AppState.swift in Sources */,
+				A00000000000000000000016 /* ProbeState.swift in Sources */,
+				A00000000000000000000017 /* DownloadState.swift in Sources */,
+				A00000000000000000000018 /* MediaInfo.swift in Sources */,
+				A00000000000000000000019 /* BundledToolLocator.swift in Sources */,
+				A0000000000000000000001A /* ProcessRunner.swift in Sources */,
+				A0000000000000000000001B /* AppError.swift in Sources */,
+				A0000000000000000000001D /* ProbeParser.swift in Sources */,
+				A0000000000000000000001F /* YtDlpProbeService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000000000080 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = local.koa.yttool.swift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A00000000000000000000081 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = local.koa.yttool.swift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000000000060 /* Build configuration list for PBXNativeTarget "YTTool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000080 /* Debug */,
+				A00000000000000000000081 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00000000000000000000061 /* Build configuration list for PBXProject "YTTool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000080 /* Debug */,
+				A00000000000000000000081 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000000000051 /* Project object */;
+}
