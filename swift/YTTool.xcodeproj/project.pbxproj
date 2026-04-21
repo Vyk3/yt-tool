@@ -24,6 +24,8 @@
 		A0000000000000000000001F /* YtDlpProbeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000F /* YtDlpProbeService.swift */; };
 		A00000000000000000000021 /* ProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F0 /* ProgressParser.swift */; };
 		A00000000000000000000022 /* YtDlpDownloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000031 /* YtDlpDownloadService.swift */; };
+		A00000000000000000000023 /* AppLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000032 /* AppLogEntry.swift */; };
+		A00000000000000000000024 /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000033 /* LogPanelView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +46,8 @@
 		A0000000000000000000000F /* YtDlpProbeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpProbeService.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000F0 /* ProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ProgressParser.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000031 /* YtDlpDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpDownloadService.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000032 /* AppLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/AppLogEntry.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000033 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/LogPanelView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -102,6 +106,7 @@
 				A00000000000000000000003 /* URLInputView.swift */,
 				A00000000000000000000004 /* FormatPickerView.swift */,
 				A00000000000000000000005 /* DownloadProgressView.swift */,
+				A00000000000000000000033 /* LogPanelView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -113,6 +118,7 @@
 				A00000000000000000000007 /* ProbeState.swift */,
 				A00000000000000000000008 /* DownloadState.swift */,
 				A00000000000000000000009 /* MediaInfo.swift */,
+				A00000000000000000000032 /* AppLogEntry.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -231,6 +237,8 @@
 				A0000000000000000000001F /* YtDlpProbeService.swift in Sources */,
 				A00000000000000000000021 /* ProgressParser.swift in Sources */,
 				A00000000000000000000022 /* YtDlpDownloadService.swift in Sources */,
+				A00000000000000000000023 /* AppLogEntry.swift in Sources */,
+				A00000000000000000000024 /* LogPanelView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

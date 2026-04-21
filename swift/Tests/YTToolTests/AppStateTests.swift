@@ -21,6 +21,25 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: "selectedOutputDirectoryPath"), "/tmp/yttool-updated")
     }
 
+    func testBeginProbeAttemptInvalidatesOlderAttempt() {
+        let state = AppState(defaults: freshDefaults())
+
+        let firstAttempt = state.beginProbeAttempt()
+        let secondAttempt = state.beginProbeAttempt()
+
+        XCTAssertFalse(state.isCurrentProbeAttempt(firstAttempt))
+        XCTAssertTrue(state.isCurrentProbeAttempt(secondAttempt))
+    }
+
+    func testCancelDownloadInvalidatesActiveAttempt() {
+        let state = AppState(defaults: freshDefaults())
+
+        let attempt = state.beginDownloadAttempt()
+        state.cancelDownload()
+
+        XCTAssertFalse(state.isCurrentDownloadAttempt(attempt))
+    }
+
     private func freshDefaults() -> UserDefaults {
         let suiteName = "YTToolTests.\(#function).\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

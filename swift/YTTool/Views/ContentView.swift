@@ -26,6 +26,10 @@ struct ContentView: View {
                 onDownload: state.download,
                 onCancel: state.cancelDownload
             )
+            .padding(.top, 4)
+
+            LogPanelView(entries: state.logs)
+                .padding(.top, 8)
 
             Spacer(minLength: 0)
         }

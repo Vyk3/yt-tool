@@ -2,6 +2,28 @@ import XCTest
 @testable import YTTool
 
 final class ProbeParserTests: XCTestCase {
+    func testProgressParserConsumeRecognizesProgressLinesFromStdoutChunks() {
+        var parser = ProgressParser()
+        var loggedLines: [String] = []
+
+        let progress = parser.consume(
+            chunk: """
+            [download]  17.7% of  127.53MiB at    2.16MiB/s ETA 00:56 (frag 19/113)
+            /Users/koa/Downloads/example.mp4
+
+            """,
+            onNonProgressLine: { loggedLines.append($0) }
+        )
+
+        XCTAssertNotNil(progress)
+        XCTAssertEqual(progress!.percentComplete, 0.177, accuracy: 0.0001)
+        XCTAssertEqual(
+            progress!.summaryLine,
+            "17.7% of  127.53MiB at    2.16MiB/s ETA 00:56 (frag 19/113)"
+        )
+        XCTAssertEqual(loggedLines, ["/Users/koa/Downloads/example.mp4"])
+    }
+
     func testParseNormalProbePayload() throws {
         let info = try ProbeParser().parse(Self.normalProbeJSON.data(using: .utf8)!)
 

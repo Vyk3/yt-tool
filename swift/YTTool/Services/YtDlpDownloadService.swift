@@ -38,7 +38,8 @@ struct YtDlpDownloadService: Sendable {
         url: String,
         videoFormatId: String?,
         audioFormatId: String?,
-        outputDirectory: URL
+        outputDirectory: URL,
+        onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -74,24 +75,27 @@ struct YtDlpDownloadService: Sendable {
                         ],
                         terminationGracePeriod: .seconds(3)
                     )
+                    onLog(.command, config.commandLine.joined(separator: " "))
 
-                    // P2b fix: keep one ProgressParser per download so its line
-                    // buffer persists across pipe callbacks.
-                    var progressParser = ProgressParser()
+                    // Keep one parser per output stream so chunk buffering stays
+                    // correct even when yt-dlp sends progress to stdout instead of stderr.
+                    var stdoutProgressParser = ProgressParser()
+                    var stderrProgressParser = ProgressParser()
                     var lastResult: ProcessResult?
-                    // Collect stdout lines to find the `--print after_move:filepath` output.
-                    var stdoutLines: [String] = []
-
                     for try await event in runner.stream(config) {
                         switch event {
                         case .stdout(let chunk):
-                            // Accumulate stdout; filepath is printed after move.
-                            let lines = chunk.components(separatedBy: "\n")
-                                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                                .filter { !$0.isEmpty }
-                            stdoutLines.append(contentsOf: lines)
+                            if let progress = stdoutProgressParser.consume(
+                                chunk: chunk,
+                                onNonProgressLine: { line in onLog(.stdout, line) }
+                            ) {
+                                continuation.yield(.progress(progress))
+                            }
                         case .stderr(let chunk):
-                            if let progress = progressParser.parse(chunk: chunk) {
+                            if let progress = stderrProgressParser.consume(
+                                chunk: chunk,
+                                onNonProgressLine: { line in onLog(.stderr, line) }
+                            ) {
                                 continuation.yield(.progress(progress))
                             }
                         case .finished(let result):
@@ -102,11 +106,13 @@ struct YtDlpDownloadService: Sendable {
                     }
 
                     guard let result = lastResult else {
+                        onLog(.lifecycle, "Download ended without a final process result")
                         throw AppError(
                             message: "Download ended unexpectedly.",
                             recoverySuggestion: "The process terminated without a result."
                         )
                     }
+                    onLog(.lifecycle, "Download exited with status \(result.exitCode)")
 
                     guard result.exitCode == 0 else {
                         let hint = result.stderr
@@ -123,13 +129,18 @@ struct YtDlpDownloadService: Sendable {
                     // P3 fix: use the filepath printed by --print after_move:filepath.
                     // Fall back to the output directory if yt-dlp didn't emit one
                     // (e.g. older yt-dlp version or no post-processing step).
-                    let outputURL = stdoutLines
+                    let outputURL = result.stdout
+                        .components(separatedBy: "\n")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
                         .compactMap { URL(filePath: $0) }
                         .last(where: { FileManager.default.fileExists(atPath: $0.path) })
                         ?? outputDirectory
+                    onLog(.lifecycle, "Resolved output path: \(outputURL.path(percentEncoded: false))")
                     continuation.yield(.completed(DownloadResult(outputURL: outputURL)))
                     continuation.finish()
                 } catch {
+                    onLog(.lifecycle, "Download stream threw: \(error.localizedDescription)")
                     continuation.finish(throwing: error)
                 }
             }

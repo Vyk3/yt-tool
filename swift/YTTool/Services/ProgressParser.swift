@@ -48,4 +48,29 @@ struct ProgressParser {
 
         return components.compactMap { parse(line: $0) }.last
     }
+
+    /// Processes a raw output chunk and reports any completed non-progress lines.
+    /// Returns the last progress update found in the chunk, if any.
+    mutating func consume(
+        chunk: String,
+        onNonProgressLine: (String) -> Void
+    ) -> DownloadProgress? {
+        let text = lineBuffer + chunk
+        var components = text.components(separatedBy: "\n")
+        lineBuffer = components.removeLast()
+
+        var lastProgress: DownloadProgress?
+        for line in components {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                continue
+            }
+            if let progress = parse(line: trimmed) {
+                lastProgress = progress
+            } else {
+                onNonProgressLine(trimmed)
+            }
+        }
+        return lastProgress
+    }
 }

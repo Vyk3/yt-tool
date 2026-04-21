@@ -1,5 +1,12 @@
 import Foundation
 
+enum ServiceLogKind: Sendable {
+    case command
+    case stdout
+    case stderr
+    case lifecycle
+}
+
 struct YtDlpProbeService: Sendable {
     var locator: BundledToolLocator
     var runner: ProcessRunner
@@ -12,19 +19,32 @@ struct YtDlpProbeService: Sendable {
         self.runner = runner
     }
 
-    func probe(url: String) async throws -> MediaInfo {
+    func probe(
+        url: String,
+        onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
+    ) async throws -> MediaInfo {
         let ytDlp = try locator.locate(.ytDlp)
 
         let config = ProcessConfiguration(
             executableURL: ytDlp,
             arguments: ["--dump-single-json", "--no-playlist", url]
         )
+        onLog(.command, config.commandLine.joined(separator: " "))
 
         let result = try await runner.run(config)
         let stdout = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        let stderrHint = result.stderr
+        let stderrLines = result.stderr
             .components(separatedBy: "\n")
-            .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        stderrLines.prefix(8).forEach { onLog(.stderr, $0) }
+        let stderrHint = stderrLines.first
+        if stdout == "null" {
+            onLog(.stdout, "null")
+        } else if !stdout.isEmpty {
+            onLog(.stdout, "Received JSON payload (\(stdout.count) chars)")
+        }
+        onLog(.lifecycle, "Probe exited with status \(result.exitCode)")
 
         guard result.exitCode == 0 else {
             throw AppError(
