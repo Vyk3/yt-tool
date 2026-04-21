@@ -8,8 +8,9 @@
 #              Requires SHAs to be set in pinned_versions.sh.
 #
 # Options:
-#   --output DIR   Output directory (default: swift/dist)
-#   --archive PATH Path for the .xcarchive (default: /tmp/YTTool.xcarchive)
+#   --output DIR        Output directory (default: swift/dist)
+#   --archive PATH      Path for the .xcarchive (default: tmp/swift-build/YTTool.xcarchive)
+#   --derived-data DIR  Path for Xcode DerivedData (default: tmp/swift-build/DerivedData)
 #   --clean        Force re-download of binaries (release mode only)
 #   --skip-test    Skip smoke_test after build
 #
@@ -29,7 +30,9 @@ BINARIES_SRC="$PROJECT_DIR/swift/YTTool/Resources/Binaries"
 # ── Defaults ──────────────────────────────────────────────────────────────────
 MODE="dev"
 OUTPUT_DIR="$PROJECT_DIR/swift/dist"
-ARCHIVE_PATH="/tmp/YTTool.xcarchive"
+BUILD_ROOT="$PROJECT_DIR/tmp/swift-build"
+ARCHIVE_PATH="$BUILD_ROOT/YTTool.xcarchive"
+DERIVED_DATA_PATH="$BUILD_ROOT/DerivedData"
 CLEAN_FLAG=""
 SKIP_TEST=0
 
@@ -38,10 +41,11 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dev)        MODE="dev";     shift ;;
         --release)    MODE="release"; shift ;;
-        --output)     OUTPUT_DIR="$2"; shift 2 ;;
-        --archive)    ARCHIVE_PATH="$2"; shift 2 ;;
-        --clean)      CLEAN_FLAG="--clean"; shift ;;
-        --skip-test)  SKIP_TEST=1; shift ;;
+        --output)        OUTPUT_DIR="$2"; shift 2 ;;
+        --archive)       ARCHIVE_PATH="$2"; shift 2 ;;
+        --derived-data)  DERIVED_DATA_PATH="$2"; shift 2 ;;
+        --clean)         CLEAN_FLAG="--clean"; shift ;;
+        --skip-test)     SKIP_TEST=1; shift ;;
         -h|--help)
             sed -n '2,25p' "$0"; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 2 ;;
@@ -50,6 +54,7 @@ done
 
 DIST_APP="$OUTPUT_DIR/YTTool.app"
 DIST_ZIP="$OUTPUT_DIR/YTTool.zip"
+XCODE_LOG="$BUILD_ROOT/xcodebuild-archive.log"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 step() { echo ""; echo "==> $*"; }
@@ -93,16 +98,18 @@ done
 # ── Step 2: Archive ───────────────────────────────────────────────────────────
 step "2/6  xcodebuild archive"
 
+mkdir -p "$BUILD_ROOT" "$OUTPUT_DIR"
 rm -rf "$ARCHIVE_PATH"
+rm -rf "$DERIVED_DATA_PATH"
 # Write raw xcodebuild output to a log file so that the exit code is not masked
 # by a downstream pipe.  Filter relevant lines to stdout for readability while
 # the full log is preserved for post-mortem inspection on failure.
-XCODE_LOG="/tmp/YTTool-xcodebuild.log"
 xcodebuild archive \
     -project "$XCPROJECT" \
     -scheme  "$SCHEME" \
     -configuration Release \
     -archivePath "$ARCHIVE_PATH" \
+    -derivedDataPath "$DERIVED_DATA_PATH" \
     CODE_SIGN_IDENTITY="" \
     CODE_SIGN_STYLE=Manual \
     CODE_SIGNING_REQUIRED=NO \
@@ -119,12 +126,13 @@ grep -E "^(warning:|note:)" "$XCODE_LOG" || true
 APP_IN_ARCHIVE="$ARCHIVE_PATH/Products/Applications/YTTool.app"
 [[ -d "$APP_IN_ARCHIVE" ]] || die "App not found in archive: $APP_IN_ARCHIVE"
 echo "  Archive: $ARCHIVE_PATH"
+echo "  DerivedData: $DERIVED_DATA_PATH"
+echo "  xcodebuild log: $XCODE_LOG"
 
 # ── Step 3: Export .app ───────────────────────────────────────────────────────
 step "3/6  Export .app"
 
 rm -rf "$DIST_APP"
-mkdir -p "$OUTPUT_DIR"
 cp -R "$APP_IN_ARCHIVE" "$DIST_APP"
 echo "  Exported: $DIST_APP"
 

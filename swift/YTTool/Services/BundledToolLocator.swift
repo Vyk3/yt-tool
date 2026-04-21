@@ -10,13 +10,23 @@ enum BundledTool: String, CaseIterable {
 struct BundledToolLocator: @unchecked Sendable {
     var bundle: Bundle
     var fileManager: FileManager = .default
+    var overrides: [BundledTool: URL] = [:]
 
-    init(bundle: Bundle = .main, fileManager: FileManager = .default) {
+    init(
+        bundle: Bundle = .main,
+        fileManager: FileManager = .default,
+        overrides: [BundledTool: URL] = [:]
+    ) {
         self.bundle = bundle
         self.fileManager = fileManager
+        self.overrides = overrides
     }
 
     func locate(_ tool: BundledTool) throws -> URL {
+        if let override = overrides[tool] {
+            return try validateExecutable(at: override, tool: tool)
+        }
+
         let candidates = candidateURLs(for: tool)
         for candidate in candidates {
             guard fileManager.fileExists(atPath: candidate.path) else {

@@ -21,22 +21,22 @@ struct YtDlpProbeService: Sendable {
         )
 
         let result = try await runner.run(config)
+        let stdout = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stderrHint = result.stderr
+            .components(separatedBy: "\n")
+            .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
 
         guard result.exitCode == 0 else {
-            let hint = result.stderr
-                .components(separatedBy: "\n")
-                .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
-                ?? "Exit code \(result.exitCode)"
             throw AppError(
                 message: "yt-dlp probe failed.",
-                recoverySuggestion: hint
+                recoverySuggestion: stderrHint ?? "Exit code \(result.exitCode)"
             )
         }
 
-        guard let data = result.stdout.data(using: .utf8), !data.isEmpty else {
+        guard !stdout.isEmpty, stdout != "null", let data = stdout.data(using: .utf8) else {
             throw AppError(
-                message: "yt-dlp returned no output.",
-                recoverySuggestion: "Check the URL and try again."
+                message: "yt-dlp probe failed.",
+                recoverySuggestion: stderrHint ?? "yt-dlp did not return a media JSON object."
             )
         }
 
