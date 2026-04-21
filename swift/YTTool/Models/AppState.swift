@@ -7,6 +7,7 @@ final class AppState: ObservableObject {
         static let selectedOutputDirectoryPath = "selectedOutputDirectoryPath"
     }
     private static let maxLogEntries = 250
+    private static let diskSpaceSafetyMarginBytes: Int64 = 64 * 1_048_576
 
     // MARK: - Probe
     @Published var inputURL: String = ""
@@ -30,6 +31,7 @@ final class AppState: ObservableObject {
     // MARK: - Download
     @Published var downloadState: DownloadState = .idle
     @Published private(set) var logs: [AppLogEntry] = []
+    @Published private(set) var ffmpegWarningMessage: String?
 
     // MARK: - Private
     private let probeService = YtDlpProbeService()
@@ -50,6 +52,7 @@ final class AppState: ObservableObject {
             self.selectedOutputDirectory = nil
         }
 
+        refreshFFmpegWarning()
     }
 
     // MARK: - Probe
@@ -127,6 +130,12 @@ final class AppState: ObservableObject {
               let outputDir = selectedOutputDirectory
         else { return }
 
+        if let diskSpaceError = preflightDiskSpaceError(outputDirectory: outputDir) {
+            downloadState = .failed(diskSpaceError)
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(diskSpaceError))
+            return
+        }
+
         downloadTask?.cancel()
         let attemptID = beginDownloadAttempt()
         downloadState = .idle
@@ -187,18 +196,20 @@ final class AppState: ObservableObject {
                 await MainActor.run {
                     guard isCurrentDownloadAttempt(attemptID) else { return }
                     downloadTask = nil
-                    downloadState = .failed(error)
-                    appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
+                    let mappedError = mapDownloadError(error)
+                    downloadState = .failed(mappedError)
+                    appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
                 }
             } catch {
                 await MainActor.run {
                     guard isCurrentDownloadAttempt(attemptID) else { return }
                     downloadTask = nil
-                    downloadState = .failed(AppError(
+                    let mappedError = mapDownloadError(AppError(
                         message: "Download failed.",
                         recoverySuggestion: error.localizedDescription
                     ))
-                    appendLog(scope: .download, level: .error, message: "Download failed. \(error.localizedDescription)")
+                    downloadState = .failed(mappedError)
+                    appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
                 }
             }
         }
@@ -240,6 +251,15 @@ final class AppState: ObservableObject {
         }
     }
 
+    func refreshFFmpegWarning(locator: BundledToolLocator = BundledToolLocator()) {
+        let missing = locator.missingTools([.ffmpeg, .ffprobe])
+        guard !missing.isEmpty else {
+            ffmpegWarningMessage = nil
+            return
+        }
+        ffmpegWarningMessage = ffmpegWarningMessage(for: missing)
+    }
+
     @discardableResult
     func beginProbeAttempt() -> Int {
         probeAttemptID += 1
@@ -264,6 +284,12 @@ final class AppState: ObservableObject {
 
     func isCurrentDownloadAttempt(_ attemptID: Int) -> Bool {
         downloadAttemptID == attemptID
+    }
+
+    func estimatedDownloadSizeBytes(video: VideoFormat?, audio: AudioFormat?) -> Int64? {
+        let sizes = [video?.fileSizeBytes, audio?.fileSizeBytes].compactMap { $0 }
+        guard !sizes.isEmpty else { return nil }
+        return sizes.reduce(0, +)
     }
 
     private func sendCompletionNotification(outputURL: URL?) {
@@ -302,6 +328,76 @@ final class AppState: ObservableObject {
         return error.message
     }
 
+    private func preflightDiskSpaceError(outputDirectory: URL) -> AppError? {
+        let estimatedBytes = estimatedDownloadSizeBytes(
+            video: selectedVideoFormat,
+            audio: selectedAudioFormat
+        )
+        guard let estimatedBytes,
+              let availableBytes = availableDiskSpaceBytes(for: outputDirectory)
+        else {
+            return nil
+        }
+
+        if estimatedBytes + Self.diskSpaceSafetyMarginBytes <= availableBytes {
+            return nil
+        }
+
+        return AppError(
+            message: "Insufficient disk space.",
+            recoverySuggestion: "Estimated download size is \(formatDiskBytes(estimatedBytes)), but only \(formatDiskBytes(availableBytes)) is available in the selected folder."
+        )
+    }
+
+    private func availableDiskSpaceBytes(for directory: URL) -> Int64? {
+        let keys: Set<URLResourceKey> = [
+            .volumeAvailableCapacityForImportantUsageKey,
+            .volumeAvailableCapacityKey,
+        ]
+        guard let values = try? directory.resourceValues(forKeys: keys) else {
+            return nil
+        }
+
+        if let important = values.volumeAvailableCapacityForImportantUsage {
+            return important
+        }
+        if let legacy = values.volumeAvailableCapacity {
+            return Int64(legacy)
+        }
+        return nil
+    }
+
+    private func mapDownloadError(_ error: AppError) -> AppError {
+        let haystack = [error.message, error.recoverySuggestion]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: "\n")
+
+        if haystack.contains("no space left on device")
+            || haystack.contains("enospc")
+            || haystack.contains("disk full") {
+            return AppError(
+                message: "Insufficient disk space.",
+                recoverySuggestion: "Free up disk space or choose another output folder, then try again."
+            )
+        }
+
+        return error
+    }
+
+    private func ffmpegWarningMessage(for missingTools: [BundledTool]) -> String {
+        let detail: String
+        switch Set(missingTools) {
+        case [.ffmpeg]:
+            detail = "ffmpeg is missing."
+        case [.ffprobe]:
+            detail = "ffprobe is missing."
+        default:
+            detail = "ffmpeg and ffprobe are missing."
+        }
+
+        return "\(detail)\nVideo and audio streams may fail to merge.\nReinstall development binaries or rebuild the app bundle."
+    }
+
     private func buildCommandPreview(
         title: String,
         videoId: String?,
@@ -316,5 +412,17 @@ final class AppState: ObservableObject {
         case (nil, nil): format = "best"
         }
         return "yt-dlp -f \(format) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …"
+    }
+
+    private func formatDiskBytes(_ bytes: Int64) -> String {
+        let gb = Double(bytes) / 1_073_741_824
+        if gb >= 1 {
+            return String(format: "%.1f GB", gb)
+        }
+        let mb = Double(bytes) / 1_048_576
+        if mb >= 1 {
+            return String(format: "%.1f MB", mb)
+        }
+        return "\(bytes) bytes"
     }
 }

@@ -41,15 +41,28 @@ struct BundledToolLocator: @unchecked Sendable {
         )
     }
 
+    func missingTools(_ tools: [BundledTool]) -> [BundledTool] {
+        tools.filter { tool in
+            (try? locate(tool)) == nil
+        }
+    }
+
     func candidateURLs(for tool: BundledTool) -> [URL] {
         let resourceRoot = bundle.resourceURL
         let bundleCandidate = resourceRoot?.appending(path: "Binaries/\(tool.rawValue)", directoryHint: .notDirectory)
+        guard shouldIncludeProjectFallback else {
+            return [bundleCandidate].compactMap { $0 }
+        }
+
         let projectCandidate = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appending(path: "Resources/Binaries/\(tool.rawValue)", directoryHint: .notDirectory)
-
         return [bundleCandidate, projectCandidate].compactMap { $0 }
+    }
+
+    private var shouldIncludeProjectFallback: Bool {
+        bundle.bundleURL.pathExtension != "app"
     }
 
     private func validateExecutable(at url: URL, tool: BundledTool) throws -> URL {

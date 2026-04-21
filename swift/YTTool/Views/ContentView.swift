@@ -23,6 +23,7 @@ struct ContentView: View {
                 downloadState: state.downloadState,
                 canDownload: state.canDownload,
                 isDownloading: state.isDownloading,
+                ffmpegWarningMessage: state.ffmpegWarningMessage,
                 onDownload: state.download,
                 onCancel: state.cancelDownload
             )

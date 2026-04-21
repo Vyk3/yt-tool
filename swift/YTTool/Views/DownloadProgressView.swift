@@ -5,14 +5,19 @@ struct DownloadProgressView: View {
     let downloadState: DownloadState
     let canDownload: Bool
     let isDownloading: Bool
+    let ffmpegWarningMessage: String?
     let onDownload: () -> Void
     let onCancel: () -> Void
+    @State private var isShowingFFmpegWarning = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Download")
                     .font(.headline)
+                if let ffmpegWarningMessage {
+                    ffmpegWarningButton(message: ffmpegWarningMessage)
+                }
                 Spacer()
                 actionButton
             }
@@ -38,6 +43,24 @@ struct DownloadProgressView: View {
             .buttonStyle(.borderedProminent)
             .disabled(!canDownload)
         }
+    }
+
+    private func ffmpegWarningButton(message: String) -> some View {
+        Button {
+            isShowingFFmpegWarning.toggle()
+        } label: {
+            Label("FFmpeg unavailable", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isShowingFFmpegWarning, arrowEdge: .top) {
+            Text(message)
+                .font(.callout)
+                .frame(width: 280, alignment: .leading)
+                .padding(12)
+        }
+        .help("ffmpeg or ffprobe is missing.")
     }
 
     // MARK: - Status body
