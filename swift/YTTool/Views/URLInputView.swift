@@ -7,6 +7,7 @@ struct URLInputView: View {
     let selectedDirectory: URL?
     let onProbe: () -> Void
     let onSelectDirectory: () -> Void
+    let onClearDirectory: () -> Void
     @State private var isDropTargeted = false
 
     var body: some View {
@@ -52,6 +53,15 @@ struct URLInputView: View {
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
+
+                if selectedDirectory != nil {
+                    Button(action: onClearDirectory) {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Clear selected folder")
+                }
 
                 Spacer(minLength: 0)
 

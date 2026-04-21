@@ -46,8 +46,6 @@ final class AppState: ObservableObject {
             self.selectedOutputDirectory = nil
         }
 
-        UNUserNotificationCenter.current()
-            .requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     // MARK: - Probe
@@ -153,6 +151,20 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    // Call once from the main view's onAppear.
+    // Note: ad-hoc signed builds may not register with the notification center —
+    // use an Xcode dev build or Developer ID signing to test notifications.
+    func requestNotificationPermission() {
+        UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .sound]) { granted, error in
+                if let error {
+                    print("[Notification] requestAuthorization error: \(error)")
+                } else {
+                    print("[Notification] authorization granted: \(granted)")
+                }
+            }
+    }
 
     private func sendCompletionNotification(outputURL: URL?) {
         let content = UNMutableNotificationContent()

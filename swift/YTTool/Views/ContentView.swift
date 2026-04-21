@@ -11,7 +11,8 @@ struct ContentView: View {
                 probeState: state.probeState,
                 selectedDirectory: state.selectedOutputDirectory,
                 onProbe: state.probe,
-                onSelectDirectory: selectOutputDirectory
+                onSelectDirectory: selectOutputDirectory,
+                onClearDirectory: { state.selectedOutputDirectory = nil }
             )
             FormatPickerView(
                 probeState: state.probeState,
@@ -29,6 +30,7 @@ struct ContentView: View {
             Spacer(minLength: 0)
         }
         .padding(24)
+        .onAppear { state.requestNotificationPermission() }
     }
 
     private var header: some View {
