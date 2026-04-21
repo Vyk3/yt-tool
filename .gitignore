@@ -59,6 +59,7 @@
 /RELEASE_CHECKLIST.md
 /TEST_REPORT.md
 /WINDOWS_ACCEPTANCE_TEMPLATE.md
+/SPRINT4_ACCEPTANCE.md
 
 # Local-only helper scripts
 /scripts/check_ci.sh
