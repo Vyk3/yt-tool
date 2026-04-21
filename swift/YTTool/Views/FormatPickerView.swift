@@ -2,17 +2,16 @@ import SwiftUI
 
 // MARK: - Column widths (shared between header and rows)
 
-// Column widths are sized to fit within half of a 900pt window
-// (content area ≈ 394pt after outer padding and HStack spacing).
-// All 7 video columns + 6 spacings(4) + padding(24) = 392pt ≤ 394pt.
+// Budget: content area ≈ 394pt per column (900pt window, 24pt outer padding, 16pt HStack gap).
+// 7 video columns + 6 spacings(6) + padding(24) = 332 + 36 + 24 = 392pt ≤ 394pt.
 private enum VideoCol {
-    static let id: CGFloat      = 30   // IDs are 2-4 chars; 30pt fits up to "395"
+    static let id: CGFloat      = 30
     static let res: CGFloat     = 44
     static let codec: CGFloat   = 44
     static let fps: CGFloat     = 38
     static let bitrate: CGFloat = 50
     static let size: CGFloat    = 60
-    static let note: CGFloat    = 80   // "with audio" = 10 chars × 7.6pt ≈ 76pt; 80pt fits
+    static let note: CGFloat    = 66   // "w/ audio" = 8 chars × 7.6pt ≈ 61pt; 66pt fits
 }
 
 private enum AudioCol {
@@ -79,7 +78,7 @@ struct FormatPickerView: View {
     }
 
     private var videoHeader: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Text("ID")     .frame(width: VideoCol.id,      alignment: .leading)
             Text("Res")    .frame(width: VideoCol.res,     alignment: .leading)
             Text("Codec")  .frame(width: VideoCol.codec,   alignment: .leading)
@@ -94,7 +93,7 @@ struct FormatPickerView: View {
     }
 
     private func videoRow(_ fmt: VideoFormat, isSelected: Bool) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Text(fmt.id)               .lineLimit(1).frame(width: VideoCol.id,      alignment: .leading)
             Text(fmt.resolution)       .lineLimit(1).frame(width: VideoCol.res,     alignment: .leading)
             Text(fmt.friendlyCodec)    .lineLimit(1).frame(width: VideoCol.codec,   alignment: .leading)
@@ -147,7 +146,7 @@ struct FormatPickerView: View {
     }
 
     private var audioHeader: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Text("ID")     .frame(width: AudioCol.id,      alignment: .leading)
             Text("Codec")  .frame(width: AudioCol.codec,   alignment: .leading)
             Text("Bitrate").frame(width: AudioCol.bitrate, alignment: .leading)
@@ -160,7 +159,7 @@ struct FormatPickerView: View {
     }
 
     private func audioRow(_ fmt: AudioFormat, isSelected: Bool) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Text(fmt.id)               .lineLimit(1).frame(width: AudioCol.id,      alignment: .leading)
             Text(fmt.friendlyCodec)    .lineLimit(1).frame(width: AudioCol.codec,   alignment: .leading)
             Text(fmt.formattedBitrate) .lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
