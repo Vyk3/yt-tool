@@ -6,13 +6,13 @@ import SwiftUI
 // (content area ≈ 394pt after outer padding and HStack spacing).
 // All 7 video columns + 6 spacings(4) + padding(24) = 392pt ≤ 394pt.
 private enum VideoCol {
-    static let id: CGFloat      = 36
+    static let id: CGFloat      = 30   // IDs are 2-4 chars; 30pt fits up to "395"
     static let res: CGFloat     = 44
     static let codec: CGFloat   = 44
     static let fps: CGFloat     = 38
     static let bitrate: CGFloat = 50
     static let size: CGFloat    = 60
-    static let note: CGFloat    = 72   // "with audio" ≈ 72pt at callout mono
+    static let note: CGFloat    = 80   // "with audio" = 10 chars × 7.6pt ≈ 76pt; 80pt fits
 }
 
 private enum AudioCol {
