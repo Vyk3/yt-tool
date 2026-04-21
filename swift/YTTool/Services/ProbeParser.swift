@@ -53,7 +53,7 @@ struct ProbeParser {
             id: raw.formatID,
             resolution: resolution,
             codec: raw.vcodec ?? "unknown",
-            fps: raw.fps ?? 0,
+            fps: Int((raw.fps ?? 0).rounded()),
             bitrateKbps: raw.tbr,
             fileSizeBytes: raw.filesizeApprox ?? raw.filesize,
             note: hasAudio ? "muxed" : "video only"
@@ -94,7 +94,7 @@ private struct RawFormat: Decodable {
     var vcodec: String?
     var acodec: String?
     var height: Int?
-    var fps: Int?
+    var fps: Double?
     var tbr: Double?
     var abr: Double?
     var ext: String?
