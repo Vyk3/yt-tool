@@ -17,9 +17,12 @@ struct VideoFormat: Codable, Equatable, Identifiable {
     var fileSizeBytes: Int64?
     var note: String
 
+    var friendlyCodec: String { mapCodecName(codec) }
+    var formattedBitrate: String { bitrateKbps.map { String(format: "%.0fk", $0) } ?? "—" }
+    var formattedFileSize: String { formatFileSize(fileSizeBytes) }
+
     var displayLine: String {
-        let bitratePart = bitrateKbps.map { String(format: "%.0fkbps", $0) } ?? "?"
-        return "\(id)  \(resolution)  \(codec)  \(fps)fps  \(bitratePart)  \(note)"
+        "\(id)  \(resolution)  \(friendlyCodec)  \(fps)fps  \(formattedBitrate)  \(formattedFileSize)  \(note)"
     }
 }
 
@@ -30,8 +33,37 @@ struct AudioFormat: Codable, Equatable, Identifiable {
     var fileSizeBytes: Int64?
     var note: String
 
+    var friendlyCodec: String { mapCodecName(codec) }
+    var formattedBitrate: String { bitrateKbps.map { String(format: "%.0fk", $0) } ?? "—" }
+    var formattedFileSize: String { formatFileSize(fileSizeBytes) }
+
     var displayLine: String {
-        let bitratePart = bitrateKbps.map { String(format: "%.0fkbps", $0) } ?? "?"
-        return "\(id)  \(codec)  \(bitratePart)  \(note)"
+        "\(id)  \(friendlyCodec)  \(formattedBitrate)  \(formattedFileSize)  \(note)"
     }
+}
+
+// MARK: - Helpers
+
+private func mapCodecName(_ raw: String) -> String {
+    let lower = raw.lowercased()
+    if lower.hasPrefix("avc1") || lower.hasPrefix("avc3") || lower == "h264" { return "H.264" }
+    if lower.hasPrefix("av01") || lower == "av1"                              { return "AV1" }
+    if lower == "vp9"  || lower.hasPrefix("vp09")                            { return "VP9" }
+    if lower == "vp8"  || lower.hasPrefix("vp08")                            { return "VP8" }
+    if lower.hasPrefix("hvc1") || lower.hasPrefix("hev1")
+        || lower == "h265" || lower == "hevc"                                { return "HEVC" }
+    if lower.hasPrefix("mp4a")                                               { return "AAC" }
+    if lower == "opus"                                                       { return "Opus" }
+    if lower == "mp3"                                                        { return "MP3" }
+    if lower == "vorbis"                                                     { return "Vorbis" }
+    if lower == "flac"                                                       { return "FLAC" }
+    return raw
+}
+
+private func formatFileSize(_ bytes: Int64?) -> String {
+    guard let bytes, bytes > 0 else { return "—" }
+    let mb = Double(bytes) / 1_048_576
+    if mb >= 1024 { return String(format: "%.1f GB", mb / 1024) }
+    if mb >= 1    { return String(format: "%.1f MB", mb) }
+    return String(format: "%.0f KB", mb * 1024)
 }

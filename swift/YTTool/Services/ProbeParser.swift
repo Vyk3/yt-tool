@@ -57,7 +57,7 @@ struct ProbeParser {
             fps: Int((raw.fps ?? 0).rounded()),
             bitrateKbps: raw.tbr,
             fileSizeBytes: raw.filesizeApprox ?? raw.filesize,
-            note: hasAudio ? "muxed" : "video only"
+            note: hasAudio ? "with audio" : "no audio"
         )
     }
 
