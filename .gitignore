@@ -18,6 +18,8 @@
 /dist/
 /swift/.build/
 /swift/.swiftpm/
+/swift/dist/
+/tmp/
 
 # Swift bundled binaries (dev-installed via dev_install_binaries.sh, not committed)
 /swift/YTTool/Resources/Binaries/yt-dlp
