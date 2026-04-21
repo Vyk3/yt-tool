@@ -10,7 +10,7 @@ final class ProbeParserTests: XCTestCase {
         XCTAssertEqual(info.webpageURL, "https://example.com/watch?v=123")
         XCTAssertEqual(info.videoFormats.map(\.id), ["137"])
         XCTAssertEqual(info.audioFormats.map(\.id), ["251"])
-        XCTAssertEqual(info.videoFormats.first?.note, "video only")
+        XCTAssertEqual(info.videoFormats.first?.note, "no audio")
     }
 
     func testParseToleratesMissingOptionalFields() throws {
