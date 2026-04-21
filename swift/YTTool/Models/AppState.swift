@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 @MainActor
 final class AppState: ObservableObject {
@@ -44,6 +45,9 @@ final class AppState: ObservableObject {
         } else {
             self.selectedOutputDirectory = nil
         }
+
+        UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     // MARK: - Probe
@@ -125,6 +129,7 @@ final class AppState: ObservableObject {
                         downloadState = .downloading(progress)
                     case .completed(let result):
                         downloadState = .succeeded(outputURL: result.outputURL)
+                        self.sendCompletionNotification(outputURL: result.outputURL)
                     }
                 }
             } catch is CancellationError {
@@ -148,6 +153,19 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    private func sendCompletionNotification(outputURL: URL?) {
+        let content = UNMutableNotificationContent()
+        content.title = "Download Complete"
+        content.body = outputURL?.lastPathComponent ?? "Your download has finished."
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
 
     private func buildCommandPreview(
         title: String,
