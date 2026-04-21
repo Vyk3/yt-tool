@@ -42,7 +42,8 @@ struct ProbeParser {
     }
 
     private static func makeVideoFormat(from raw: RawFormat) -> VideoFormat? {
-        guard raw.vcodec?.lowercased() != "none" else {
+        // Exclude formats with no video track (explicit "none") or missing vcodec.
+        guard let vcodec = raw.vcodec, vcodec.lowercased() != "none" else {
             return nil
         }
 
@@ -52,7 +53,7 @@ struct ProbeParser {
         return VideoFormat(
             id: raw.formatID,
             resolution: resolution,
-            codec: raw.vcodec ?? "unknown",
+            codec: vcodec,
             fps: Int((raw.fps ?? 0).rounded()),
             bitrateKbps: raw.tbr,
             fileSizeBytes: raw.filesizeApprox ?? raw.filesize,

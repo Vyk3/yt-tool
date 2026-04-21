@@ -26,13 +26,6 @@ struct ContentView: View {
                 onCancel: state.cancelDownload
             )
 
-            if let error = state.userFacingError {
-                Text(error.recoverySuggestion.map { "\(error.message) \($0)" } ?? error.message)
-                    .foregroundStyle(.red)
-                    .font(.callout)
-                    .textSelection(.enabled)
-            }
-
             Spacer(minLength: 0)
         }
         .padding(24)

@@ -2,17 +2,28 @@ import Foundation
 
 @MainActor
 final class AppState: ObservableObject {
+    private enum StorageKey {
+        static let selectedOutputDirectoryPath = "selectedOutputDirectoryPath"
+    }
+
     // MARK: - Probe
     @Published var inputURL: String = ""
     @Published var probeState: ProbeState = .idle
-    @Published var userFacingError: AppError?
 
     // MARK: - Format selection
     @Published var selectedVideoFormat: VideoFormat?
     @Published var selectedAudioFormat: AudioFormat?
 
     // MARK: - Output directory
-    @Published var selectedOutputDirectory: URL?
+    @Published var selectedOutputDirectory: URL? {
+        didSet {
+            if let path = selectedOutputDirectory?.path(percentEncoded: false) {
+                defaults.set(path, forKey: StorageKey.selectedOutputDirectoryPath)
+            } else {
+                defaults.removeObject(forKey: StorageKey.selectedOutputDirectoryPath)
+            }
+        }
+    }
 
     // MARK: - Download
     @Published var downloadState: DownloadState = .idle
@@ -20,8 +31,20 @@ final class AppState: ObservableObject {
     // MARK: - Private
     private let probeService = YtDlpProbeService()
     private let downloadRunner = ProcessRunner()
+    private let defaults: UserDefaults
     private var probeTask: Task<Void, Never>?
     private var downloadTask: Task<Void, Never>?
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+
+        if let path = defaults.string(forKey: StorageKey.selectedOutputDirectoryPath),
+           !path.isEmpty {
+            self.selectedOutputDirectory = URL(fileURLWithPath: path)
+        } else {
+            self.selectedOutputDirectory = nil
+        }
+    }
 
     // MARK: - Probe
 
@@ -31,7 +54,6 @@ final class AppState: ObservableObject {
 
         probeTask?.cancel()
         probeState = .loading
-        userFacingError = nil
         selectedVideoFormat = nil
         selectedAudioFormat = nil
         downloadState = .idle
@@ -56,10 +78,10 @@ final class AppState: ObservableObject {
     var canDownload: Bool {
         guard case .success = probeState,
               selectedOutputDirectory != nil,
-              (selectedVideoFormat != nil || selectedAudioFormat != nil),
-              case .idle = downloadState
+              (selectedVideoFormat != nil || selectedAudioFormat != nil)
         else { return false }
-        return true
+        // Allow re-download after cancel / failure / success — only block while active.
+        return !isDownloading
     }
 
     var isDownloading: Bool {
