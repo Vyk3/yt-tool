@@ -41,6 +41,7 @@ struct YtDlpDownloadService: Sendable {
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
+        playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible,
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -55,7 +56,8 @@ struct YtDlpDownloadService: Sendable {
                         videoId: videoFormatId,
                         audioId: audioFormatId,
                         playlistMode: playlistMode,
-                        playlistVideoQualityStrategy: playlistVideoQualityStrategy
+                        playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+                        playlistAudioQualityStrategy: playlistAudioQualityStrategy
                     )
                     let outputTemplate = outputDirectory
                         .appendingPathComponent("%(title)s.%(ext)s")
@@ -170,7 +172,8 @@ struct YtDlpDownloadService: Sendable {
         videoId: String?,
         audioId: String?,
         playlistMode: PlaylistMode,
-        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy
+        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
+        playlistAudioQualityStrategy: PlaylistAudioQualityStrategy
     ) -> String {
         switch playlistMode {
         case .onlyFirstItem:
@@ -192,7 +195,12 @@ struct YtDlpDownloadService: Sendable {
                 return "bv*+ba/b"
             }
         case .wholePlaylistBestAudio:
-            return "ba/bestaudio/best"
+            switch playlistAudioQualityStrategy {
+            case .moreCompatible:
+                return "ba/bestaudio/best"
+            case .higherQuality:
+                return "bestaudio/best"
+            }
         }
     }
 }

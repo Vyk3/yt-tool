@@ -5,10 +5,12 @@ struct URLInputView: View {
     @Binding var inputURL: String
     @Binding var playlistMode: PlaylistMode
     @Binding var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy
+    @Binding var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy
     let probeState: ProbeState
     let selectedDirectory: URL?
     let showsPlaylistModePicker: Bool
     let showsPlaylistVideoQualityStrategy: Bool
+    let showsPlaylistAudioQualityStrategy: Bool
     let onProbe: () -> Void
     let onSelectDirectory: () -> Void
     let onClearDirectory: () -> Void
@@ -63,26 +65,33 @@ struct URLInputView: View {
                         .foregroundStyle(.secondary)
 
                     if showsPlaylistVideoQualityStrategy {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                Text("Video quality")
-                                    .font(.callout.weight(.medium))
-                                    .foregroundStyle(.secondary)
-
-                                Picker("Video quality", selection: $playlistVideoQualityStrategy) {
-                                    ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
-                                        Text(strategy.title).tag(strategy)
-                                    }
+                        secondaryQualityPicker(
+                            label: "Video quality",
+                            helpText: "Choose whether whole-playlist video downloads favor compatibility or higher quality."
+                        ) {
+                            Picker("Video quality", selection: $playlistVideoQualityStrategy) {
+                                ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
+                                    Text(strategy.title).tag(strategy)
                                 }
-                                .labelsHidden()
-                                .frame(maxWidth: 280, alignment: .leading)
                             }
-
-                            Text("Choose whether whole-playlist video downloads favor compatibility or higher quality.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            .labelsHidden()
+                            .frame(maxWidth: 280, alignment: .leading)
                         }
-                        .padding(.leading, 20)
+                    }
+
+                    if showsPlaylistAudioQualityStrategy {
+                        secondaryQualityPicker(
+                            label: "Audio quality",
+                            helpText: "Choose whether whole-playlist audio downloads favor compatibility or higher quality."
+                        ) {
+                            Picker("Audio quality", selection: $playlistAudioQualityStrategy) {
+                                ForEach(PlaylistAudioQualityStrategy.allCases) { strategy in
+                                    Text(strategy.title).tag(strategy)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 280, alignment: .leading)
+                        }
                     }
                 }
             }
@@ -143,6 +152,28 @@ struct URLInputView: View {
         case .wholePlaylistBestVideo, .wholePlaylistBestAudio:
             return "Whole playlist downloads every item automatically."
         }
+    }
+
+    @ViewBuilder
+    private func secondaryQualityPicker<PickerContent: View>(
+        label: String,
+        helpText: String,
+        @ViewBuilder picker: () -> PickerContent
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(label)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                picker()
+            }
+
+            Text(helpText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.leading, 20)
     }
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {

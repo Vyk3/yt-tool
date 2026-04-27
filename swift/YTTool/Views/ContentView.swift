@@ -10,10 +10,12 @@ struct ContentView: View {
                 inputURL: $state.inputURL,
                 playlistMode: $state.playlistMode,
                 playlistVideoQualityStrategy: $state.playlistVideoQualityStrategy,
+                playlistAudioQualityStrategy: $state.playlistAudioQualityStrategy,
                 probeState: state.probeState,
                 selectedDirectory: state.selectedOutputDirectory,
                 showsPlaylistModePicker: state.isPlaylistInputURL,
                 showsPlaylistVideoQualityStrategy: state.showsPlaylistVideoQualityStrategy,
+                showsPlaylistAudioQualityStrategy: state.showsPlaylistAudioQualityStrategy,
                 onProbe: state.probe,
                 onSelectDirectory: selectOutputDirectory,
                 onClearDirectory: { state.selectedOutputDirectory = nil }

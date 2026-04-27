@@ -142,6 +142,31 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.playlistVideoQualityStrategy, .bestCompatibility)
     }
 
+    func testShowsPlaylistAudioQualityStrategyOnlyForWholePlaylistAudio() {
+        let state = AppState(defaults: freshDefaults())
+
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        XCTAssertFalse(state.showsPlaylistAudioQualityStrategy)
+
+        state.playlistMode = .wholePlaylistBestAudio
+        XCTAssertTrue(state.showsPlaylistAudioQualityStrategy)
+
+        state.playlistMode = .wholePlaylistBestVideo
+        XCTAssertFalse(state.showsPlaylistAudioQualityStrategy)
+    }
+
+    func testSwitchingAwayFromWholePlaylistAudioResetsAudioQualityStrategy() {
+        let state = AppState(defaults: freshDefaults())
+
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistAudioQualityStrategy = .higherQuality
+
+        state.playlistMode = .wholePlaylistBestVideo
+
+        XCTAssertEqual(state.playlistAudioQualityStrategy, .moreCompatible)
+    }
+
     func testRefreshFFmpegWarningClearsWhenAllToolsExist() throws {
         let state = AppState(defaults: freshDefaults())
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

@@ -15,6 +15,7 @@ final class AppState: ObservableObject {
             if !isPlaylistInputURL {
                 playlistMode = .onlyFirstItem
                 playlistVideoQualityStrategy = .bestCompatibility
+                playlistAudioQualityStrategy = .moreCompatible
             }
         }
     }
@@ -24,9 +25,13 @@ final class AppState: ObservableObject {
             if playlistMode != .wholePlaylistBestVideo {
                 playlistVideoQualityStrategy = .bestCompatibility
             }
+            if playlistMode != .wholePlaylistBestAudio {
+                playlistAudioQualityStrategy = .moreCompatible
+            }
         }
     }
     @Published var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility
+    @Published var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible
 
     // MARK: - Format selection
     @Published var selectedVideoFormat: VideoFormat?
@@ -157,6 +162,10 @@ final class AppState: ObservableObject {
         isPlaylistInputURL && playlistMode == .wholePlaylistBestVideo
     }
 
+    var showsPlaylistAudioQualityStrategy: Bool {
+        isPlaylistInputURL && playlistMode == .wholePlaylistBestAudio
+    }
+
     func download() {
         let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
@@ -197,6 +206,7 @@ final class AppState: ObservableObject {
             audioId: audioId,
             playlistMode: playlistMode,
             playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+            playlistAudioQualityStrategy: playlistAudioQualityStrategy,
             outputDir: outputDir
         )
         appendLog(
@@ -220,6 +230,7 @@ final class AppState: ObservableObject {
                     outputDirectory: outputDir,
                     playlistMode: playlistMode,
                     playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+                    playlistAudioQualityStrategy: playlistAudioQualityStrategy,
                     onLog: makeServiceLogger(scope: .download)
                 ) {
                     switch event {
@@ -462,6 +473,7 @@ final class AppState: ObservableObject {
         audioId: String?,
         playlistMode: PlaylistMode,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
+        playlistAudioQualityStrategy: PlaylistAudioQualityStrategy,
         outputDir: URL
     ) -> String {
         let format: String
@@ -481,7 +493,12 @@ final class AppState: ObservableObject {
                 format = "bv*+ba/b"
             }
         case .wholePlaylistBestAudio:
-            format = "ba/bestaudio/best"
+            switch playlistAudioQualityStrategy {
+            case .moreCompatible:
+                format = "ba/bestaudio/best"
+            case .higherQuality:
+                format = "bestaudio/best"
+            }
         }
         let playlistFlag = playlistMode.downloadsWholePlaylist ? "" : " --no-playlist"
         let target = title ?? "playlist items"

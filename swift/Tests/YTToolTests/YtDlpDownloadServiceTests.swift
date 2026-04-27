@@ -2,6 +2,38 @@ import XCTest
 @testable import YTTool
 
 final class YtDlpDownloadServiceTests: XCTestCase {
+    func testWholePlaylistAudioMoreCompatibleUsesCompatibleAudioSelector() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.m4a")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123",
+            videoFormatId: nil,
+            audioFormatId: nil,
+            outputDirectory: outputDirectory,
+            playlistMode: .wholePlaylistBestAudio,
+            playlistAudioQualityStrategy: .moreCompatible,
+            onLog: { kind, message in
+                if kind == .command {
+                    commandSink.value = message
+                }
+            }
+        ) {}
+
+        XCTAssertNotNil(commandSink.value)
+        XCTAssertTrue(commandSink.value?.contains("-f ba/bestaudio/best") == true)
+        XCTAssertFalse(commandSink.value?.contains("--no-playlist") == true)
+    }
+
     func testWholePlaylistVideoCompatibilityUsesCompatibilitySelector() async throws {
         let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
@@ -53,6 +85,7 @@ final class YtDlpDownloadServiceTests: XCTestCase {
             audioFormatId: nil,
             outputDirectory: outputDirectory,
             playlistMode: .wholePlaylistBestAudio,
+            playlistAudioQualityStrategy: .moreCompatible,
             onLog: { kind, message in
                 if kind == .command {
                     commandSink.value = message
@@ -66,6 +99,38 @@ final class YtDlpDownloadServiceTests: XCTestCase {
 
         XCTAssertNotNil(commandSink.value)
         XCTAssertTrue(commandSink.value?.contains("-f ba/bestaudio/best") == true)
+        XCTAssertFalse(commandSink.value?.contains("--no-playlist") == true)
+    }
+
+    func testWholePlaylistAudioHigherQualityUsesHigherQualityAudioSelector() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.m4a")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123",
+            videoFormatId: nil,
+            audioFormatId: nil,
+            outputDirectory: outputDirectory,
+            playlistMode: .wholePlaylistBestAudio,
+            playlistAudioQualityStrategy: .higherQuality,
+            onLog: { kind, message in
+                if kind == .command {
+                    commandSink.value = message
+                }
+            }
+        ) {}
+
+        XCTAssertNotNil(commandSink.value)
+        XCTAssertTrue(commandSink.value?.contains("-f bestaudio/best") == true)
         XCTAssertFalse(commandSink.value?.contains("--no-playlist") == true)
     }
 
