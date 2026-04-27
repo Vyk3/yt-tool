@@ -71,6 +71,12 @@
 - 只能提升 YouTube 路线
 - 不能解决 extractor 缺失型问题
 
+当前已选择的第一步：
+
+- 仅对 YouTube download 路径追加 `--concurrent-fragments 4`
+- probe 路径不追加该参数
+- 非 YouTube URL 保持 `P1` 基线不变
+
 ### 方案 B：通用插件框架
 
 本阶段不推荐。

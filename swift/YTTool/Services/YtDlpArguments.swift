@@ -28,7 +28,12 @@ func buildDownloadArguments(
         "--newline",
     ]
     if includeNoPlaylist { args.append("--no-playlist") }
-    if isYouTubeURL(url) { args += ["--extractor-args", "youtube:player_client=default"] }
+    if isYouTubeURL(url) {
+        args += [
+            "--extractor-args", "youtube:player_client=default",
+            "--concurrent-fragments", "4",
+        ]
+    }
     args.append(url)
     return args
 }

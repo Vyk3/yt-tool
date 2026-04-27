@@ -71,6 +71,8 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssert(args.contains("--no-playlist"))
         XCTAssert(args.contains("--extractor-args"))
         XCTAssert(args.contains("youtube:player_client=default"))
+        XCTAssert(args.contains("--concurrent-fragments"))
+        XCTAssert(args.contains("4"))
         XCTAssertEqual(args.last, url)
     }
 }
