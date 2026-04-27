@@ -38,6 +38,7 @@ struct YtDlpDownloadService: Sendable {
         url: String,
         videoFormatId: String?,
         audioFormatId: String?,
+        subtitleTrack: SubtitleTrack? = nil,
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
@@ -70,6 +71,7 @@ struct YtDlpDownloadService: Sendable {
                             formatSelector: formatSelector,
                             outputTemplate: outputTemplate,
                             ffmpegDirectory: ffmpeg.deletingLastPathComponent().path,
+                            subtitleTrack: subtitleTrack,
                             includeNoPlaylist: playlistMode == .onlyFirstItem
                         ),
                         terminationGracePeriod: .seconds(3)

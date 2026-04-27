@@ -53,6 +53,46 @@ final class ProbeParserTests: XCTestCase {
         }
     }
 
+    func testParseSubtitleTracks() throws {
+        let info = try ProbeParser().parse(Self.subtitleProbeJSON.data(using: .utf8)!)
+
+        XCTAssertEqual(info.subtitleTracks.map(\.lang).sorted(), ["en", "ja"])
+        XCTAssertEqual(info.subtitleTracks.first(where: { $0.lang == "en" })?.label, "English")
+        XCTAssertEqual(info.subtitleTracks.first(where: { $0.lang == "en" })?.isAuto, false)
+
+        XCTAssertEqual(info.autoSubtitleTracks.map(\.lang).sorted(), ["fr"])
+        XCTAssertEqual(info.autoSubtitleTracks.first?.label, "French")
+        XCTAssertEqual(info.autoSubtitleTracks.first?.isAuto, true)
+    }
+
+    func testParseLiveChatIsFiltered() throws {
+        let info = try ProbeParser().parse(Self.liveChatProbeJSON.data(using: .utf8)!)
+
+        XCTAssertFalse(info.subtitleTracks.contains(where: { $0.lang == "live_chat" }))
+        XCTAssertFalse(info.autoSubtitleTracks.contains(where: { $0.lang == "live_chat" }))
+        XCTAssertEqual(info.subtitleTracks.map(\.lang), ["en"])
+    }
+
+    func testParseNoSubtitleKeysReturnsEmpty() throws {
+        let info = try ProbeParser().parse(Self.normalProbeJSON.data(using: .utf8)!)
+
+        XCTAssertTrue(info.subtitleTracks.isEmpty)
+        XCTAssertTrue(info.autoSubtitleTracks.isEmpty)
+    }
+
+    func testSubtitleTrackIdIsNamespaced() {
+        let manual = SubtitleTrack(lang: "en", label: "English", isAuto: false)
+        let auto = SubtitleTrack(lang: "en", label: "English", isAuto: true)
+        XCTAssertNotEqual(manual.id, auto.id)
+        XCTAssertEqual(manual.id, "manual.en")
+        XCTAssertEqual(auto.id, "auto.en")
+    }
+
+    func testSubtitleDisplayNameFallsBackToLang() {
+        let track = SubtitleTrack(lang: "zh-Hans", label: "", isAuto: false)
+        XCTAssertEqual(track.displayName, "zh-Hans")
+    }
+
     private static let normalProbeJSON = """
     {
       "title": "Example Video",
@@ -97,6 +137,36 @@ final class ProbeParserTests: XCTestCase {
           "acodec": "mp4a.40.2"
         }
       ]
+    }
+    """
+
+    private static let subtitleProbeJSON = """
+    {
+      "title": "Subtitle Test",
+      "webpage_url": "https://example.com/watch?v=sub",
+      "formats": [],
+      "subtitles": {
+        "en": [{"name": "English", "ext": "vtt"}],
+        "ja": [{"name": "Japanese", "ext": "vtt"}]
+      },
+      "automatic_captions": {
+        "fr": [{"name": "French", "ext": "vtt"}]
+      }
+    }
+    """
+
+    private static let liveChatProbeJSON = """
+    {
+      "title": "Live Chat Test",
+      "webpage_url": "https://example.com/watch?v=live",
+      "formats": [],
+      "subtitles": {
+        "en": [{"name": "English", "ext": "vtt"}],
+        "live_chat": [{"name": "Live chat replay", "ext": "json"}]
+      },
+      "automatic_captions": {
+        "live_chat": [{"name": "Live chat replay", "ext": "json"}]
+      }
     }
     """
 }

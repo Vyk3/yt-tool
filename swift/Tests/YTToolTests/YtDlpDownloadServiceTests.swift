@@ -197,6 +197,95 @@ final class YtDlpDownloadServiceTests: XCTestCase {
         XCTAssertFalse(commandSink.value?.contains("--no-playlist") == true)
     }
 
+    func testManualSubtitleAddsWriteSubsFlag() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        let track = SubtitleTrack(lang: "en", label: "English", isAuto: false)
+        for try await _ in service.download(
+            url: "https://example.com/watch?v=123",
+            videoFormatId: "137",
+            audioFormatId: nil,
+            subtitleTrack: track,
+            outputDirectory: outputDirectory,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        XCTAssertTrue(commandSink.value?.contains("--write-subs") == true)
+        XCTAssertTrue(commandSink.value?.contains("--sub-langs en") == true)
+        XCTAssertFalse(commandSink.value?.contains("--write-auto-subs") == true)
+    }
+
+    func testAutoSubtitleAddsWriteAutoSubsFlag() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        let track = SubtitleTrack(lang: "fr", label: "French", isAuto: true)
+        for try await _ in service.download(
+            url: "https://example.com/watch?v=123",
+            videoFormatId: nil,
+            audioFormatId: "140",
+            subtitleTrack: track,
+            outputDirectory: outputDirectory,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        XCTAssertTrue(commandSink.value?.contains("--write-auto-subs") == true)
+        XCTAssertTrue(commandSink.value?.contains("--sub-langs fr") == true)
+        XCTAssertFalse(commandSink.value?.contains("--write-subs ") == true)
+    }
+
+    func testNoSubtitleTrackOmitsSubtitleFlags() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://example.com/watch?v=123",
+            videoFormatId: "137",
+            audioFormatId: "140",
+            subtitleTrack: nil,
+            outputDirectory: outputDirectory,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        XCTAssertFalse(commandSink.value?.contains("--write-subs") == true)
+        XCTAssertFalse(commandSink.value?.contains("--write-auto-subs") == true)
+        XCTAssertFalse(commandSink.value?.contains("--sub-langs") == true)
+    }
+
     private func makeDownloadScript(resultFile: URL) throws -> URL {
         let contents = """
         #!/bin/sh

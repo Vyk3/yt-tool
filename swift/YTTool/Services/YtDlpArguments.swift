@@ -17,6 +17,7 @@ func buildDownloadArguments(
     formatSelector: String,
     outputTemplate: String,
     ffmpegDirectory: String,
+    subtitleTrack: SubtitleTrack? = nil,
     includeNoPlaylist: Bool = true
 ) -> [String] {
     var args = [
@@ -28,6 +29,9 @@ func buildDownloadArguments(
         "--newline",
     ]
     if includeNoPlaylist { args.append("--no-playlist") }
+    if let subtitleTrack {
+        args += [subtitleTrack.isAuto ? "--write-auto-subs" : "--write-subs", "--sub-langs", subtitleTrack.lang]
+    }
     if isYouTubeURL(url) {
         args += [
             "--extractor-args", "youtube:player_client=default",

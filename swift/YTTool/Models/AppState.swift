@@ -36,6 +36,7 @@ final class AppState: ObservableObject {
     // MARK: - Format selection
     @Published var selectedVideoFormat: VideoFormat?
     @Published var selectedAudioFormat: AudioFormat?
+    @Published var selectedSubtitle: SubtitleTrack?
 
     // MARK: - Output directory
     @Published var selectedOutputDirectory: URL? {
@@ -90,6 +91,7 @@ final class AppState: ObservableObject {
         probeState = .loading
         selectedVideoFormat = nil
         selectedAudioFormat = nil
+        selectedSubtitle = nil
         downloadState = .idle
 
         probeTask = Task {
@@ -199,11 +201,13 @@ final class AppState: ObservableObject {
 
         let videoId = isWholePlaylistDownload ? nil : selectedVideoFormat?.id
         let audioId = isWholePlaylistDownload ? nil : selectedAudioFormat?.id
+        let subtitleTrack = isWholePlaylistDownload ? nil : selectedSubtitle
 
         let preview = buildCommandPreview(
             title: info?.title,
             videoId: videoId,
             audioId: audioId,
+            subtitleTrack: subtitleTrack,
             playlistMode: playlistMode,
             playlistVideoQualityStrategy: playlistVideoQualityStrategy,
             playlistAudioQualityStrategy: playlistAudioQualityStrategy,
@@ -227,6 +231,7 @@ final class AppState: ObservableObject {
                     url: url,
                     videoFormatId: videoId,
                     audioFormatId: audioId,
+                    subtitleTrack: subtitleTrack,
                     outputDirectory: outputDir,
                     playlistMode: playlistMode,
                     playlistVideoQualityStrategy: playlistVideoQualityStrategy,
@@ -471,6 +476,7 @@ final class AppState: ObservableObject {
         title: String?,
         videoId: String?,
         audioId: String?,
+        subtitleTrack: SubtitleTrack?,
         playlistMode: PlaylistMode,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
         playlistAudioQualityStrategy: PlaylistAudioQualityStrategy,
@@ -501,8 +507,13 @@ final class AppState: ObservableObject {
             }
         }
         let playlistFlag = playlistMode.downloadsWholePlaylist ? "" : " --no-playlist"
+        var subtitleFlags = ""
+        if let subtitleTrack {
+            let flag = subtitleTrack.isAuto ? "--write-auto-subs" : "--write-subs"
+            subtitleFlags = " \(flag) --sub-langs \(subtitleTrack.lang)"
+        }
         let target = title ?? "playlist items"
-        return "yt-dlp -f \(format)\(playlistFlag) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …  # \(target)"
+        return "yt-dlp -f \(format)\(playlistFlag)\(subtitleFlags) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …  # \(target)"
     }
 
     private func formatDiskBytes(_ bytes: Int64) -> String {

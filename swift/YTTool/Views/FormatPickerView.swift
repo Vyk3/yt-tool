@@ -30,6 +30,7 @@ struct FormatPickerView: View {
     let isPlaylistURL: Bool
     @Binding var selectedVideo: VideoFormat?
     @Binding var selectedAudio: AudioFormat?
+    @Binding var selectedSubtitle: SubtitleTrack?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -50,6 +51,13 @@ struct FormatPickerView: View {
                     HStack(alignment: .top, spacing: 16) {
                         videoColumn(formats: mediaInfo.videoFormats)
                         audioColumn(formats: mediaInfo.audioFormats)
+                        let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
+                        if hasSubs {
+                            subtitleColumn(
+                                manual: mediaInfo.subtitleTracks,
+                                auto: mediaInfo.autoSubtitleTracks
+                            )
+                        }
                     }
                 }
             }
@@ -198,6 +206,65 @@ struct FormatPickerView: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
         )
+    }
+
+    // MARK: - Subtitle column
+
+    private func subtitleColumn(manual: [SubtitleTrack], auto: [SubtitleTrack]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Subtitles")
+                .font(.subheadline.weight(.semibold))
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 6) {
+                    if !manual.isEmpty {
+                        Text("Manual")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                        ForEach(manual) { track in
+                            subtitleRow(track, isSelected: selectedSubtitle?.id == track.id)
+                                .onTapGesture {
+                                    selectedSubtitle = selectedSubtitle?.id == track.id ? nil : track
+                                }
+                        }
+                    }
+                    if !auto.isEmpty {
+                        Text("Auto-generated")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                        ForEach(auto) { track in
+                            subtitleRow(track, isSelected: selectedSubtitle?.id == track.id)
+                                .onTapGesture {
+                                    selectedSubtitle = selectedSubtitle?.id == track.id ? nil : track
+                                }
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 220)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private func subtitleRow(_ track: SubtitleTrack, isSelected: Bool) -> some View {
+        Text(track.displayName)
+            .font(.callout.monospaced())
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.25)
+                    : Color.primary.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
+            )
     }
 
     // MARK: - Placeholder
