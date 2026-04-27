@@ -176,6 +176,35 @@
 - 不要求成为默认 smoke 基线
 - 不要求替代 stable 的发布验收
 
+## 5.1 已执行验证记录（2026-04-27）
+
+### Stable 对照结果
+
+以下结果沿用 `P0` 已完成验证，用于作为 `nightly` 的基线对照：
+
+- bundle 内 `yt-dlp --version`：`2026.03.17`
+- bundle 内 `yt-dlp --list-impersonate-targets`：成功
+- built app 内 YouTube probe：成功，返回 `jNQXAC9IVRw / Me at the zoo`
+- `swift test --disable-sandbox --package-path swift`：通过（22/22）
+- `xcodebuild -project swift/YTTool.xcodeproj -scheme YTTool -configuration Debug -derivedDataPath "$PWD/tmp/xcode-derived-data" build`：通过
+- `scripts/build/swift/smoke_test.sh "$PWD/tmp/xcode-derived-data/Build/Products/Debug/YTTool.app"`：通过
+
+### Canary（nightly）结果
+
+以下结果为 `P1` 本轮实际执行记录：
+
+- bundle 内 `yt-dlp --version`：`2026.04.10.235301`
+- bundle 内 `yt-dlp --list-impersonate-targets`：成功
+- built app 内 YouTube probe：成功，返回 `jNQXAC9IVRw / Me at the zoo`
+- `xcodebuild -project swift/YTTool.xcodeproj -scheme YTTool -configuration Debug -derivedDataPath "$PWD/tmp/xcode-derived-data" build`：通过
+- `scripts/build/swift/smoke_test.sh "$PWD/tmp/xcode-derived-data/Build/Products/Debug/YTTool.app"`：通过（7/7）
+
+### 当前判断
+
+- `nightly` 已达到 `P1` 设计中定义的最小 canary 验收门槛
+- `stable` 仍保留完整基线职责，`nightly` 不替代默认发布验收
+- 这轮得到的结论是“`nightly` canary 已可验证”，不是“默认渠道应立即从 `stable` 切换到 `nightly`”
+
 ## 6. 回退策略
 
 `P1` 的回退原则必须固定：
