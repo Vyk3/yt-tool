@@ -63,26 +63,15 @@ struct YtDlpDownloadService: Sendable {
                         .appendingPathComponent("%(title)s.%(ext)s")
                         .path(percentEncoded: false)
 
-                    var arguments = [
-                        "-f", formatSelector,
-                        "-o", outputTemplate,
-                        // P1 fix: point yt-dlp at the vendored ffmpeg binary.
-                        "--ffmpeg-location", ffmpeg.deletingLastPathComponent().path,
-                        // P3 fix: ask yt-dlp to print the actual final file path
-                        // to stdout after post-processing, so we don't have to
-                        // guess from directory mtime.
-                        "--print", "after_move:filepath",
-                        "--progress",
-                        "--newline",
-                    ]
-                    if playlistMode == .onlyFirstItem {
-                        arguments.append("--no-playlist")
-                    }
-                    arguments.append(url)
-
                     let config = ProcessConfiguration(
                         executableURL: ytDlp,
-                        arguments: arguments,
+                        arguments: buildDownloadArguments(
+                            url: url,
+                            formatSelector: formatSelector,
+                            outputTemplate: outputTemplate,
+                            ffmpegDirectory: ffmpeg.deletingLastPathComponent().path,
+                            includeNoPlaylist: playlistMode == .onlyFirstItem
+                        ),
                         terminationGracePeriod: .seconds(3)
                     )
                     onLog(.command, config.commandLine.joined(separator: " "))
