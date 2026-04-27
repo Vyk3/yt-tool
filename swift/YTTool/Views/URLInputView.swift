@@ -44,41 +44,47 @@ struct URLInputView: View {
                 .foregroundStyle(.secondary)
 
             if showsPlaylistModePicker {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("Playlist mode")
-                        .font(.subheadline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text("Playlist mode")
+                            .font(.subheadline.weight(.semibold))
 
-                    Picker("Playlist mode", selection: $playlistMode) {
-                        ForEach(PlaylistMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                        Picker("Playlist mode", selection: $playlistMode) {
+                            ForEach(PlaylistMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
+                            }
                         }
+                        .labelsHidden()
+                        .frame(maxWidth: 280, alignment: .leading)
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 280, alignment: .leading)
-                }
 
-                Text(playlistModeHint)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+                    Text(playlistModeHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
-            if showsPlaylistVideoQualityStrategy {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("Video quality")
-                        .font(.subheadline.weight(.semibold))
+                    if showsPlaylistVideoQualityStrategy {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Text("Video quality")
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(.secondary)
 
-                    Picker("Video quality", selection: $playlistVideoQualityStrategy) {
-                        ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
-                            Text(strategy.title).tag(strategy)
+                                Picker("Video quality", selection: $playlistVideoQualityStrategy) {
+                                    ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
+                                        Text(strategy.title).tag(strategy)
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(maxWidth: 280, alignment: .leading)
+                            }
+
+                            Text("Choose whether whole-playlist video downloads favor compatibility or higher quality.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                        .padding(.leading, 20)
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 280, alignment: .leading)
                 }
-
-                Text("Choose whether whole-playlist video downloads favor compatibility or higher quality.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 12) {
@@ -111,10 +117,6 @@ struct URLInputView: View {
                     Button(probeButtonTitle, action: onProbe)
                         .keyboardShortcut(.return)
                         .disabled(!canProbe)
-                } else {
-                    Text("Whole playlist mode downloads every item automatically.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
         }
