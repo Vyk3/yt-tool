@@ -16,6 +16,15 @@
 # Build artifacts
 /build/
 /dist/
+/swift/.build/
+/swift/.swiftpm/
+/swift/dist/
+/tmp/
+
+# Swift bundled binaries (dev-installed via dev_install_binaries.sh, not committed)
+/swift/YTTool/Resources/Binaries/yt-dlp
+/swift/YTTool/Resources/Binaries/ffmpeg
+/swift/YTTool/Resources/Binaries/ffprobe
 
 # PyInstaller
 *.spec
@@ -50,8 +59,12 @@
 /RELEASE_CHECKLIST.md
 /TEST_REPORT.md
 /WINDOWS_ACCEPTANCE_TEMPLATE.md
+/SPRINT4_ACCEPTANCE.md
 
 # Local-only helper scripts
 /scripts/check_ci.sh
 /scripts/fast_path.sh
 /scripts/fmt.sh
+
+# Xcode per-user settings
+xcuserdata/
