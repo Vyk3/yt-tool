@@ -10,7 +10,7 @@
 YTDLP_VERSION="2026.03.17"
 YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_macos"
 # SHA256: run `scripts/build/swift/compute_shas.sh` to compute and fill in.
-YTDLP_SHA256=""
+YTDLP_SHA256="e80c47b3ce712acee51d5e3d4eace2d181b44d38f1942c3a32e3c7ff53cd9ed5"
 
 # ffmpeg/ffprobe static macOS arm64 (from evermeet.cx — Intel — or use
 # BtbN/FFmpeg-Builds for universal/arm64).
@@ -22,8 +22,8 @@ YTDLP_SHA256=""
 #   evermeet.cx builds are Intel only; for Apple Silicon prefer homebrew-bottled
 #   or BtbN builds until an arm64-static source is pinned here.
 #
-# For now, dev mode uses local Homebrew binaries (arm64). Release mode
-# requires these to be filled in.
+# For now, dev mode copies local ffmpeg/ffprobe binaries from PATH (typically
+# Homebrew on Apple Silicon). Release mode requires these to be filled in.
 
 FFMPEG_VERSION="7.1.1"
 # Intel static (evermeet.cx); replace with arm64 source for release.
