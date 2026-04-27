@@ -252,11 +252,10 @@ def _darwin_tty_path_for_device(device_id: int) -> str | None:
 
     ctypes, _, libc = libs
     libc.devname_r.argtypes = [ctypes.c_uint32, ctypes.c_ushort, ctypes.c_char_p, ctypes.c_int]
-    libc.devname_r.restype = ctypes.c_char_p
+    libc.devname_r.restype = ctypes.c_void_p  # NULL on failure; content written into buf
 
     buf = ctypes.create_string_buffer(1024)
-    result = libc.devname_r(device_id, stat.S_IFCHR, buf, ctypes.sizeof(buf))
-    if not result:
+    if not libc.devname_r(device_id, stat.S_IFCHR, buf, ctypes.sizeof(buf)):
         return None
 
     name = buf.value.decode(errors="ignore").strip()
@@ -393,54 +392,55 @@ def _darwin_parent_fd_tty_paths() -> list[str]:
             break
 
         ppid, _ = info
+        # 倍增重试：若 proc_pidinfo 返回恰好填满缓冲区，说明可能被截断。
         fd_capacity = 256
-        fd_buf = (ProcFdInfo * fd_capacity)()
-        result = libproc.proc_pidinfo(
-            pid,
-            proc_pidlistfds,
-            0,
-            ctypes.byref(fd_buf),
-            ctypes.sizeof(fd_buf),
-        )
-        if result > 0:
+        fd_entries: list[ProcFdInfo] = []
+        while fd_capacity <= 8192:
+            fd_buf = (ProcFdInfo * fd_capacity)()
+            result = libproc.proc_pidinfo(
+                pid,
+                proc_pidlistfds,
+                0,
+                ctypes.byref(fd_buf),
+                ctypes.sizeof(fd_buf),
+            )
+            if result <= 0:
+                break
             fd_count = result // ctypes.sizeof(ProcFdInfo)
-            for fd_info in fd_buf[:fd_count]:
-                if fd_info.proc_fdtype != prox_fdtype_vnode:
-                    continue
+            if result < ctypes.sizeof(fd_buf):
+                # 返回字节数小于缓冲区，确认已取到全部 fd
+                fd_entries = list(fd_buf[:fd_count])
+                break
+            # 缓冲区可能恰好被填满，翻倍后重试
+            fd_capacity *= 2
 
-                vnode_info = VnodeFdInfoWithPath()
-                vnode_result = libproc.proc_pidfdinfo(
-                    pid,
-                    fd_info.proc_fd,
-                    proc_pidfdvnodepathinfo,
-                    ctypes.byref(vnode_info),
-                    ctypes.sizeof(vnode_info),
-                )
-                if vnode_result <= 0:
-                    continue
+        for fd_info in fd_entries:
+            if fd_info.proc_fdtype != prox_fdtype_vnode:
+                continue
 
-                path = bytes(vnode_info.pvip.vip_path).split(b"\0")[0].decode(errors="ignore").strip()
-                if not path.startswith("/dev/tty") and not path.startswith("/dev/ttys"):
-                    continue
-                if path in seen_paths:
-                    continue
+            vnode_info = VnodeFdInfoWithPath()
+            vnode_result = libproc.proc_pidfdinfo(
+                pid,
+                fd_info.proc_fd,
+                proc_pidfdvnodepathinfo,
+                ctypes.byref(vnode_info),
+                ctypes.sizeof(vnode_info),
+            )
+            if vnode_result <= 0:
+                continue
 
-                seen_paths.add(path)
-                candidates.append(path)
+            path = bytes(vnode_info.pvip.vip_path).split(b"\0")[0].decode(errors="ignore").strip()
+            if not path.startswith("/dev/tty") and not path.startswith("/dev/ttys"):
+                continue
+            if path in seen_paths:
+                continue
+
+            seen_paths.add(path)
+            candidates.append(path)
 
         pid = ppid
 
     return candidates
-
-
-def _darwin_parent_terminal_size() -> tuple[int, int] | None:
-    """Darwin: 从祖先进程关联的 tty 设备读取实时窗口尺寸。"""
-    for path in dict.fromkeys(_darwin_parent_tty_paths() + _darwin_parent_fd_tty_paths()):
-        size = _ioctl_terminal_size_for_path(path)
-        if size is not None:
-            return size
-
-    return None
 
 
 def _ioctl_terminal_size() -> tuple[int, int] | None:
