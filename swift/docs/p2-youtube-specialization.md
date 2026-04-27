@@ -77,6 +77,13 @@
 - probe 路径不追加该参数
 - 非 YouTube URL 保持 `P1` 基线不变
 
+当前已选择的第二步：
+
+- 仅对 YouTube download 路径追加 `--embed-thumbnail`
+- 仅对 YouTube download 路径追加 `--embed-chapters`
+- 仅对 YouTube download 路径追加 `--embed-metadata`
+- probe 路径与非 YouTube URL 继续保持不变
+
 ### 方案 B：通用插件框架
 
 本阶段不推荐。

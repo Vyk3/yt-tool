@@ -32,6 +32,9 @@ func buildDownloadArguments(
         args += [
             "--extractor-args", "youtube:player_client=default",
             "--concurrent-fragments", "4",
+            "--embed-thumbnail",
+            "--embed-chapters",
+            "--embed-metadata",
         ]
     }
     args.append(url)

@@ -73,6 +73,9 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssert(args.contains("youtube:player_client=default"))
         XCTAssert(args.contains("--concurrent-fragments"))
         XCTAssert(args.contains("4"))
+        XCTAssert(args.contains("--embed-thumbnail"))
+        XCTAssert(args.contains("--embed-chapters"))
+        XCTAssert(args.contains("--embed-metadata"))
         XCTAssertEqual(args.last, url)
     }
 }
