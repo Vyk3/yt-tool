@@ -7,6 +7,7 @@
 
 相关决策：
 - `P0` 决策文档见 [swift/docs/p0-capability-ceiling.md](/Users/koa/.codex/worktrees/yt-tool-standalone-ytdlp-eval/swift/docs/p0-capability-ceiling.md)
+- `P1` 设计文档见 [swift/docs/p1-canary-channel.md](/Users/koa/.codex/worktrees/yt-tool-standalone-ytdlp-eval/swift/docs/p1-canary-channel.md)
 
 当前状态：
 - `M0` 可行性验证已完成：bundle 内二进制定位、进程执行、stdout/stderr、退出码、取消链路均已落地
