@@ -40,6 +40,7 @@ struct YtDlpDownloadService: Sendable {
         audioFormatId: String?,
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
+        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -53,7 +54,8 @@ struct YtDlpDownloadService: Sendable {
                     let formatSelector = buildFormatSelector(
                         videoId: videoFormatId,
                         audioId: audioFormatId,
-                        playlistMode: playlistMode
+                        playlistMode: playlistMode,
+                        playlistVideoQualityStrategy: playlistVideoQualityStrategy
                     )
                     let outputTemplate = outputDirectory
                         .appendingPathComponent("%(title)s.%(ext)s")
@@ -164,7 +166,12 @@ struct YtDlpDownloadService: Sendable {
 
     // MARK: - Helpers
 
-    private func buildFormatSelector(videoId: String?, audioId: String?, playlistMode: PlaylistMode) -> String {
+    private func buildFormatSelector(
+        videoId: String?,
+        audioId: String?,
+        playlistMode: PlaylistMode,
+        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy
+    ) -> String {
         switch playlistMode {
         case .onlyFirstItem:
             switch (videoId, audioId) {
@@ -178,7 +185,12 @@ struct YtDlpDownloadService: Sendable {
                 return "bestvideo+bestaudio/best"
             }
         case .wholePlaylistBestVideo:
-            return "bv*+ba/b"
+            switch playlistVideoQualityStrategy {
+            case .bestCompatibility:
+                return "bestvideo+bestaudio/best"
+            case .preferHigherQuality:
+                return "bv*+ba/b"
+            }
         case .wholePlaylistBestAudio:
             return "ba/bestaudio/best"
         }

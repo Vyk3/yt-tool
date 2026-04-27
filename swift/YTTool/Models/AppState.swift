@@ -14,11 +14,19 @@ final class AppState: ObservableObject {
         didSet {
             if !isPlaylistInputURL {
                 playlistMode = .onlyFirstItem
+                playlistVideoQualityStrategy = .bestCompatibility
             }
         }
     }
     @Published var probeState: ProbeState = .idle
-    @Published var playlistMode: PlaylistMode = .onlyFirstItem
+    @Published var playlistMode: PlaylistMode = .onlyFirstItem {
+        didSet {
+            if playlistMode != .wholePlaylistBestVideo {
+                playlistVideoQualityStrategy = .bestCompatibility
+            }
+        }
+    }
+    @Published var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility
 
     // MARK: - Format selection
     @Published var selectedVideoFormat: VideoFormat?
@@ -145,6 +153,10 @@ final class AppState: ObservableObject {
         isPlaylistInputURL && playlistMode.downloadsWholePlaylist
     }
 
+    var showsPlaylistVideoQualityStrategy: Bool {
+        isPlaylistInputURL && playlistMode == .wholePlaylistBestVideo
+    }
+
     func download() {
         let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
@@ -184,6 +196,7 @@ final class AppState: ObservableObject {
             videoId: videoId,
             audioId: audioId,
             playlistMode: playlistMode,
+            playlistVideoQualityStrategy: playlistVideoQualityStrategy,
             outputDir: outputDir
         )
         appendLog(
@@ -206,6 +219,7 @@ final class AppState: ObservableObject {
                     audioFormatId: audioId,
                     outputDirectory: outputDir,
                     playlistMode: playlistMode,
+                    playlistVideoQualityStrategy: playlistVideoQualityStrategy,
                     onLog: makeServiceLogger(scope: .download)
                 ) {
                     switch event {
@@ -447,6 +461,7 @@ final class AppState: ObservableObject {
         videoId: String?,
         audioId: String?,
         playlistMode: PlaylistMode,
+        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
         outputDir: URL
     ) -> String {
         let format: String
@@ -459,7 +474,12 @@ final class AppState: ObservableObject {
             case (nil, nil): format = "best"
             }
         case .wholePlaylistBestVideo:
-            format = "bv*+ba/b"
+            switch playlistVideoQualityStrategy {
+            case .bestCompatibility:
+                format = "bestvideo+bestaudio/best"
+            case .preferHigherQuality:
+                format = "bv*+ba/b"
+            }
         case .wholePlaylistBestAudio:
             format = "ba/bestaudio/best"
         }

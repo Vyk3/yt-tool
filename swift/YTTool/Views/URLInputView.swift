@@ -4,9 +4,11 @@ import UniformTypeIdentifiers
 struct URLInputView: View {
     @Binding var inputURL: String
     @Binding var playlistMode: PlaylistMode
+    @Binding var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy
     let probeState: ProbeState
     let selectedDirectory: URL?
     let showsPlaylistModePicker: Bool
+    let showsPlaylistVideoQualityStrategy: Bool
     let onProbe: () -> Void
     let onSelectDirectory: () -> Void
     let onClearDirectory: () -> Void
@@ -56,6 +58,25 @@ struct URLInputView: View {
                 }
 
                 Text(playlistModeHint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if showsPlaylistVideoQualityStrategy {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Video quality")
+                        .font(.subheadline.weight(.semibold))
+
+                    Picker("Video quality", selection: $playlistVideoQualityStrategy) {
+                        ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
+                            Text(strategy.title).tag(strategy)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 280, alignment: .leading)
+                }
+
+                Text("Choose whether whole-playlist video downloads favor compatibility or higher quality.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

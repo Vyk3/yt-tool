@@ -23,6 +23,22 @@ enum PlaylistMode: String, CaseIterable, Codable, Equatable, Identifiable {
     }
 }
 
+enum PlaylistVideoQualityStrategy: String, CaseIterable, Codable, Equatable, Identifiable {
+    case bestCompatibility
+    case preferHigherQuality
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .bestCompatibility:
+            return "Best compatibility"
+        case .preferHigherQuality:
+            return "Prefer higher quality"
+        }
+    }
+}
+
 struct MediaInfo: Codable, Equatable {
     var title: String
     var duration: TimeInterval?

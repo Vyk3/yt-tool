@@ -9,9 +9,11 @@ struct ContentView: View {
             URLInputView(
                 inputURL: $state.inputURL,
                 playlistMode: $state.playlistMode,
+                playlistVideoQualityStrategy: $state.playlistVideoQualityStrategy,
                 probeState: state.probeState,
                 selectedDirectory: state.selectedOutputDirectory,
                 showsPlaylistModePicker: state.isPlaylistInputURL,
+                showsPlaylistVideoQualityStrategy: state.showsPlaylistVideoQualityStrategy,
                 onProbe: state.probe,
                 onSelectDirectory: selectOutputDirectory,
                 onClearDirectory: { state.selectedOutputDirectory = nil }
