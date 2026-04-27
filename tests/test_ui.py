@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import pytest
 
+import app.cli.ui as ui
 from app.cli.ui import (
+    _terminal_size,
     ask_download_sections,
     ask_download_type,
     ask_sponsorblock_categories,
@@ -53,6 +55,105 @@ class TestMenuSelect:
         monkeypatch.setattr("builtins.input", lambda _: "1")
         result = menu_select("test", ["A", "B"], ["a", "b"], column_hint="ID  编码  码率")
         assert result == "a"
+
+
+class TestTerminalSize:
+    def test_ignores_zero_columns_env_and_uses_explicit_override(self, monkeypatch):
+        monkeypatch.setenv("COLUMNS", "0")
+        monkeypatch.setenv("YT_TOOL_TERM_COLUMNS", "132")
+        monkeypatch.delenv("LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_LINES", raising=False)
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size", lambda: None)
+        monkeypatch.setattr("app.cli.ui._fallback_terminal_size", lambda: ui.os.terminal_size((91, 33)))
+
+        size = _terminal_size()
+
+        assert size.columns == 132
+        assert size.lines == 33
+
+    def test_uses_ioctl_when_env_is_missing(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+        monkeypatch.delenv("LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_COLUMNS", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_TTY", raising=False)
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size", lambda: (111, 29))
+
+        size = _terminal_size()
+
+        assert size.columns == 111
+        assert size.lines == 29
+
+    def test_uses_exported_tty_path_before_other_fallbacks(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+        monkeypatch.delenv("LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_COLUMNS", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_LINES", raising=False)
+        monkeypatch.setenv("YT_TOOL_TERM_TTY", "/dev/ttys555")
+        monkeypatch.setattr(
+            "app.cli.ui._ioctl_terminal_size_for_path",
+            lambda path: (156, 48) if path == "/dev/ttys555" else None,
+        )
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size", lambda: (80, 24))
+
+        size = _terminal_size()
+
+        assert size.columns == 156
+        assert size.lines == 48
+
+    def test_uses_darwin_parent_tty_when_local_streams_have_no_tty(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+        monkeypatch.delenv("LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_COLUMNS", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_LINES", raising=False)
+        monkeypatch.setattr("app.cli.ui.platform.system", lambda: "Darwin")
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size", lambda: None)
+        monkeypatch.setattr("app.cli.ui._darwin_parent_tty_paths", lambda: ["/dev/ttys999"])
+        monkeypatch.setattr(
+            "app.cli.ui._ioctl_terminal_size_for_path",
+            lambda path: (143, 41) if path == "/dev/ttys999" else None,
+        )
+
+        size = _terminal_size()
+
+        assert size.columns == 143
+        assert size.lines == 41
+
+    def test_uses_darwin_parent_fd_tty_when_controlling_tty_is_missing(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+        monkeypatch.delenv("LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_COLUMNS", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_LINES", raising=False)
+        monkeypatch.setattr("app.cli.ui.platform.system", lambda: "Darwin")
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size", lambda: None)
+        monkeypatch.setattr("app.cli.ui._darwin_parent_tty_paths", lambda: [])
+        monkeypatch.setattr("app.cli.ui._darwin_parent_fd_tty_paths", lambda: ["/dev/ttys123"])
+        monkeypatch.setattr(
+            "app.cli.ui._ioctl_terminal_size_for_path",
+            lambda path: (101, 27) if path == "/dev/ttys123" else None,
+        )
+
+        size = _terminal_size()
+
+        assert size.columns == 101
+        assert size.lines == 27
+
+    def test_rechecks_width_on_every_call_instead_of_caching(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+        monkeypatch.delenv("LINES", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_COLUMNS", raising=False)
+        monkeypatch.delenv("YT_TOOL_TERM_LINES", raising=False)
+        monkeypatch.setattr("app.cli.ui.platform.system", lambda: "Darwin")
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size", lambda: None)
+        monkeypatch.setattr("app.cli.ui._darwin_parent_tty_paths", lambda: ["/dev/ttys999"])
+        sizes = iter([(120, 33), (88, 33)])
+        monkeypatch.setattr("app.cli.ui._ioctl_terminal_size_for_path", lambda path: next(sizes))
+
+        first = _terminal_size()
+        second = _terminal_size()
+
+        assert first.columns == 120
+        assert second.columns == 88
 
 
 class TestAskDownloadType:

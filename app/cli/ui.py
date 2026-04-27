@@ -12,6 +12,9 @@
 """
 from __future__ import annotations
 
+import os
+import platform
+import stat
 import sys
 
 from wcwidth import wcswidth, wcwidth
@@ -136,6 +139,497 @@ def _split_recommended(label: str) -> tuple[bool, str]:
     return False, label
 
 
+def _positive_int_env(*names: str) -> int | None:
+    """读取第一个有效的正整数环境变量。"""
+    for name in names:
+        raw = os.environ.get(name, "").strip()
+        if not raw:
+            continue
+        try:
+            value = int(raw)
+        except ValueError:
+            continue
+        if value > 0:
+            return value
+    return None
+
+
+def _tty_path_env(*names: str) -> str | None:
+    """读取第一个有效的终端设备路径环境变量。"""
+    for name in names:
+        path = os.environ.get(name, "").strip()
+        if path.startswith("/dev/"):
+            return path
+    return None
+
+
+def _load_darwin_proc_libs():
+    """按需加载 Darwin 进程探测依赖。"""
+    import ctypes
+    import ctypes.util
+
+    libproc_path = ctypes.util.find_library("proc")
+    libc_path = ctypes.util.find_library("c")
+    if not libproc_path or not libc_path:
+        return None
+
+    try:
+        libproc = ctypes.CDLL(libproc_path, use_errno=True)
+        libc = ctypes.CDLL(libc_path, use_errno=True)
+    except OSError:
+        return None
+
+    return ctypes, libproc, libc
+
+
+def _darwin_proc_bsdinfo(pid: int) -> tuple[int, int] | None:
+    """返回 Darwin 进程的 (ppid, controlling_tty_dev)。"""
+    libs = _load_darwin_proc_libs()
+    if libs is None:
+        return None
+
+    ctypes, libproc, _ = libs
+    maxcomlen = 16
+    proc_pidtbdsinfo = 3
+
+    class ProcBsdInfo(ctypes.Structure):
+        _fields_ = [
+            ("pbi_flags", ctypes.c_uint32),
+            ("pbi_status", ctypes.c_uint32),
+            ("pbi_xstatus", ctypes.c_uint32),
+            ("pbi_pid", ctypes.c_uint32),
+            ("pbi_ppid", ctypes.c_uint32),
+            ("pbi_uid", ctypes.c_uint32),
+            ("pbi_gid", ctypes.c_uint32),
+            ("pbi_ruid", ctypes.c_uint32),
+            ("pbi_rgid", ctypes.c_uint32),
+            ("pbi_svuid", ctypes.c_uint32),
+            ("pbi_svgid", ctypes.c_uint32),
+            ("rfu_1", ctypes.c_uint32),
+            ("pbi_comm", ctypes.c_char * maxcomlen),
+            ("pbi_name", ctypes.c_char * (2 * maxcomlen)),
+            ("pbi_nfiles", ctypes.c_uint32),
+            ("pbi_pgid", ctypes.c_uint32),
+            ("pbi_pjobc", ctypes.c_uint32),
+            ("e_tdev", ctypes.c_uint32),
+            ("e_tpgid", ctypes.c_uint32),
+            ("pbi_nice", ctypes.c_int32),
+            ("pbi_start_tvsec", ctypes.c_uint64),
+            ("pbi_start_tvusec", ctypes.c_uint64),
+        ]
+
+    libproc.proc_pidinfo.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_uint64,
+        ctypes.c_void_p,
+        ctypes.c_int,
+    ]
+    libproc.proc_pidinfo.restype = ctypes.c_int
+
+    info = ProcBsdInfo()
+    result = libproc.proc_pidinfo(
+        pid,
+        proc_pidtbdsinfo,
+        0,
+        ctypes.byref(info),
+        ctypes.sizeof(info),
+    )
+    if result != ctypes.sizeof(info):
+        return None
+
+    return int(info.pbi_ppid), int(info.e_tdev)
+
+
+def _darwin_tty_path_for_device(device_id: int) -> str | None:
+    """把 Darwin 的 tty 设备号映射到 `/dev/...` 路径。"""
+    if device_id <= 0 or device_id == 0xFFFFFFFF:
+        return None
+
+    libs = _load_darwin_proc_libs()
+    if libs is None:
+        return None
+
+    ctypes, _, libc = libs
+    libc.devname_r.argtypes = [ctypes.c_uint32, ctypes.c_ushort, ctypes.c_char_p, ctypes.c_int]
+    libc.devname_r.restype = ctypes.c_char_p
+
+    buf = ctypes.create_string_buffer(1024)
+    result = libc.devname_r(device_id, stat.S_IFCHR, buf, ctypes.sizeof(buf))
+    if not result:
+        return None
+
+    name = buf.value.decode(errors="ignore").strip()
+    if not name:
+        return None
+
+    return name if name.startswith("/dev/") else f"/dev/{name}"
+
+
+def _darwin_parent_tty_paths() -> list[str]:
+    """沿父进程链收集可能对应真实终端的 tty 设备路径。"""
+    candidates: list[str] = []
+    seen_pids: set[int] = set()
+    seen_paths: set[str] = set()
+    pid = os.getppid()
+
+    while pid > 1 and pid not in seen_pids:
+        seen_pids.add(pid)
+        info = _darwin_proc_bsdinfo(pid)
+        if info is None:
+            break
+
+        ppid, tty_device = info
+        tty_path = _darwin_tty_path_for_device(tty_device)
+        if tty_path and tty_path not in seen_paths:
+            seen_paths.add(tty_path)
+            candidates.append(tty_path)
+        pid = ppid
+
+    return candidates
+
+
+def _darwin_parent_fd_tty_paths() -> list[str]:
+    """从祖先进程打开的 vnode fd 中收集 tty 设备路径。"""
+    libs = _load_darwin_proc_libs()
+    if libs is None:
+        return []
+
+    ctypes, libproc, _ = libs
+    proc_pidlistfds = 1
+    proc_pidfdvnodepathinfo = 2
+    prox_fdtype_vnode = 1
+    maxpathlen = 1024
+
+    class ProcFdInfo(ctypes.Structure):
+        _fields_ = [
+            ("proc_fd", ctypes.c_int32),
+            ("proc_fdtype", ctypes.c_uint32),
+        ]
+
+    class VinfoStat(ctypes.Structure):
+        _fields_ = [
+            ("vst_dev", ctypes.c_uint32),
+            ("vst_mode", ctypes.c_uint16),
+            ("vst_nlink", ctypes.c_uint16),
+            ("vst_ino", ctypes.c_uint64),
+            ("vst_uid", ctypes.c_uint32),
+            ("vst_gid", ctypes.c_uint32),
+            ("vst_atime", ctypes.c_int64),
+            ("vst_atimensec", ctypes.c_int64),
+            ("vst_mtime", ctypes.c_int64),
+            ("vst_mtimensec", ctypes.c_int64),
+            ("vst_ctime", ctypes.c_int64),
+            ("vst_ctimensec", ctypes.c_int64),
+            ("vst_birthtime", ctypes.c_int64),
+            ("vst_birthtimensec", ctypes.c_int64),
+            ("vst_size", ctypes.c_int64),
+            ("vst_blocks", ctypes.c_int64),
+            ("vst_blksize", ctypes.c_int32),
+            ("vst_flags", ctypes.c_uint32),
+            ("vst_gen", ctypes.c_uint32),
+            ("vst_rdev", ctypes.c_uint32),
+            ("vst_qspare", ctypes.c_int64 * 2),
+        ]
+
+    class Fsid(ctypes.Structure):
+        _fields_ = [("val", ctypes.c_int32 * 2)]
+
+    class VnodeInfo(ctypes.Structure):
+        _fields_ = [
+            ("vi_stat", VinfoStat),
+            ("vi_type", ctypes.c_int),
+            ("vi_pad", ctypes.c_int),
+            ("vi_fsid", Fsid),
+        ]
+
+    class VnodeInfoPath(ctypes.Structure):
+        _fields_ = [
+            ("vip_vi", VnodeInfo),
+            ("vip_path", ctypes.c_char * maxpathlen),
+        ]
+
+    class ProcFileInfo(ctypes.Structure):
+        _fields_ = [
+            ("fi_openflags", ctypes.c_uint32),
+            ("fi_status", ctypes.c_uint32),
+            ("fi_offset", ctypes.c_int64),
+            ("fi_type", ctypes.c_int32),
+            ("fi_guardflags", ctypes.c_uint32),
+        ]
+
+    class VnodeFdInfoWithPath(ctypes.Structure):
+        _fields_ = [
+            ("pfi", ProcFileInfo),
+            ("pvip", VnodeInfoPath),
+        ]
+
+    libproc.proc_pidinfo.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_uint64,
+        ctypes.c_void_p,
+        ctypes.c_int,
+    ]
+    libproc.proc_pidinfo.restype = ctypes.c_int
+    libproc.proc_pidfdinfo.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        ctypes.c_int,
+    ]
+    libproc.proc_pidfdinfo.restype = ctypes.c_int
+
+    candidates: list[str] = []
+    seen_pids: set[int] = set()
+    seen_paths: set[str] = set()
+    pid = os.getppid()
+
+    while pid > 1 and pid not in seen_pids:
+        seen_pids.add(pid)
+        info = _darwin_proc_bsdinfo(pid)
+        if info is None:
+            break
+
+        ppid, _ = info
+        fd_capacity = 256
+        fd_buf = (ProcFdInfo * fd_capacity)()
+        result = libproc.proc_pidinfo(
+            pid,
+            proc_pidlistfds,
+            0,
+            ctypes.byref(fd_buf),
+            ctypes.sizeof(fd_buf),
+        )
+        if result > 0:
+            fd_count = result // ctypes.sizeof(ProcFdInfo)
+            for fd_info in fd_buf[:fd_count]:
+                if fd_info.proc_fdtype != prox_fdtype_vnode:
+                    continue
+
+                vnode_info = VnodeFdInfoWithPath()
+                vnode_result = libproc.proc_pidfdinfo(
+                    pid,
+                    fd_info.proc_fd,
+                    proc_pidfdvnodepathinfo,
+                    ctypes.byref(vnode_info),
+                    ctypes.sizeof(vnode_info),
+                )
+                if vnode_result <= 0:
+                    continue
+
+                path = bytes(vnode_info.pvip.vip_path).split(b"\0")[0].decode(errors="ignore").strip()
+                if not path.startswith("/dev/tty") and not path.startswith("/dev/ttys"):
+                    continue
+                if path in seen_paths:
+                    continue
+
+                seen_paths.add(path)
+                candidates.append(path)
+
+        pid = ppid
+
+    return candidates
+
+
+def _darwin_parent_terminal_size() -> tuple[int, int] | None:
+    """Darwin: 从祖先进程关联的 tty 设备读取实时窗口尺寸。"""
+    for path in dict.fromkeys(_darwin_parent_tty_paths() + _darwin_parent_fd_tty_paths()):
+        size = _ioctl_terminal_size_for_path(path)
+        if size is not None:
+            return size
+
+    return None
+
+
+def _ioctl_terminal_size() -> tuple[int, int] | None:
+    """直接向已绑定终端的标准流查询窗口尺寸。"""
+    import fcntl
+    import struct
+    import termios
+
+    for stream in (sys.__stdout__, sys.__stderr__, sys.__stdin__, sys.stdout, sys.stderr, sys.stdin):
+        if stream is None:
+            continue
+
+        try:
+            fd = stream.fileno()
+        except (AttributeError, OSError, ValueError):
+            continue
+
+        try:
+            rows, cols, _, _ = struct.unpack(
+                "HHHH",
+                fcntl.ioctl(fd, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)),
+            )
+        except OSError:
+            continue
+
+        if cols > 0 and rows > 0:
+            return cols, rows
+
+    return None
+
+
+def _ioctl_terminal_size_for_path(path: str) -> tuple[int, int] | None:
+    """直接对指定终端设备路径做 TIOCGWINSZ。"""
+    import fcntl
+    import struct
+    import termios
+
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return None
+
+    try:
+        rows, cols, _, _ = struct.unpack(
+            "HHHH",
+            fcntl.ioctl(fd, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)),
+        )
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+
+    if cols > 0 and rows > 0:
+        return cols, rows
+    return None
+
+
+def _stty_terminal_size(path: str) -> tuple[int, int] | None:
+    """在已知 tty 设备路径上尝试用 `stty size` 取窗口尺寸。"""
+    import subprocess
+
+    try:
+        with open(path, "rb", buffering=0) as tty_stream:
+            result = subprocess.run(
+                ["stty", "size"],
+                stdin=tty_stream,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+    except (FileNotFoundError, OSError, PermissionError):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    parts = result.stdout.strip().split()
+    if len(parts) != 2:
+        return None
+
+    try:
+        rows, cols = (int(part) for part in parts)
+    except ValueError:
+        return None
+
+    if cols > 0 and rows > 0:
+        return cols, rows
+    return None
+
+
+def _tput_terminal_columns(path: str) -> int | None:
+    """在已知 tty 设备路径上尝试用 `tput cols` 取列宽。"""
+    import subprocess
+
+    try:
+        with open(path, "rb", buffering=0) as tty_stream:
+            result = subprocess.run(
+                ["tput", "cols"],
+                stdin=tty_stream,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=os.environ,
+            )
+    except (FileNotFoundError, OSError, PermissionError):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    try:
+        cols = int(result.stdout.strip())
+    except ValueError:
+        return None
+
+    return cols if cols > 0 else None
+
+
+def _fallback_terminal_size() -> os.terminal_size:
+    """最后回退到 Python 自带探测，不在仓库里硬编码宽高常量。"""
+    import shutil
+
+    fallback = shutil.get_terminal_size()
+    cols = fallback.columns if fallback.columns > 0 else 1
+    rows = fallback.lines if fallback.lines > 0 else 1
+    return os.terminal_size((cols, rows))
+
+
+def _terminal_size(default: tuple[int, int] | None = None) -> os.terminal_size:
+    """尽量读取真实终端宽高，允许显式环境覆盖，并在 Darwin 上追溯祖先进程 tty。
+
+    Claude Code 这类无控制 TTY 的子进程里，当前进程的 ioctl、`/dev/tty` 和裸 `tput`
+    往往失效。这里按以下顺序取值：
+    1. 显式环境覆盖 `YT_TOOL_TERM_*` / `COLUMNS` / `LINES`
+    2. 外层 wrapper 导出的真实 tty 路径 `YT_TOOL_TERM_TTY` / `TTY`
+    3. 当前进程已绑定标准流的 ioctl
+    4. Darwin 父进程链上的真实 tty 设备 ioctl
+    5. Darwin 已定位 tty 设备上的 `stty size`
+    6. Darwin 已定位 tty 设备上的 `tput cols`
+    7. Python 自带终端探测回退
+    """
+    env_cols = _positive_int_env("YT_TOOL_TERM_COLUMNS", "COLUMNS")
+    env_rows = _positive_int_env("YT_TOOL_TERM_LINES", "LINES")
+    if env_cols is not None and env_rows is not None:
+        return os.terminal_size((env_cols, env_rows))
+
+    env_tty_path = _tty_path_env("YT_TOOL_TERM_TTY", "TTY")
+    if env_tty_path is not None:
+        tty_size = _ioctl_terminal_size_for_path(env_tty_path)
+        if tty_size is not None:
+            cols, rows = tty_size
+            return os.terminal_size((env_cols or cols, env_rows or rows))
+
+    ioctl_size = _ioctl_terminal_size()
+    if ioctl_size is not None:
+        cols, rows = ioctl_size
+        return os.terminal_size((env_cols or cols, env_rows or rows))
+
+    darwin_paths: list[str] = []
+    if platform.system() == "Darwin":
+        darwin_paths = list(dict.fromkeys(_darwin_parent_tty_paths() + _darwin_parent_fd_tty_paths()))
+        for path in darwin_paths:
+            size = _ioctl_terminal_size_for_path(path)
+            if size is not None:
+                cols, rows = size
+                return os.terminal_size((env_cols or cols, env_rows or rows))
+
+        for path in darwin_paths:
+            size = _stty_terminal_size(path)
+            if size is not None:
+                cols, rows = size
+                return os.terminal_size((env_cols or cols, env_rows or rows))
+
+        for path in darwin_paths:
+            cols = _tput_terminal_columns(path)
+            if cols is not None:
+                fallback = _fallback_terminal_size()
+                return os.terminal_size((env_cols or cols, env_rows or fallback.lines))
+
+    fallback = _fallback_terminal_size()
+    if default is not None:
+        fallback = os.terminal_size((
+            fallback.columns if fallback.columns > 0 else default[0],
+            fallback.lines if fallback.lines > 0 else default[1],
+        ))
+
+    return os.terminal_size((env_cols or fallback.columns, env_rows or fallback.lines))
+
+
 # ---- 方向键菜单（macOS / Linux，stdlib only）----
 
 def _menu_arrow(
@@ -145,11 +639,10 @@ def _menu_arrow(
     column_hint: str | None = None,
 ) -> str | None:
     """用 ↑/↓/Enter 选择的交互菜单（仅 Unix TTY）。返回选中 value 或 None（跳过）。"""
-    import shutil
     import termios
     import tty
 
-    term_size = shutil.get_terminal_size((80, 24))
+    term_size = _terminal_size()
     term_cols, term_rows = term_size.columns, term_size.lines
 
     items = ["跳过"] + labels
@@ -236,12 +729,10 @@ def _should_use_arrow_menu(
     终端软换行、宽字符和复杂列头会让重绘高度难以稳定计算。
     对带列头的表格菜单，直接降级为数字菜单更稳。
     """
-    import shutil
-
     if column_hint:
         return False
 
-    term_cols = shutil.get_terminal_size((80, 24)).columns
+    term_cols = _terminal_size().columns
     safe_width = max(term_cols - 12, 20)
 
     for label in labels:
@@ -261,11 +752,9 @@ def _menu_numeric(
     column_hint: str | None = None,
 ) -> str | None:
     """数字输入菜单，支持 ANSI 颜色。"""
-    import shutil
-
     print(_c(_BOLD + _BLUE, f"\n── {prompt} ──"))
     if column_hint:
-        term_cols = shutil.get_terminal_size((80, 24)).columns
+        term_cols = _terminal_size().columns
         for line in _wrap_display(f"  {column_hint}", term_cols):
             print(_c(_DIM, line))
 
