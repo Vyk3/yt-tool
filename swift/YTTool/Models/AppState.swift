@@ -10,8 +10,15 @@ final class AppState: ObservableObject {
     private static let diskSpaceSafetyMarginBytes: Int64 = 64 * 1_048_576
 
     // MARK: - Probe
-    @Published var inputURL: String = ""
+    @Published var inputURL: String = "" {
+        didSet {
+            if !isPlaylistInputURL {
+                playlistMode = .onlyFirstItem
+            }
+        }
+    }
     @Published var probeState: ProbeState = .idle
+    @Published var playlistMode: PlaylistMode = .onlyFirstItem
 
     // MARK: - Format selection
     @Published var selectedVideoFormat: VideoFormat?
@@ -46,10 +53,12 @@ final class AppState: ObservableObject {
         self.defaults = defaults
 
         if let path = defaults.string(forKey: StorageKey.selectedOutputDirectoryPath),
-           !path.isEmpty {
+           !path.isEmpty,
+           Self.isUsableDirectory(URL(fileURLWithPath: path)) {
             self.selectedOutputDirectory = URL(fileURLWithPath: path)
         } else {
             self.selectedOutputDirectory = nil
+            defaults.removeObject(forKey: StorageKey.selectedOutputDirectoryPath)
         }
 
         refreshFFmpegWarning()
@@ -58,6 +67,7 @@ final class AppState: ObservableObject {
     // MARK: - Probe
 
     func probe() {
+        guard !isWholePlaylistDownload else { return }
         let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
 
@@ -111,12 +121,14 @@ final class AppState: ObservableObject {
     // MARK: - Download
 
     var canDownload: Bool {
+        guard validatedSelectedOutputDirectory != nil, !isDownloading else { return false }
+        if isWholePlaylistDownload {
+            return !inputURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
         guard case .success = probeState,
-              selectedOutputDirectory != nil,
               (selectedVideoFormat != nil || selectedAudioFormat != nil)
         else { return false }
-        // Allow re-download after cancel / failure / success — only block while active.
-        return !isDownloading
+        return true
     }
 
     var isDownloading: Bool {
@@ -125,10 +137,34 @@ final class AppState: ObservableObject {
         return false
     }
 
+    var isPlaylistInputURL: Bool {
+        Self.isPlaylistURL(inputURL)
+    }
+
+    var isWholePlaylistDownload: Bool {
+        isPlaylistInputURL && playlistMode.downloadsWholePlaylist
+    }
+
     func download() {
-        guard case .success(let info) = probeState,
-              let outputDir = selectedOutputDirectory
-        else { return }
+        let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return }
+        guard let outputDir = validatedSelectedOutputDirectory else {
+            let error = AppError(
+                message: "Selected output folder is unavailable.",
+                recoverySuggestion: "Choose another output folder, then try again."
+            )
+            downloadState = .failed(error)
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
+            return
+        }
+
+        let info: MediaInfo?
+        if isWholePlaylistDownload {
+            info = nil
+        } else {
+            guard case .success(let probedInfo) = probeState else { return }
+            info = probedInfo
+        }
 
         if let diskSpaceError = preflightDiskSpaceError(outputDirectory: outputDir) {
             downloadState = .failed(diskSpaceError)
@@ -140,17 +176,23 @@ final class AppState: ObservableObject {
         let attemptID = beginDownloadAttempt()
         downloadState = .idle
 
-        let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let videoId = selectedVideoFormat?.id
-        let audioId = selectedAudioFormat?.id
+        let videoId = isWholePlaylistDownload ? nil : selectedVideoFormat?.id
+        let audioId = isWholePlaylistDownload ? nil : selectedAudioFormat?.id
 
         let preview = buildCommandPreview(
-            title: info.title,
+            title: info?.title,
             videoId: videoId,
             audioId: audioId,
+            playlistMode: playlistMode,
             outputDir: outputDir
         )
-        appendLog(scope: .download, level: .info, message: "Preparing download for \(info.title)")
+        appendLog(
+            scope: .download,
+            level: .info,
+            message: isWholePlaylistDownload
+                ? "Preparing whole-playlist download"
+                : "Preparing download for \(info?.title ?? "item")"
+        )
         appendLog(scope: .download, level: .info, message: preview)
         downloadState = .preparing(commandPreview: preview)
 
@@ -163,6 +205,7 @@ final class AppState: ObservableObject {
                     videoFormatId: videoId,
                     audioFormatId: audioId,
                     outputDirectory: outputDir,
+                    playlistMode: playlistMode,
                     onLog: makeServiceLogger(scope: .download)
                 ) {
                     switch event {
@@ -287,6 +330,7 @@ final class AppState: ObservableObject {
     }
 
     func estimatedDownloadSizeBytes(video: VideoFormat?, audio: AudioFormat?) -> Int64? {
+        guard !isWholePlaylistDownload else { return nil }
         let sizes = [video?.fileSizeBytes, audio?.fileSizeBytes].compactMap { $0 }
         guard !sizes.isEmpty else { return nil }
         return sizes.reduce(0, +)
@@ -399,19 +443,29 @@ final class AppState: ObservableObject {
     }
 
     private func buildCommandPreview(
-        title: String,
+        title: String?,
         videoId: String?,
         audioId: String?,
+        playlistMode: PlaylistMode,
         outputDir: URL
     ) -> String {
         let format: String
-        switch (videoId, audioId) {
-        case let (v?, a?): format = "\(v)+\(a)"
-        case let (v?, nil): format = v
-        case let (nil, a?): format = a
-        case (nil, nil): format = "best"
+        switch playlistMode {
+        case .onlyFirstItem:
+            switch (videoId, audioId) {
+            case let (v?, a?): format = "\(v)+\(a)"
+            case let (v?, nil): format = v
+            case let (nil, a?): format = a
+            case (nil, nil): format = "best"
+            }
+        case .wholePlaylistBestVideo:
+            format = "bv*+ba/b"
+        case .wholePlaylistBestAudio:
+            format = "ba/bestaudio/best"
         }
-        return "yt-dlp -f \(format) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …"
+        let playlistFlag = playlistMode.downloadsWholePlaylist ? "" : " --no-playlist"
+        let target = title ?? "playlist items"
+        return "yt-dlp -f \(format)\(playlistFlag) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …  # \(target)"
     }
 
     private func formatDiskBytes(_ bytes: Int64) -> String {
@@ -424,5 +478,32 @@ final class AppState: ObservableObject {
             return String(format: "%.1f MB", mb)
         }
         return "\(bytes) bytes"
+    }
+
+    private var validatedSelectedOutputDirectory: URL? {
+        guard let url = selectedOutputDirectory, Self.isUsableDirectory(url) else {
+            return nil
+        }
+        return url
+    }
+
+    private static func isPlaylistURL(_ raw: String) -> Bool {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let components = URLComponents(string: trimmed) else {
+            return trimmed.contains("list=")
+        }
+
+        if components.path == "/playlist" {
+            return true
+        }
+
+        return components.queryItems?.contains {
+            $0.name == "list" && !($0.value ?? "").isEmpty
+        } == true
+    }
+
+    private static func isUsableDirectory(_ url: URL) -> Bool {
+        var isDirectory = ObjCBool(false)
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 }

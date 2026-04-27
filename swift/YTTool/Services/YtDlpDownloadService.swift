@@ -39,6 +39,7 @@ struct YtDlpDownloadService: Sendable {
         videoFormatId: String?,
         audioFormatId: String?,
         outputDirectory: URL,
+        playlistMode: PlaylistMode = .onlyFirstItem,
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -51,28 +52,33 @@ struct YtDlpDownloadService: Sendable {
 
                     let formatSelector = buildFormatSelector(
                         videoId: videoFormatId,
-                        audioId: audioFormatId
+                        audioId: audioFormatId,
+                        playlistMode: playlistMode
                     )
                     let outputTemplate = outputDirectory
                         .appendingPathComponent("%(title)s.%(ext)s")
                         .path(percentEncoded: false)
 
+                    var arguments = [
+                        "-f", formatSelector,
+                        "-o", outputTemplate,
+                        // P1 fix: point yt-dlp at the vendored ffmpeg binary.
+                        "--ffmpeg-location", ffmpeg.deletingLastPathComponent().path,
+                        // P3 fix: ask yt-dlp to print the actual final file path
+                        // to stdout after post-processing, so we don't have to
+                        // guess from directory mtime.
+                        "--print", "after_move:filepath",
+                        "--progress",
+                        "--newline",
+                    ]
+                    if playlistMode == .onlyFirstItem {
+                        arguments.append("--no-playlist")
+                    }
+                    arguments.append(url)
+
                     let config = ProcessConfiguration(
                         executableURL: ytDlp,
-                        arguments: [
-                            "-f", formatSelector,
-                            "-o", outputTemplate,
-                            // P1 fix: point yt-dlp at the vendored ffmpeg binary.
-                            "--ffmpeg-location", ffmpeg.deletingLastPathComponent().path,
-                            // P3 fix: ask yt-dlp to print the actual final file path
-                            // to stdout after post-processing, so we don't have to
-                            // guess from directory mtime.
-                            "--print", "after_move:filepath",
-                            "--progress",
-                            "--newline",
-                            "--no-playlist",
-                            url,
-                        ],
+                        arguments: arguments,
                         terminationGracePeriod: .seconds(3)
                     )
                     onLog(.command, config.commandLine.joined(separator: " "))
@@ -129,13 +135,18 @@ struct YtDlpDownloadService: Sendable {
                     // P3 fix: use the filepath printed by --print after_move:filepath.
                     // Fall back to the output directory if yt-dlp didn't emit one
                     // (e.g. older yt-dlp version or no post-processing step).
-                    let outputURL = result.stdout
-                        .components(separatedBy: "\n")
-                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
-                        .compactMap { URL(filePath: $0) }
-                        .last(where: { FileManager.default.fileExists(atPath: $0.path) })
-                        ?? outputDirectory
+                    let outputURL: URL
+                    if playlistMode.downloadsWholePlaylist {
+                        outputURL = outputDirectory
+                    } else {
+                        outputURL = result.stdout
+                            .components(separatedBy: "\n")
+                            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                            .filter { !$0.isEmpty }
+                            .compactMap { URL(filePath: $0) }
+                            .last(where: { FileManager.default.fileExists(atPath: $0.path) })
+                            ?? outputDirectory
+                    }
                     onLog(.lifecycle, "Resolved output path: \(outputURL.path(percentEncoded: false))")
                     continuation.yield(.completed(DownloadResult(outputURL: outputURL)))
                     continuation.finish()
@@ -153,16 +164,23 @@ struct YtDlpDownloadService: Sendable {
 
     // MARK: - Helpers
 
-    private func buildFormatSelector(videoId: String?, audioId: String?) -> String {
-        switch (videoId, audioId) {
-        case let (v?, a?):
-            return "\(v)+\(a)"
-        case let (v?, nil):
-            return v
-        case let (nil, a?):
-            return a
-        case (nil, nil):
-            return "bestvideo+bestaudio/best"
+    private func buildFormatSelector(videoId: String?, audioId: String?, playlistMode: PlaylistMode) -> String {
+        switch playlistMode {
+        case .onlyFirstItem:
+            switch (videoId, audioId) {
+            case let (v?, a?):
+                return "\(v)+\(a)"
+            case let (v?, nil):
+                return v
+            case let (nil, a?):
+                return a
+            case (nil, nil):
+                return "bestvideo+bestaudio/best"
+            }
+        case .wholePlaylistBestVideo:
+            return "bv*+ba/b"
+        case .wholePlaylistBestAudio:
+            return "ba/bestaudio/best"
         }
     }
 }

@@ -3,8 +3,10 @@ import UniformTypeIdentifiers
 
 struct URLInputView: View {
     @Binding var inputURL: String
+    @Binding var playlistMode: PlaylistMode
     let probeState: ProbeState
     let selectedDirectory: URL?
+    let showsPlaylistModePicker: Bool
     let onProbe: () -> Void
     let onSelectDirectory: () -> Void
     let onClearDirectory: () -> Void
@@ -39,6 +41,25 @@ struct URLInputView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            if showsPlaylistModePicker {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Playlist mode")
+                        .font(.subheadline.weight(.semibold))
+
+                    Picker("Playlist mode", selection: $playlistMode) {
+                        ForEach(PlaylistMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 280, alignment: .leading)
+                }
+
+                Text(playlistModeHint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack(spacing: 12) {
                 Label(probeState.statusLabel, systemImage: probeState.symbolName)
                     .foregroundStyle(probeState.tintColor)
@@ -65,9 +86,15 @@ struct URLInputView: View {
 
                 Spacer(minLength: 0)
 
-                Button("Probe", action: onProbe)
-                    .keyboardShortcut(.return)
-                    .disabled(!canProbe)
+                if canShowProbeButton {
+                    Button(probeButtonTitle, action: onProbe)
+                        .keyboardShortcut(.return)
+                        .disabled(!canProbe)
+                } else {
+                    Text("Whole playlist mode downloads every item automatically.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -75,6 +102,24 @@ struct URLInputView: View {
     private var canProbe: Bool {
         !inputURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && probeState != .loading
+            && canShowProbeButton
+    }
+
+    private var canShowProbeButton: Bool {
+        !showsPlaylistModePicker || playlistMode == .onlyFirstItem
+    }
+
+    private var probeButtonTitle: String {
+        showsPlaylistModePicker ? "Probe first item" : "Probe"
+    }
+
+    private var playlistModeHint: String {
+        switch playlistMode {
+        case .onlyFirstItem:
+            return "Probe inspects only the first item, then downloads it like a single video."
+        case .wholePlaylistBestVideo, .wholePlaylistBestAudio:
+            return "Whole playlist downloads every item automatically."
+        }
     }
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {

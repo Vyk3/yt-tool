@@ -5,11 +5,17 @@ import XCTest
 final class AppStateTests: XCTestCase {
     func testRestoresPersistedOutputDirectory() {
         let defaults = freshDefaults()
-        defaults.set("/tmp/yttool-output", forKey: "selectedOutputDirectoryPath")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defaults.set(directory.path(percentEncoded: false), forKey: "selectedOutputDirectoryPath")
+        let expectedDirectory = URL(fileURLWithPath: directory.path(percentEncoded: false), isDirectory: true)
 
         let state = AppState(defaults: defaults)
 
-        XCTAssertEqual(state.selectedOutputDirectory?.path(percentEncoded: false), "/tmp/yttool-output")
+        XCTAssertEqual(
+            state.selectedOutputDirectory?.path(percentEncoded: false),
+            expectedDirectory.path(percentEncoded: false)
+        )
     }
 
     func testPersistsUpdatedOutputDirectory() {
@@ -19,6 +25,16 @@ final class AppStateTests: XCTestCase {
         state.selectedOutputDirectory = URL(fileURLWithPath: "/tmp/yttool-updated")
 
         XCTAssertEqual(defaults.string(forKey: "selectedOutputDirectoryPath"), "/tmp/yttool-updated")
+    }
+
+    func testIgnoresPersistedOutputDirectoryWhenFolderIsMissing() {
+        let defaults = freshDefaults()
+        defaults.set("/tmp/yttool-missing-\(UUID().uuidString)", forKey: "selectedOutputDirectoryPath")
+
+        let state = AppState(defaults: defaults)
+
+        XCTAssertNil(state.selectedOutputDirectory)
+        XCTAssertNil(defaults.string(forKey: "selectedOutputDirectoryPath"))
     }
 
     func testBeginProbeAttemptInvalidatesOlderAttempt() {
@@ -61,6 +77,44 @@ final class AppStateTests: XCTestCase {
         )
 
         XCTAssertEqual(state.estimatedDownloadSizeBytes(video: video, audio: audio), 250)
+    }
+
+    func testWholePlaylistModeAllowsDownloadWithoutProbeSelection() {
+        let state = AppState(defaults: freshDefaults())
+
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+        state.selectedOutputDirectory = FileManager.default.temporaryDirectory
+
+        XCTAssertTrue(state.canDownload)
+    }
+
+    func testNonPlaylistURLResetsPlaylistModeToOnlyFirstItem() {
+        let state = AppState(defaults: freshDefaults())
+
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestAudio
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U"
+
+        XCTAssertEqual(state.playlistMode, .onlyFirstItem)
+    }
+
+    func testWholePlaylistModeSkipsSizeEstimate() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+
+        let video = VideoFormat(
+            id: "137",
+            resolution: "1080p",
+            codec: "avc1",
+            fps: 30,
+            bitrateKbps: 1000,
+            fileSizeBytes: 200,
+            note: "no audio"
+        )
+
+        XCTAssertNil(state.estimatedDownloadSizeBytes(video: video, audio: nil))
     }
 
     func testRefreshFFmpegWarningClearsWhenAllToolsExist() throws {

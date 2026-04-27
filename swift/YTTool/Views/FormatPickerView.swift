@@ -26,6 +26,8 @@ private enum AudioCol {
 
 struct FormatPickerView: View {
     let probeState: ProbeState
+    let playlistMode: PlaylistMode
+    let isPlaylistURL: Bool
     @Binding var selectedVideo: VideoFormat?
     @Binding var selectedAudio: AudioFormat?
 
@@ -36,18 +38,34 @@ struct FormatPickerView: View {
 
             switch probeState {
             case .idle:
-                placeholder("Probe a URL to inspect available formats.")
+                placeholder(idleMessage)
             case .loading:
                 ProgressView("Loading formats…")
             case .failure(let error):
                 placeholder(error.message)
             case .success(let mediaInfo):
-                HStack(alignment: .top, spacing: 16) {
-                    videoColumn(formats: mediaInfo.videoFormats)
-                    audioColumn(formats: mediaInfo.audioFormats)
+                if isPlaylistURL && playlistMode.downloadsWholePlaylist {
+                    placeholder("Whole playlist mode skips per-item format selection and downloads every item automatically.")
+                } else {
+                    HStack(alignment: .top, spacing: 16) {
+                        videoColumn(formats: mediaInfo.videoFormats)
+                        audioColumn(formats: mediaInfo.audioFormats)
+                    }
                 }
             }
         }
+    }
+
+    private var idleMessage: String {
+        if isPlaylistURL {
+            switch playlistMode {
+            case .onlyFirstItem:
+                return "Probe the first item to inspect formats."
+            case .wholePlaylistBestVideo, .wholePlaylistBestAudio:
+                return "Whole playlist mode downloads every item automatically."
+            }
+        }
+        return "Probe a URL to inspect available formats."
     }
 
     // MARK: - Video column

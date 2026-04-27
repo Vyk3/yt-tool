@@ -43,6 +43,10 @@
 | 2026-04-22 | **ffmpeg 阶段取消验证 ✅**：对 `P5yHEKqx86U` 选择 `136+140`（视频专流 + 音频专流），确认进入 `ffmpeg` 合并阶段后点击 Cancel，随后 `ffmpeg` 与 `yt-dlp` 进程列表均清空，UI 状态变为 `Cancelled` |
 | 2026-04-22 | **下载状态刷新修复 ✅**：修复了 progress line 落在 stdout 时 UI 卡在 `Preparing` 的问题；fresh debug build 已确认下载可正常进入并完成，Completed 状态与输出路径显示正确 |
 | 2026-04-22 | **Downloading 中间态验收 ✅**：用户手工截图确认下载中面板可见 `Downloading`、百分比以及 `Size / Speed / ETA`，说明下载区进度展示已在真实运行中落地 |
+| 2026-04-22 | **FFmpeg 缺失提示验收 ✅**：最新 Debug build 中临时移走 app bundle 的 `ffprobe` 后，下载区标题旁显示 `FFmpeg unavailable`，点击可见缺失项说明；运行时不再错误回退到源码目录二进制 |
+| 2026-04-22 | **磁盘空间预检验收 ✅**：在仅 `19.3 MB` 可用空间的临时卷上选择 `38.9 MB` 格式，点击 `Download` 后直接进入 `Insufficient disk space.` 失败态，并显示估算大小与可用空间 |
+| 2026-04-27 | **播放列表最小策略验收 ✅**：播放列表 URL 会显示三种模式（`Only first item` / `Whole playlist: best video` / `Whole playlist: best audio`）；整列表模式会收起 `Probe first item`，并在格式区显示自动下载说明 |
+| 2026-04-27 | **输出目录失效兜底 ✅**：上次记住的输出目录如果后来被删除或卸载，启动时不会再恢复为有效目录；下载前也会再次校验，避免 stale 路径误导 UI 进入可下载状态 |
 
 ---
 
@@ -67,3 +71,7 @@
 - `yt-dlp -> ffmpeg` 进程树取消正确性：已消除（运行时验证，ffmpeg 阶段取消后进程清空）
 - 下载状态流是否会卡在 `Preparing`：已消除（stdout/stderr 双通道 progress 解析 + MainActor 状态更新）
 - 下载中信息是否真实可见：已消除（手工截图确认 `Downloading` + 百分比 + `Size / Speed / ETA`）
+- 缺失 `ffmpeg` / `ffprobe` 时用户是否能得到明确提示：已消除（运行时 UI 验证）
+- 已知候选格式大小明显超过可用空间时是否能提前阻断：已消除（磁盘空间预检运行时验证）
+- 播放列表整列表模式是否有最小可用入口：已消除（三模式入口 + 运行时 UI 验证）
+- 持久化输出目录失效后是否会错误放开下载：已消除（启动恢复与下载前双重校验）

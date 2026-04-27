@@ -129,10 +129,14 @@ struct DownloadProgressView: View {
     }
 
     private func successPanel(_ outputURL: URL) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let isDirectory = isDirectoryURL(outputURL)
+
+        return VStack(alignment: .leading, spacing: 10) {
             stageHeader(
                 title: "Completed ✓",
-                subtitle: "Choose what to do with the finished file.",
+                subtitle: isDirectory
+                    ? "Choose what to do with the downloaded items."
+                    : "Choose what to do with the finished file.",
                 tint: .green
             )
 
@@ -143,11 +147,11 @@ struct DownloadProgressView: View {
                 .buttonStyle(.borderedProminent)
 
                 Button("Open Folder") {
-                    NSWorkspace.shared.open(outputURL.deletingLastPathComponent())
+                    NSWorkspace.shared.open(isDirectory ? outputURL : outputURL.deletingLastPathComponent())
                 }
                 .buttonStyle(.bordered)
 
-                Button("Copy File Path") {
+                Button(isDirectory ? "Copy Folder Path" : "Copy File Path") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(outputURL.path(percentEncoded: false), forType: .string)
                 }
@@ -250,5 +254,13 @@ struct DownloadProgressView: View {
 
         let speed = text[atRange.upperBound..<text.endIndex].trimmingCharacters(in: .whitespaces)
         return (size: size, speed: speed, eta: nil)
+    }
+
+    private func isDirectoryURL(_ url: URL) -> Bool {
+        if url.hasDirectoryPath {
+            return true
+        }
+        let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
+        return values?.isDirectory == true
     }
 }

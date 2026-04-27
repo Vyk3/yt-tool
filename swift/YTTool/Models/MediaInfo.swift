@@ -1,5 +1,28 @@
 import Foundation
 
+enum PlaylistMode: String, CaseIterable, Codable, Equatable, Identifiable {
+    case onlyFirstItem
+    case wholePlaylistBestVideo
+    case wholePlaylistBestAudio
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .onlyFirstItem:
+            return "Only first item"
+        case .wholePlaylistBestVideo:
+            return "Whole playlist: best video"
+        case .wholePlaylistBestAudio:
+            return "Whole playlist: best audio"
+        }
+    }
+
+    var downloadsWholePlaylist: Bool {
+        self != .onlyFirstItem
+    }
+}
+
 struct MediaInfo: Codable, Equatable {
     var title: String
     var duration: TimeInterval?

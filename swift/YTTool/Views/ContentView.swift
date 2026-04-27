@@ -8,14 +8,18 @@ struct ContentView: View {
             header
             URLInputView(
                 inputURL: $state.inputURL,
+                playlistMode: $state.playlistMode,
                 probeState: state.probeState,
                 selectedDirectory: state.selectedOutputDirectory,
+                showsPlaylistModePicker: state.isPlaylistInputURL,
                 onProbe: state.probe,
                 onSelectDirectory: selectOutputDirectory,
                 onClearDirectory: { state.selectedOutputDirectory = nil }
             )
             FormatPickerView(
                 probeState: state.probeState,
+                playlistMode: state.playlistMode,
+                isPlaylistURL: state.isPlaylistInputURL,
                 selectedVideo: $state.selectedVideoFormat,
                 selectedAudio: $state.selectedAudioFormat
             )
