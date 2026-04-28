@@ -38,6 +38,7 @@ struct YtDlpDownloadService: Sendable {
         url: String,
         videoFormatId: String?,
         audioFormatId: String?,
+        subtitleTrack: SubtitleTrack? = nil,
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
@@ -63,26 +64,16 @@ struct YtDlpDownloadService: Sendable {
                         .appendingPathComponent("%(title)s.%(ext)s")
                         .path(percentEncoded: false)
 
-                    var arguments = [
-                        "-f", formatSelector,
-                        "-o", outputTemplate,
-                        // P1 fix: point yt-dlp at the vendored ffmpeg binary.
-                        "--ffmpeg-location", ffmpeg.deletingLastPathComponent().path,
-                        // P3 fix: ask yt-dlp to print the actual final file path
-                        // to stdout after post-processing, so we don't have to
-                        // guess from directory mtime.
-                        "--print", "after_move:filepath",
-                        "--progress",
-                        "--newline",
-                    ]
-                    if playlistMode == .onlyFirstItem {
-                        arguments.append("--no-playlist")
-                    }
-                    arguments.append(url)
-
                     let config = ProcessConfiguration(
                         executableURL: ytDlp,
-                        arguments: arguments,
+                        arguments: buildDownloadArguments(
+                            url: url,
+                            formatSelector: formatSelector,
+                            outputTemplate: outputTemplate,
+                            ffmpegLocation: ffmpeg.path(percentEncoded: false),
+                            subtitleTrack: subtitleTrack,
+                            includeNoPlaylist: playlistMode == .onlyFirstItem
+                        ),
                         terminationGracePeriod: .seconds(3)
                     )
                     onLog(.command, config.commandLine.joined(separator: " "))

@@ -27,7 +27,7 @@ struct YtDlpProbeService: Sendable {
 
         let config = ProcessConfiguration(
             executableURL: ytDlp,
-            arguments: ["--dump-single-json", "--no-playlist", url]
+            arguments: buildProbeArguments(url: url)
         )
         onLog(.command, config.commandLine.joined(separator: " "))
 

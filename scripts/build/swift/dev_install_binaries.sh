@@ -6,11 +6,11 @@
 # Production builds must use prepare_binaries.py with pinned URLs and SHA256.
 #
 # Usage:
-#   scripts/build/swift/dev_install_binaries.sh [--force] [--ytdlp-path /path/to/yt-dlp_macos]
+#   scripts/build/swift/dev_install_binaries.sh [--force] [--channel stable|nightly] [--ytdlp-path /path/to/yt-dlp_macos]
 #
 # Behavior:
 # - yt-dlp: download the pinned standalone macOS binary from pinned_versions.sh
-# - ffmpeg/ffprobe: copy from local PATH (typically Homebrew)
+# - ffmpeg/ffprobe: generate wrappers to local PATH tools (typically Homebrew)
 #
 # This avoids bundling Homebrew's Python shim for yt-dlp, which is fragile and
 # can behave differently from the standalone binary used in release packaging.
@@ -21,25 +21,38 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 BINARIES_DIR="$PROJECT_DIR/swift/YTTool/Resources/Binaries"
 FORCE=0
+CHANNEL="stable"
 YTDLP_LOCAL_PATH=""
 source "$SCRIPT_DIR/pinned_versions.sh"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --force) FORCE=1; shift ;;
+    --channel) CHANNEL="$2"; shift 2 ;;
     --ytdlp-path) YTDLP_LOCAL_PATH="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--force] [--ytdlp-path /path/to/yt-dlp_macos]"
+      echo "Usage: $0 [--force] [--channel stable|nightly] [--ytdlp-path /path/to/yt-dlp_macos]"
       echo "Installs standalone yt-dlp plus ffmpeg/ffprobe into $BINARIES_DIR."
       exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
-echo "=== dev_install_binaries (DEV ONLY) ==="
+set_ytdlp_channel_vars "$CHANNEL"
+
+echo "=== dev_install_binaries (DEV ONLY, channel: $CHANNEL) ==="
+
+read_ytdlp_version() {
+  local binary_path="$1"
+  local version
+  version="$("$binary_path" --version 2>/dev/null | head -n 1 | tr -d '\r')" || return 1
+  [[ -n "$version" ]] || return 1
+  echo "$version"
+}
 
 install_ytdlp() {
   local dst="$BINARIES_DIR/yt-dlp"
+  local current_version=""
 
   if [[ -z "${YTDLP_URL:-}" ]]; then
     echo "ERROR: YTDLP_URL is empty in pinned_versions.sh" >&2
@@ -48,10 +61,15 @@ install_ytdlp() {
 
   if [[ "$FORCE" -eq 0 && -x "$dst" ]]; then
     if ! head -n 1 "$dst" | grep -q '^#!'; then
-      echo "yt-dlp already present: $dst (standalone binary)"
-      return 0
+      current_version="$(read_ytdlp_version "$dst" || true)"
+      if [[ "$current_version" == "$YTDLP_VERSION" ]]; then
+        echo "yt-dlp already present: $dst (standalone binary, channel: $CHANNEL, version: $current_version)"
+        return 0
+      fi
+      echo "yt-dlp version mismatch at $dst (have: ${current_version:-unknown}, want: $YTDLP_VERSION); reinstalling for channel $CHANNEL"
+    else
+      echo "yt-dlp present but looks like a script shim; replacing with standalone binary"
     fi
-    echo "yt-dlp present but looks like a script shim; replacing with standalone binary"
   fi
 
   if [[ -n "$YTDLP_LOCAL_PATH" ]]; then
@@ -61,7 +79,7 @@ install_ytdlp() {
     fi
     cp "$YTDLP_LOCAL_PATH" "$dst"
     chmod +x "$dst"
-    echo "yt-dlp  →  $dst  (from local file: $YTDLP_LOCAL_PATH)"
+    echo "yt-dlp  →  $dst  (from local file: $YTDLP_LOCAL_PATH, channel: $CHANNEL, version: $(read_ytdlp_version "$dst" || echo unknown))"
     echo "          sha256=$(shasum -a 256 "$dst" | cut -d' ' -f1)"
     return 0
   fi
@@ -78,10 +96,10 @@ install_ytdlp() {
 
   mv "$tmp" "$dst"
   chmod +x "$dst"
-  echo "yt-dlp  →  $dst  ($(shasum -a 256 "$dst" | cut -d' ' -f1))"
+  echo "yt-dlp  →  $dst  (channel: $CHANNEL, version: $(read_ytdlp_version "$dst" || echo unknown), $(shasum -a 256 "$dst" | cut -d' ' -f1))"
 }
 
-copy_path_tool() {
+install_path_tool_wrapper() {
   local name="$1"
   local src
   src="$(command -v "$name" 2>/dev/null || true)"
@@ -97,15 +115,19 @@ copy_path_tool() {
     return 0
   fi
 
-  cp "$src" "$dst"
+  rm -f "$dst"
+  cat > "$dst" <<EOF
+#!/bin/sh
+exec "$src" "\$@"
+EOF
   chmod +x "$dst"
-  echo "$name  →  $dst  ($(shasum -a 256 "$dst" | cut -d' ' -f1))"
+  echo "$name  →  $dst  (wrapper to $src, $(shasum -a 256 "$dst" | cut -d' ' -f1))"
 }
 
 mkdir -p "$BINARIES_DIR"
 install_ytdlp
-copy_path_tool ffmpeg
-copy_path_tool ffprobe
+install_path_tool_wrapper ffmpeg
+install_path_tool_wrapper ffprobe
 
 echo ""
 echo "Done. Binaries are for local development only — do not commit them."

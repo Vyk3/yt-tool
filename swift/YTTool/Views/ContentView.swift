@@ -25,7 +25,8 @@ struct ContentView: View {
                 playlistMode: state.playlistMode,
                 isPlaylistURL: state.isPlaylistInputURL,
                 selectedVideo: $state.selectedVideoFormat,
-                selectedAudio: $state.selectedAudioFormat
+                selectedAudio: $state.selectedAudioFormat,
+                selectedSubtitle: $state.selectedSubtitle
             )
             DownloadProgressView(
                 downloadState: state.downloadState,

@@ -7,9 +7,10 @@
 - 工具统一放在 app bundle 的 `Contents/Resources/Binaries/`
 - 业务层只依赖 `BundledToolLocator`
 - 开发态允许从源码目录的 `YTTool/Resources/Binaries/` 回退读取
-- 生产环境通过 `scripts/build/swift/prepare_binaries.py` 下载固定版本 + SHA256 校验
-- 开发/内测通过 `scripts/build/swift/dev_install_binaries.sh` 复制本地 Homebrew 二进制
+- 生产环境通过 `scripts/build/swift/prepare_binaries.py` 下载固定版本的官方 `yt-dlp_macos` + SHA256 校验
+- 开发/内测通过 `scripts/build/swift/dev_install_binaries.sh` 安装同版本官方 `yt-dlp_macos` standalone；`ffmpeg/ffprobe` 仍从本机 PATH 复制
 - 二进制不纳入 git（.gitignore 已配置排除 yt-dlp / ffmpeg / ffprobe）
+- 2026-04-22 复测：官方 standalone 已确认提供可用 impersonation targets；对 `https://missav.com/` 仍报 `Unsupported URL`，说明这次调整提升的是能力上限，不是站点专用支持承诺
 
 ### Process 约束（已定结论）
 

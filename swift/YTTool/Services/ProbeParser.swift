@@ -11,7 +11,9 @@ struct ProbeParser {
                 duration: payload.duration,
                 webpageURL: payload.webpageURL ?? "",
                 videoFormats: payload.formats.compactMap(Self.makeVideoFormat).sorted(by: videoSort),
-                audioFormats: payload.formats.compactMap(Self.makeAudioFormat).sorted(by: audioSort)
+                audioFormats: payload.formats.compactMap(Self.makeAudioFormat).sorted(by: audioSort),
+                subtitleTracks: Self.makeSubtitleTracks(from: payload.subtitles, isAuto: false),
+                autoSubtitleTracks: Self.makeSubtitleTracks(from: payload.automaticCaptions, isAuto: true)
             )
         } catch {
             throw AppError(
@@ -74,6 +76,29 @@ struct ProbeParser {
             note: raw.formatNote ?? raw.ext ?? ""
         )
     }
+
+    private static func makeSubtitleTracks(
+        from raw: [String: [RawSubtitleEntry]]?,
+        isAuto: Bool
+    ) -> [SubtitleTrack] {
+        guard let raw else { return [] }
+        return raw
+            .filter { $0.key != "live_chat" }
+            .map { lang, entries in
+                SubtitleTrack(lang: lang, label: entries.first?.name ?? "", isAuto: isAuto)
+            }
+            .sorted { lhs, rhs in
+                let nameOrder = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
+                if nameOrder != .orderedSame {
+                    return nameOrder == .orderedAscending
+                }
+                return lhs.lang.localizedCaseInsensitiveCompare(rhs.lang) == .orderedAscending
+            }
+    }
+}
+
+private struct RawSubtitleEntry: Decodable {
+    var name: String?
 }
 
 private struct RawProbePayload: Decodable {
@@ -81,12 +106,16 @@ private struct RawProbePayload: Decodable {
     var duration: TimeInterval?
     var webpageURL: String?
     var formats: [RawFormat]
+    var subtitles: [String: [RawSubtitleEntry]]?
+    var automaticCaptions: [String: [RawSubtitleEntry]]?
 
     enum CodingKeys: String, CodingKey {
         case title
         case duration
         case webpageURL = "webpage_url"
         case formats
+        case subtitles
+        case automaticCaptions = "automatic_captions"
     }
 }
 

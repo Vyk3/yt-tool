@@ -8,6 +8,7 @@
 #              Requires SHAs to be set in pinned_versions.sh.
 #
 # Options:
+#   --channel NAME      yt-dlp channel: stable (default) or nightly
 #   --output DIR        Output directory (default: swift/dist)
 #   --archive PATH      Path for the .xcarchive (default: tmp/swift-build/YTTool.xcarchive)
 #   --derived-data DIR  Path for Xcode DerivedData (default: tmp/swift-build/DerivedData)
@@ -29,6 +30,7 @@ BINARIES_SRC="$PROJECT_DIR/swift/YTTool/Resources/Binaries"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 MODE="dev"
+CHANNEL="stable"
 OUTPUT_DIR="$PROJECT_DIR/swift/dist"
 BUILD_ROOT="$PROJECT_DIR/tmp/swift-build"
 ARCHIVE_PATH="$BUILD_ROOT/YTTool.xcarchive"
@@ -41,6 +43,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dev)        MODE="dev";     shift ;;
         --release)    MODE="release"; shift ;;
+        --channel)       CHANNEL="$2"; shift 2 ;;
         --output)        OUTPUT_DIR="$2"; shift 2 ;;
         --archive)       ARCHIVE_PATH="$2"; shift 2 ;;
         --derived-data)  DERIVED_DATA_PATH="$2"; shift 2 ;;
@@ -59,12 +62,24 @@ XCODE_LOG="$BUILD_ROOT/xcodebuild-archive.log"
 # ── Helpers ───────────────────────────────────────────────────────────────────
 step() { echo ""; echo "==> $*"; }
 die()  { echo "ERROR: $*" >&2; exit 1; }
+read_ytdlp_version() {
+    local binary_path="$1"
+    local version
+    version="$("$binary_path" --version 2>/dev/null | head -n 1 | tr -d '\r')" || return 1
+    [[ -n "$version" ]] || return 1
+    echo "$version"
+}
 
 # ── Step 1: Prepare binaries ──────────────────────────────────────────────────
-step "1/6  Prepare binaries (mode: $MODE)"
+step "1/6  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
+
+source "$SCRIPT_DIR/pinned_versions.sh"
+set_ytdlp_channel_vars "$CHANNEL"
 
 if [[ "$MODE" == "release" ]]; then
-    source "$SCRIPT_DIR/pinned_versions.sh"
+    if [[ "$CHANNEL" == "nightly" && -z "$YTDLP_SHA256" ]]; then
+        die "YTDLP_NIGHTLY_SHA256 is empty. Pin the nightly release before using --channel nightly in release mode."
+    fi
     for var in YTDLP_URL YTDLP_SHA256 FFMPEG_URL FFMPEG_SHA256 FFPROBE_URL FFPROBE_SHA256; do
         val="${(P)var}"
         [[ -n "$val" ]] || die "$var is empty. Fill in pinned_versions.sh (run compute_shas.sh)."
@@ -79,14 +94,20 @@ if [[ "$MODE" == "release" ]]; then
         --ffmpeg-url    "$FFMPEG_URL"    --ffmpeg-sha256  "$FFMPEG_SHA256" \
         --ffprobe-url   "$FFPROBE_URL"   --ffprobe-sha256 "$FFPROBE_SHA256"
 else
-    echo "dev mode: using existing binaries in $BINARIES_SRC"
+    current_ytdlp="$BINARIES_SRC/yt-dlp"
+    [[ -e "$current_ytdlp" ]] || die "Binary not found: $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
+    current_ytdlp_version="$(read_ytdlp_version "$current_ytdlp" || true)"
+    if [[ "$current_ytdlp_version" != "$YTDLP_VERSION" ]]; then
+        die "dev mode yt-dlp channel mismatch: requested $CHANNEL ($YTDLP_VERSION) but found ${current_ytdlp_version:-unknown} in $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
+    fi
+    echo "dev mode: using existing binaries in $BINARIES_SRC (channel: $CHANNEL, yt-dlp version: $current_ytdlp_version)"
 fi
 
 # Verify binaries exist
 for bin in yt-dlp ffmpeg ffprobe; do
     bin_path="$BINARIES_SRC/$bin"
     if [[ ! -e "$bin_path" ]]; then
-        die "Binary not found: $bin_path\nRun: scripts/build/swift/dev_install_binaries.sh"
+        die "Binary not found: $bin_path\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
     fi
     if [[ ! -x "$bin_path" ]]; then
         chmod +x "$bin_path"

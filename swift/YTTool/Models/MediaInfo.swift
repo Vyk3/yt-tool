@@ -61,6 +61,18 @@ struct MediaInfo: Codable, Equatable {
     var webpageURL: String
     var videoFormats: [VideoFormat]
     var audioFormats: [AudioFormat]
+    var subtitleTracks: [SubtitleTrack]
+    var autoSubtitleTracks: [SubtitleTrack]
+}
+
+struct SubtitleTrack: Codable, Equatable, Identifiable {
+    var lang: String
+    var label: String
+    var isAuto: Bool
+
+    /// Namespaced so manual "en" and auto "en" don't collide in ForEach.
+    var id: String { "\(isAuto ? "auto" : "manual").\(lang)" }
+    var displayName: String { label.isEmpty ? lang : label }
 }
 
 struct VideoFormat: Codable, Equatable, Identifiable {
