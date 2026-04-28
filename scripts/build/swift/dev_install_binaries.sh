@@ -42,8 +42,17 @@ set_ytdlp_channel_vars "$CHANNEL"
 
 echo "=== dev_install_binaries (DEV ONLY, channel: $CHANNEL) ==="
 
+read_ytdlp_version() {
+  local binary_path="$1"
+  local version
+  version="$("$binary_path" --version 2>/dev/null | head -n 1 | tr -d '\r')" || return 1
+  [[ -n "$version" ]] || return 1
+  echo "$version"
+}
+
 install_ytdlp() {
   local dst="$BINARIES_DIR/yt-dlp"
+  local current_version=""
 
   if [[ -z "${YTDLP_URL:-}" ]]; then
     echo "ERROR: YTDLP_URL is empty in pinned_versions.sh" >&2
@@ -52,10 +61,15 @@ install_ytdlp() {
 
   if [[ "$FORCE" -eq 0 && -x "$dst" ]]; then
     if ! head -n 1 "$dst" | grep -q '^#!'; then
-      echo "yt-dlp already present: $dst (standalone binary, channel: $CHANNEL)"
-      return 0
+      current_version="$(read_ytdlp_version "$dst" || true)"
+      if [[ "$current_version" == "$YTDLP_VERSION" ]]; then
+        echo "yt-dlp already present: $dst (standalone binary, channel: $CHANNEL, version: $current_version)"
+        return 0
+      fi
+      echo "yt-dlp version mismatch at $dst (have: ${current_version:-unknown}, want: $YTDLP_VERSION); reinstalling for channel $CHANNEL"
+    else
+      echo "yt-dlp present but looks like a script shim; replacing with standalone binary"
     fi
-    echo "yt-dlp present but looks like a script shim; replacing with standalone binary"
   fi
 
   if [[ -n "$YTDLP_LOCAL_PATH" ]]; then
@@ -65,7 +79,7 @@ install_ytdlp() {
     fi
     cp "$YTDLP_LOCAL_PATH" "$dst"
     chmod +x "$dst"
-    echo "yt-dlp  →  $dst  (from local file: $YTDLP_LOCAL_PATH, channel: $CHANNEL)"
+    echo "yt-dlp  →  $dst  (from local file: $YTDLP_LOCAL_PATH, channel: $CHANNEL, version: $(read_ytdlp_version "$dst" || echo unknown))"
     echo "          sha256=$(shasum -a 256 "$dst" | cut -d' ' -f1)"
     return 0
   fi
@@ -82,7 +96,7 @@ install_ytdlp() {
 
   mv "$tmp" "$dst"
   chmod +x "$dst"
-  echo "yt-dlp  →  $dst  (channel: $CHANNEL, $(shasum -a 256 "$dst" | cut -d' ' -f1))"
+  echo "yt-dlp  →  $dst  (channel: $CHANNEL, version: $(read_ytdlp_version "$dst" || echo unknown), $(shasum -a 256 "$dst" | cut -d' ' -f1))"
 }
 
 install_path_tool_wrapper() {
