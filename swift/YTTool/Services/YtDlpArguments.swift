@@ -16,14 +16,14 @@ func buildDownloadArguments(
     url: String,
     formatSelector: String,
     outputTemplate: String,
-    ffmpegDirectory: String,
+    ffmpegLocation: String,
     subtitleTrack: SubtitleTrack? = nil,
     includeNoPlaylist: Bool = true
 ) -> [String] {
     var args = [
         "-f", formatSelector,
         "-o", outputTemplate,
-        "--ffmpeg-location", ffmpegDirectory,
+        "--ffmpeg-location", ffmpegLocation,
         "--print", "after_move:filepath",
         "--progress",
         "--newline",
@@ -33,6 +33,9 @@ func buildDownloadArguments(
         args += [subtitleTrack.isAuto ? "--write-auto-subs" : "--write-subs", "--sub-langs", subtitleTrack.lang]
     }
     if isYouTubeURL(url) {
+        if subtitleTrack?.isAuto == true {
+            args.append("--ignore-errors")
+        }
         args += [
             "--extractor-args", "youtube:player_client=default",
             "--concurrent-fragments", "4",

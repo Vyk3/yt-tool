@@ -45,12 +45,12 @@ final class YtDlpArgumentsTests: XCTestCase {
             url: url,
             formatSelector: "137+251",
             outputTemplate: "/tmp/%(title)s.%(ext)s",
-            ffmpegDirectory: "/usr/local/bin"
+            ffmpegLocation: "/usr/local/bin/ffmpeg"
         )
         XCTAssertEqual(args, [
             "-f", "137+251",
             "-o", "/tmp/%(title)s.%(ext)s",
-            "--ffmpeg-location", "/usr/local/bin",
+            "--ffmpeg-location", "/usr/local/bin/ffmpeg",
             "--print", "after_move:filepath",
             "--progress",
             "--newline",
@@ -65,7 +65,7 @@ final class YtDlpArgumentsTests: XCTestCase {
             url: url,
             formatSelector: "bestvideo+bestaudio/best",
             outputTemplate: "/tmp/%(title)s.%(ext)s",
-            ffmpegDirectory: "/usr/local/bin"
+            ffmpegLocation: "/usr/local/bin/ffmpeg"
         )
         XCTAssert(args.contains("-f"))
         XCTAssert(args.contains("--no-playlist"))
@@ -77,5 +77,31 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssert(args.contains("--embed-chapters"))
         XCTAssert(args.contains("--embed-metadata"))
         XCTAssertEqual(args.last, url)
+    }
+
+    func testDownloadArgumentsYouTubeAutoSubtitlesIgnoreSubtitleErrors() {
+        let url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        let args = buildDownloadArguments(
+            url: url,
+            formatSelector: "137+251",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            subtitleTrack: SubtitleTrack(lang: "zh-Hans", label: "Chinese", isAuto: true)
+        )
+        XCTAssert(args.contains("--write-auto-subs"))
+        XCTAssert(args.contains("--ignore-errors"))
+    }
+
+    func testDownloadArgumentsYouTubeManualSubtitlesKeepStrictFailureBehavior() {
+        let url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        let args = buildDownloadArguments(
+            url: url,
+            formatSelector: "137+251",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            subtitleTrack: SubtitleTrack(lang: "zh-Hans", label: "Chinese", isAuto: false)
+        )
+        XCTAssert(args.contains("--write-subs"))
+        XCTAssertFalse(args.contains("--ignore-errors"))
     }
 }

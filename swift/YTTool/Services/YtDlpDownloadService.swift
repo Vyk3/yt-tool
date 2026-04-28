@@ -70,7 +70,7 @@ struct YtDlpDownloadService: Sendable {
                             url: url,
                             formatSelector: formatSelector,
                             outputTemplate: outputTemplate,
-                            ffmpegDirectory: ffmpeg.deletingLastPathComponent().path,
+                            ffmpegLocation: ffmpeg.path(percentEncoded: false),
                             subtitleTrack: subtitleTrack,
                             includeNoPlaylist: playlistMode == .onlyFirstItem
                         ),

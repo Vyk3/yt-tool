@@ -56,13 +56,18 @@ final class ProbeParserTests: XCTestCase {
     func testParseSubtitleTracks() throws {
         let info = try ProbeParser().parse(Self.subtitleProbeJSON.data(using: .utf8)!)
 
-        XCTAssertEqual(info.subtitleTracks.map(\.lang).sorted(), ["en", "ja"])
+        XCTAssertEqual(info.subtitleTracks.map(\.displayName), ["English", "Japanese"])
         XCTAssertEqual(info.subtitleTracks.first(where: { $0.lang == "en" })?.label, "English")
         XCTAssertEqual(info.subtitleTracks.first(where: { $0.lang == "en" })?.isAuto, false)
 
         XCTAssertEqual(info.autoSubtitleTracks.map(\.lang).sorted(), ["fr"])
         XCTAssertEqual(info.autoSubtitleTracks.first?.label, "French")
         XCTAssertEqual(info.autoSubtitleTracks.first?.isAuto, true)
+    }
+
+    func testSubtitleTracksAreSortedByDisplayName() throws {
+        let info = try ProbeParser().parse(Self.unsortedSubtitleProbeJSON.data(using: .utf8)!)
+        XCTAssertEqual(info.subtitleTracks.map(\.displayName), ["Arabic", "English", "Zulu"])
     }
 
     func testParseLiveChatIsFiltered() throws {
@@ -166,6 +171,19 @@ final class ProbeParserTests: XCTestCase {
       },
       "automatic_captions": {
         "live_chat": [{"name": "Live chat replay", "ext": "json"}]
+      }
+    }
+    """
+
+    private static let unsortedSubtitleProbeJSON = """
+    {
+      "title": "Subtitle Sort Test",
+      "webpage_url": "https://example.com/watch?v=sort",
+      "formats": [],
+      "subtitles": {
+        "zu": [{"name": "Zulu", "ext": "vtt"}],
+        "en": [{"name": "English", "ext": "vtt"}],
+        "ar": [{"name": "Arabic", "ext": "vtt"}]
       }
     }
     """

@@ -286,6 +286,32 @@ final class YtDlpDownloadServiceTests: XCTestCase {
         XCTAssertFalse(commandSink.value?.contains("--sub-langs") == true)
     }
 
+    func testCommandUsesExplicitFFmpegBinaryPath() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://www.youtube.com/watch?v=123",
+            videoFormatId: "137",
+            audioFormatId: "140",
+            outputDirectory: outputDirectory,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        XCTAssertTrue(commandSink.value?.contains("--ffmpeg-location \(ffmpeg.path)") == true)
+    }
+
     private func makeDownloadScript(resultFile: URL) throws -> URL {
         let contents = """
         #!/bin/sh

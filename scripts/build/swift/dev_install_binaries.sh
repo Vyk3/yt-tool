@@ -10,7 +10,7 @@
 #
 # Behavior:
 # - yt-dlp: download the pinned standalone macOS binary from pinned_versions.sh
-# - ffmpeg/ffprobe: copy from local PATH (typically Homebrew)
+# - ffmpeg/ffprobe: generate wrappers to local PATH tools (typically Homebrew)
 #
 # This avoids bundling Homebrew's Python shim for yt-dlp, which is fragile and
 # can behave differently from the standalone binary used in release packaging.
@@ -85,7 +85,7 @@ install_ytdlp() {
   echo "yt-dlp  →  $dst  (channel: $CHANNEL, $(shasum -a 256 "$dst" | cut -d' ' -f1))"
 }
 
-copy_path_tool() {
+install_path_tool_wrapper() {
   local name="$1"
   local src
   src="$(command -v "$name" 2>/dev/null || true)"
@@ -101,15 +101,19 @@ copy_path_tool() {
     return 0
   fi
 
-  cp "$src" "$dst"
+  rm -f "$dst"
+  cat > "$dst" <<EOF
+#!/bin/sh
+exec "$src" "\$@"
+EOF
   chmod +x "$dst"
-  echo "$name  →  $dst  ($(shasum -a 256 "$dst" | cut -d' ' -f1))"
+  echo "$name  →  $dst  (wrapper to $src, $(shasum -a 256 "$dst" | cut -d' ' -f1))"
 }
 
 mkdir -p "$BINARIES_DIR"
 install_ytdlp
-copy_path_tool ffmpeg
-copy_path_tool ffprobe
+install_path_tool_wrapper ffmpeg
+install_path_tool_wrapper ffprobe
 
 echo ""
 echo "Done. Binaries are for local development only — do not commit them."

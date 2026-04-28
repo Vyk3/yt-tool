@@ -19,7 +19,7 @@ private enum AudioCol {
     static let codec: CGFloat   = 44
     static let bitrate: CGFloat = 50
     static let size: CGFloat    = 60
-    // note: .infinity (audio section has plenty of room)
+    static let note: CGFloat    = 66
 }
 
 // MARK: - View
@@ -177,7 +177,7 @@ struct FormatPickerView: View {
             Text("Codec")  .frame(width: AudioCol.codec,   alignment: .leading)
             Text("Bitrate").frame(width: AudioCol.bitrate, alignment: .leading)
             Text("Size")   .frame(width: AudioCol.size,    alignment: .leading)
-            Text("Note")   .frame(maxWidth: .infinity,     alignment: .leading)
+            Text("Note")   .frame(width: AudioCol.note,    alignment: .leading)
         }
         .font(.caption.monospaced())
         .foregroundStyle(.secondary)
@@ -190,7 +190,7 @@ struct FormatPickerView: View {
             Text(fmt.friendlyCodec)    .lineLimit(1).frame(width: AudioCol.codec,   alignment: .leading)
             Text(fmt.formattedBitrate) .lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
             Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size,    alignment: .leading)
-            Text(fmt.note)             .lineLimit(1).frame(maxWidth: .infinity,     alignment: .leading)
+            Text(fmt.note)             .lineLimit(1).frame(width: AudioCol.note,    alignment: .leading)
         }
         .font(.callout.monospaced())
         .frame(maxWidth: .infinity, alignment: .leading)

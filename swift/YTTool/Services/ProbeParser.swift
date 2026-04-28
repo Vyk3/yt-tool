@@ -87,7 +87,13 @@ struct ProbeParser {
             .map { lang, entries in
                 SubtitleTrack(lang: lang, label: entries.first?.name ?? "", isAuto: isAuto)
             }
-            .sorted { $0.lang < $1.lang }
+            .sorted { lhs, rhs in
+                let nameOrder = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
+                if nameOrder != .orderedSame {
+                    return nameOrder == .orderedAscending
+                }
+                return lhs.lang.localizedCaseInsensitiveCompare(rhs.lang) == .orderedAscending
+            }
     }
 }
 
