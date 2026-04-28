@@ -34,7 +34,7 @@ func buildDownloadArguments(
     }
     if isYouTubeURL(url) {
         if subtitleTrack?.isAuto == true {
-            args.append("--ignore-errors")
+            args += ["--sleep-subtitles", "60"]
         }
         args += [
             "--extractor-args", "youtube:player_client=default",

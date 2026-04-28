@@ -79,7 +79,7 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssertEqual(args.last, url)
     }
 
-    func testDownloadArgumentsYouTubeAutoSubtitlesIgnoreSubtitleErrors() {
+    func testDownloadArgumentsYouTubeAutoSubtitlesSleepBeforeSubtitleFetch() {
         let url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         let args = buildDownloadArguments(
             url: url,
@@ -89,7 +89,8 @@ final class YtDlpArgumentsTests: XCTestCase {
             subtitleTrack: SubtitleTrack(lang: "zh-Hans", label: "Chinese", isAuto: true)
         )
         XCTAssert(args.contains("--write-auto-subs"))
-        XCTAssert(args.contains("--ignore-errors"))
+        XCTAssert(args.contains("--sleep-subtitles"))
+        XCTAssert(args.contains("60"))
     }
 
     func testDownloadArgumentsYouTubeManualSubtitlesKeepStrictFailureBehavior() {
@@ -102,6 +103,6 @@ final class YtDlpArgumentsTests: XCTestCase {
             subtitleTrack: SubtitleTrack(lang: "zh-Hans", label: "Chinese", isAuto: false)
         )
         XCTAssert(args.contains("--write-subs"))
-        XCTAssertFalse(args.contains("--ignore-errors"))
+        XCTAssertFalse(args.contains("--sleep-subtitles"))
     }
 }
