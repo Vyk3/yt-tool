@@ -29,6 +29,12 @@
 
 ## 给开发者（源码运行）
 
+### Swift 重写版（macOS）
+
+- Swift 端入口与说明：[`swift/README.md`](swift/README.md)
+- 当前 Swift 端已支持：音频转码格式选择（`mp3 / m4a / wav`）、Cookies 文件路径、额外 yt-dlp 参数透传
+- Swift 端主要未补齐项：字幕下载（手动 + 自动字幕）
+
 ### 依赖
 
 - Python 3.10+

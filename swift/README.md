@@ -21,7 +21,7 @@
 - 播放列表最小策略已完成：播放列表 URL 现支持 `Only first item`、`Whole playlist: best video`、`Whole playlist: best audio` 三种模式；整列表视频模式支持 `Best compatibility` / `Prefer higher quality` 两种质量策略；整列表音频模式同样支持 `More compatible` / `Higher quality` 两种音频质量策略；整列表模式仍跳过逐条格式选择并直接下载全部条目
 
 当前验证结果：
-- `scripts/test/swift_test.sh`：36 个测试通过
+- `scripts/test/swift_test.sh`：58 个测试通过
 - `xcodebuild -project swift/YTTool.xcodeproj -scheme YTTool -configuration Debug -derivedDataPath "$PWD/tmp/xcode-derived-data" build`：通过
 - 手工验收：真实 URL probe 成功；下载完成通知可在通知中心看到；`Sprint 4` 验收文档已同步到当前 UI 文案
 - 运行时取消验证：已分别验证 `yt-dlp` 下载阶段取消，以及 `ffmpeg` 合并阶段取消，Cancel 对 `yt-dlp -> ffmpeg` 进程树生效
@@ -34,7 +34,10 @@
 - URL 支持边界：standalone 二进制已确认提供可用的 impersonation targets，但站点是否可下载仍取决于 `yt-dlp` extractor/站点兼容性；这一步不承诺 `missav` 一类站点可用
 
 当前剩余重点：
-- 与 Python GUI 的功能缺口（按优先级）：字幕下载（手动 + 自动字幕）、转码格式选择（mp3 / m4a / wav 等）、Cookies 文件路径、额外 yt-dlp 参数透传
+- 与 Python GUI 的功能缺口（按优先级）：字幕下载（手动 + 自动字幕）
+- 已补齐：音频转码格式选择（`mp3 / m4a / wav`，含 `Keep original`）
+- 已补齐：Cookies 文件路径（probe/download 均支持 `--cookies <path>`，含存在性与可读性校验）
+- 已补齐：额外 yt-dlp 参数透传（probe/download 均支持，含引号参数解析）
 - 播放列表模式目前仍是最小版：不支持逐条格式选择、整列表字幕或整列表片段策略
 - 持久化输出目录现在会在启动和下载前校验是否仍然存在且可用；如目录已失效，UI 不再把它当成可下载状态
 
@@ -42,4 +45,4 @@
 1. 运行 `xcodebuild -project swift/YTTool.xcodeproj -scheme YTTool -configuration Debug -derivedDataPath "$PWD/tmp/xcode-derived-data" build`
 2. 运行 `scripts/test/swift_test.sh`
 3. 如需继续做手工验收，始终先退出旧实例，再只打开 `tmp/xcode-derived-data/Build/Products/Debug/YTTool.app`
-4. 下一个功能切片：字幕下载（probe 返回字幕轨 → 语言选择 → `--write-subs --sub-langs`）
+4. 下一个功能切片：整列表字幕与整列表片段策略

@@ -38,6 +38,9 @@ struct YtDlpDownloadService: Sendable {
         url: String,
         videoFormatId: String?,
         audioFormatId: String?,
+        audioTranscodeFormat: AudioTranscodeFormat? = nil,
+        cookiesFilePath: String? = nil,
+        extraArguments: [String] = [],
         subtitleTrack: SubtitleTrack? = nil,
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
@@ -72,7 +75,10 @@ struct YtDlpDownloadService: Sendable {
                             outputTemplate: outputTemplate,
                             ffmpegLocation: ffmpeg.path(percentEncoded: false),
                             subtitleTrack: subtitleTrack,
-                            includeNoPlaylist: playlistMode == .onlyFirstItem
+                            includeNoPlaylist: playlistMode == .onlyFirstItem,
+                            audioTranscodeFormat: audioTranscodeFormat,
+                            cookiesFilePath: cookiesFilePath,
+                            extraArguments: extraArguments
                         ),
                         terminationGracePeriod: .seconds(3)
                     )

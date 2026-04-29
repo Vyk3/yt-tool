@@ -21,13 +21,19 @@ struct YtDlpProbeService: Sendable {
 
     func probe(
         url: String,
+        cookiesFilePath: String? = nil,
+        extraArguments: [String] = [],
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) async throws -> MediaInfo {
         let ytDlp = try locator.locate(.ytDlp)
 
         let config = ProcessConfiguration(
             executableURL: ytDlp,
-            arguments: buildProbeArguments(url: url)
+            arguments: buildProbeArguments(
+                url: url,
+                cookiesFilePath: cookiesFilePath,
+                extraArguments: extraArguments
+            )
         )
         onLog(.command, config.commandLine.joined(separator: " "))
 
