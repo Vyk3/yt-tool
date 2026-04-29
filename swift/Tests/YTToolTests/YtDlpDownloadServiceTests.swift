@@ -312,6 +312,37 @@ final class YtDlpDownloadServiceTests: XCTestCase {
         XCTAssertTrue(commandSink.value?.contains("--ffmpeg-location \(ffmpeg.path)") == true)
     }
 
+    func testCommandIncludesCookiesTranscodeAndExtraArgsWhenProvided() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp3")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://www.youtube.com/watch?v=123",
+            videoFormatId: nil,
+            audioFormatId: "140",
+            audioTranscodeFormat: .mp3,
+            cookiesFilePath: "/tmp/cookies.txt",
+            extraArguments: ["--playlist-items", "1"],
+            outputDirectory: outputDirectory,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        XCTAssertTrue(commandSink.value?.contains("--cookies /tmp/cookies.txt") == true)
+        XCTAssertTrue(commandSink.value?.contains("-x --audio-format mp3") == true)
+        XCTAssertTrue(commandSink.value?.contains("--playlist-items 1") == true)
+    }
+
     private func makeDownloadScript(resultFile: URL) throws -> URL {
         let contents = """
         #!/bin/sh

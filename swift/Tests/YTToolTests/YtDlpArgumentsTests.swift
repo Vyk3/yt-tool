@@ -105,4 +105,41 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssert(args.contains("--write-subs"))
         XCTAssertFalse(args.contains("--sleep-subtitles"))
     }
+
+    func testDownloadArgumentsAddsCookiesTranscodeAndExtraArgs() {
+        let args = buildDownloadArguments(
+            url: "https://example.com/video",
+            formatSelector: "140",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            audioTranscodeFormat: .mp3,
+            cookiesFilePath: "/tmp/cookies.txt",
+            extraArguments: ["--download-sections", "*00:00-00:30"]
+        )
+        XCTAssertTrue(args.contains("--cookies"))
+        XCTAssertTrue(args.contains("/tmp/cookies.txt"))
+        XCTAssertTrue(args.contains("-x"))
+        XCTAssertTrue(args.contains("--audio-format"))
+        XCTAssertTrue(args.contains("mp3"))
+        XCTAssertTrue(args.contains("--download-sections"))
+        XCTAssertTrue(args.contains("*00:00-00:30"))
+    }
+
+    func testProbeArgumentsAddsCookiesAndExtraArgs() {
+        let url = "https://example.com/video"
+        let args = buildProbeArguments(
+            url: url,
+            cookiesFilePath: "/tmp/cookies.txt",
+            extraArguments: ["--playlist-items", "1"]
+        )
+        XCTAssertTrue(args.contains("--cookies"))
+        XCTAssertTrue(args.contains("/tmp/cookies.txt"))
+        XCTAssertTrue(args.contains("--playlist-items"))
+        XCTAssertTrue(args.contains("1"))
+    }
+
+    func testParseShellLikeArgumentsSupportsQuotedValues() throws {
+        let args = try parseShellLikeArguments("--download-sections \"*00:30-01:00\" --playlist-items 1")
+        XCTAssertEqual(args, ["--download-sections", "*00:30-01:00", "--playlist-items", "1"])
+    }
 }

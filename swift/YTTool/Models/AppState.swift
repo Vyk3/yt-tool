@@ -37,6 +37,9 @@ final class AppState: ObservableObject {
     @Published var selectedVideoFormat: VideoFormat?
     @Published var selectedAudioFormat: AudioFormat?
     @Published var selectedSubtitle: SubtitleTrack?
+    @Published var audioTranscodeFormat: AudioTranscodeFormat = .original
+    @Published var cookiesFilePath: String = ""
+    @Published var extraYtDlpArguments: String = ""
 
     // MARK: - Output directory
     @Published var selectedOutputDirectory: URL? {
@@ -96,7 +99,14 @@ final class AppState: ObservableObject {
 
         probeTask = Task {
             do {
-                let info = try await probeService.probe(url: url, onLog: makeServiceLogger(scope: .probe))
+                let normalizedCookiesFilePath = try normalizedCookiesFilePathOrThrow()
+                let parsedExtraArguments = try parseExtraYtDlpArgumentsOrThrow()
+                let info = try await probeService.probe(
+                    url: url,
+                    cookiesFilePath: normalizedCookiesFilePath,
+                    extraArguments: parsedExtraArguments,
+                    onLog: makeServiceLogger(scope: .probe)
+                )
                 await MainActor.run {
                     guard isCurrentProbeAttempt(attemptID) else { return }
                     probeTask = nil
@@ -202,12 +212,35 @@ final class AppState: ObservableObject {
         let videoId = isWholePlaylistDownload ? nil : selectedVideoFormat?.id
         let audioId = isWholePlaylistDownload ? nil : selectedAudioFormat?.id
         let subtitleTrack = isWholePlaylistDownload ? nil : selectedSubtitle
+        let cookiesPath: String
+        let passthroughArgs: [String]
+        do {
+            cookiesPath = try normalizedCookiesFilePathOrThrow() ?? ""
+            passthroughArgs = try parseExtraYtDlpArgumentsOrThrow()
+        } catch let error as AppError {
+            downloadState = .failed(error)
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
+            return
+        } catch {
+            let mapped = AppError(message: "Invalid yt-dlp arguments.", recoverySuggestion: error.localizedDescription)
+            downloadState = .failed(mapped)
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(mapped))
+            return
+        }
+        let effectiveTranscode = effectiveAudioTranscodeFormat(
+            videoId: videoId,
+            playlistMode: playlistMode,
+            selectedFormat: audioTranscodeFormat
+        )
 
         let preview = buildCommandPreview(
             title: info?.title,
             videoId: videoId,
             audioId: audioId,
             subtitleTrack: subtitleTrack,
+            audioTranscodeFormat: effectiveTranscode,
+            cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
+            extraArguments: passthroughArgs,
             playlistMode: playlistMode,
             playlistVideoQualityStrategy: playlistVideoQualityStrategy,
             playlistAudioQualityStrategy: playlistAudioQualityStrategy,
@@ -231,6 +264,9 @@ final class AppState: ObservableObject {
                     url: url,
                     videoFormatId: videoId,
                     audioFormatId: audioId,
+                    audioTranscodeFormat: effectiveTranscode,
+                    cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
+                    extraArguments: passthroughArgs,
                     subtitleTrack: subtitleTrack,
                     outputDirectory: outputDir,
                     playlistMode: playlistMode,
@@ -477,6 +513,9 @@ final class AppState: ObservableObject {
         videoId: String?,
         audioId: String?,
         subtitleTrack: SubtitleTrack?,
+        audioTranscodeFormat: AudioTranscodeFormat?,
+        cookiesFilePath: String?,
+        extraArguments: [String],
         playlistMode: PlaylistMode,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
         playlistAudioQualityStrategy: PlaylistAudioQualityStrategy,
@@ -512,8 +551,11 @@ final class AppState: ObservableObject {
             let flag = subtitleTrack.isAuto ? "--write-auto-subs" : "--write-subs"
             subtitleFlags = " \(flag) --sub-langs \(subtitleTrack.lang)"
         }
+        let cookiesFlags = (cookiesFilePath?.isEmpty == false) ? " --cookies \"\(cookiesFilePath!)\"" : ""
+        let transcodeFlags = audioTranscodeFormat?.ytDlpAudioFormat.map { " -x --audio-format \($0)" } ?? ""
+        let extraFlags = extraArguments.isEmpty ? "" : " " + extraArguments.joined(separator: " ")
         let target = title ?? "playlist items"
-        return "yt-dlp -f \(format)\(playlistFlag)\(subtitleFlags) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …  # \(target)"
+        return "yt-dlp -f \(format)\(playlistFlag)\(subtitleFlags)\(cookiesFlags)\(transcodeFlags)\(extraFlags) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …  # \(target)"
     }
 
     private func formatDiskBytes(_ bytes: Int64) -> String {
@@ -553,5 +595,43 @@ final class AppState: ObservableObject {
     private static func isUsableDirectory(_ url: URL) -> Bool {
         var isDirectory = ObjCBool(false)
         return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    private func normalizedCookiesFilePathOrThrow() throws -> String? {
+        let trimmed = cookiesFilePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let normalized = (trimmed as NSString).expandingTildeInPath
+        var isDirectory = ObjCBool(false)
+        let exists = FileManager.default.fileExists(atPath: normalized, isDirectory: &isDirectory)
+        guard exists, !isDirectory.boolValue else {
+            throw AppError(
+                message: "Cookies file path is invalid.",
+                recoverySuggestion: "Use an existing cookies file path."
+            )
+        }
+        guard FileManager.default.isReadableFile(atPath: normalized) else {
+            throw AppError(
+                message: "Cookies file is not readable.",
+                recoverySuggestion: "Check file permissions, then try again."
+            )
+        }
+        return normalized
+    }
+
+    private func parseExtraYtDlpArgumentsOrThrow() throws -> [String] {
+        let raw = extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return [] }
+        return try parseShellLikeArguments(raw)
+    }
+
+    private func effectiveAudioTranscodeFormat(
+        videoId: String?,
+        playlistMode: PlaylistMode,
+        selectedFormat: AudioTranscodeFormat
+    ) -> AudioTranscodeFormat? {
+        guard selectedFormat != .original else { return nil }
+        if playlistMode == .wholePlaylistBestAudio { return selectedFormat }
+        if playlistMode == .onlyFirstItem, videoId == nil { return selectedFormat }
+        return nil
     }
 }
