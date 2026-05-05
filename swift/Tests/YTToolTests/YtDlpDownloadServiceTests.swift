@@ -343,6 +343,38 @@ final class YtDlpDownloadServiceTests: XCTestCase {
         XCTAssertTrue(commandSink.value?.contains("--playlist-items 1") == true)
     }
 
+    func testOverrideFormatSelectorAndNoPlaylistFlagForPerItemPlaylistFlow() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123",
+            videoFormatId: nil,
+            audioFormatId: nil,
+            formatSelectorOverride: "137+140",
+            includeNoPlaylistOverride: false,
+            extraArguments: ["--playlist-items", "2"],
+            outputDirectory: outputDirectory,
+            playlistMode: .onlyFirstItem,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        XCTAssertTrue(commandSink.value?.contains("-f 137+140") == true)
+        XCTAssertFalse(commandSink.value?.contains("--no-playlist") == true)
+        XCTAssertTrue(commandSink.value?.contains("--playlist-items 2") == true)
+    }
+
     private func makeDownloadScript(resultFile: URL) throws -> URL {
         let contents = """
         #!/bin/sh

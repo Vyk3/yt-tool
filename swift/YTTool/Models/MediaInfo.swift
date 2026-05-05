@@ -55,6 +55,57 @@ enum PlaylistAudioQualityStrategy: String, CaseIterable, Codable, Equatable, Ide
     }
 }
 
+enum PlaylistSubtitleMode: String, CaseIterable, Codable, Equatable, Identifiable {
+    case none
+    case manual
+    case auto
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .none:
+            return "No subtitles"
+        case .manual:
+            return "Manual subtitles"
+        case .auto:
+            return "Auto subtitles"
+        }
+    }
+}
+
+enum PlaylistSegmentMode: String, CaseIterable, Codable, Equatable, Identifiable {
+    case fullItem
+    case fixedRange
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fullItem:
+            return "Full item"
+        case .fixedRange:
+            return "Fixed time range"
+        }
+    }
+}
+
+enum PlaylistFormatMode: String, CaseIterable, Codable, Equatable, Identifiable {
+    case unifiedStrategy
+    case perItemMapping
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .unifiedStrategy:
+            return "Unified strategy"
+        case .perItemMapping:
+            return "Per-item mapping"
+        }
+    }
+}
+
 struct MediaInfo: Codable, Equatable {
     var title: String
     var duration: TimeInterval?

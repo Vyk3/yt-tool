@@ -11,9 +11,12 @@ struct ContentView: View {
                 playlistMode: $state.playlistMode,
                 playlistVideoQualityStrategy: $state.playlistVideoQualityStrategy,
                 playlistAudioQualityStrategy: $state.playlistAudioQualityStrategy,
-                audioTranscodeFormat: $state.audioTranscodeFormat,
-                cookiesFilePath: $state.cookiesFilePath,
-                extraYtDlpArguments: $state.extraYtDlpArguments,
+                playlistSubtitleMode: $state.playlistSubtitleMode,
+                playlistSubtitleLanguage: $state.playlistSubtitleLanguage,
+                playlistSegmentMode: $state.playlistSegmentMode,
+                playlistSegmentRange: $state.playlistSegmentRange,
+                playlistFormatMode: $state.playlistFormatMode,
+                playlistPerItemFormatMap: $state.playlistPerItemFormatMap,
                 probeState: state.probeState,
                 selectedDirectory: state.selectedOutputDirectory,
                 showsPlaylistModePicker: state.isPlaylistInputURL,
@@ -40,6 +43,12 @@ struct ContentView: View {
                 onCancel: state.cancelDownload
             )
             .padding(.top, 4)
+
+            AdvancedOptionsView(
+                audioTranscodeFormat: $state.audioTranscodeFormat,
+                cookiesFilePath: $state.cookiesFilePath,
+                extraYtDlpArguments: $state.extraYtDlpArguments
+            )
 
             LogPanelView(entries: state.logs)
                 .padding(.top, 8)

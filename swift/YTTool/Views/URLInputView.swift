@@ -6,9 +6,12 @@ struct URLInputView: View {
     @Binding var playlistMode: PlaylistMode
     @Binding var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy
     @Binding var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy
-    @Binding var audioTranscodeFormat: AudioTranscodeFormat
-    @Binding var cookiesFilePath: String
-    @Binding var extraYtDlpArguments: String
+    @Binding var playlistSubtitleMode: PlaylistSubtitleMode
+    @Binding var playlistSubtitleLanguage: String
+    @Binding var playlistSegmentMode: PlaylistSegmentMode
+    @Binding var playlistSegmentRange: String
+    @Binding var playlistFormatMode: PlaylistFormatMode
+    @Binding var playlistPerItemFormatMap: String
     let probeState: ProbeState
     let selectedDirectory: URL?
     let showsPlaylistModePicker: Bool
@@ -96,44 +99,75 @@ struct URLInputView: View {
                             .frame(maxWidth: 280, alignment: .leading)
                         }
                     }
-                }
-            }
 
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Audio transcode")
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Picker("Audio transcode", selection: $audioTranscodeFormat) {
-                    ForEach(AudioTranscodeFormat.allCases) { format in
-                        Text(format.title).tag(format)
+                    if playlistMode.downloadsWholePlaylist {
+                        secondaryQualityPicker(
+                            label: "Playlist formats",
+                            helpText: "Use a single strategy for all items, or map specific items to specific format selectors."
+                        ) {
+                            Picker("Playlist formats", selection: $playlistFormatMode) {
+                                ForEach(PlaylistFormatMode.allCases) { mode in
+                                    Text(mode.title).tag(mode)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 280, alignment: .leading)
+                        }
+
+                        if playlistFormatMode == .perItemMapping {
+                            secondaryTextField(
+                                label: "Per-item map",
+                                placeholder: "1=137+140;2=136+140",
+                                text: $playlistPerItemFormatMap,
+                                helpText: "Syntax: itemIndex=formatSelector;itemIndex=formatSelector."
+                            )
+                        }
+
+                        secondaryQualityPicker(
+                            label: "Playlist subtitles",
+                            helpText: "Apply the same subtitle strategy to each item in the playlist."
+                        ) {
+                            Picker("Playlist subtitles", selection: $playlistSubtitleMode) {
+                                ForEach(PlaylistSubtitleMode.allCases) { mode in
+                                    Text(mode.title).tag(mode)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 280, alignment: .leading)
+                        }
+
+                        if playlistSubtitleMode != .none {
+                            secondaryTextField(
+                                label: "Subtitle language",
+                                placeholder: "en or zh-Hans",
+                                text: $playlistSubtitleLanguage,
+                                helpText: "Used as --sub-langs for whole-playlist downloads."
+                            )
+                        }
+
+                        secondaryQualityPicker(
+                            label: "Playlist segments",
+                            helpText: "Choose whether each item downloads fully or with a fixed time range."
+                        ) {
+                            Picker("Playlist segments", selection: $playlistSegmentMode) {
+                                ForEach(PlaylistSegmentMode.allCases) { mode in
+                                    Text(mode.title).tag(mode)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 280, alignment: .leading)
+                        }
+
+                        if playlistSegmentMode == .fixedRange {
+                            secondaryTextField(
+                                label: "Time range",
+                                placeholder: "00:30-01:00",
+                                text: $playlistSegmentRange,
+                                helpText: "Passed as --download-sections *<range>."
+                            )
+                        }
                     }
                 }
-                .labelsHidden()
-                .frame(maxWidth: 220, alignment: .leading)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Cookies file path")
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-                TextField("/path/to/cookies.txt", text: $cookiesFilePath)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(1)
-                Text("Optional. The path must exist and be readable.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Extra yt-dlp arguments")
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-                TextField("--download-sections \"*00:30-01:00\"", text: $extraYtDlpArguments)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(1)
-                Text("Optional. Passed through after validation.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 12) {
@@ -208,6 +242,29 @@ struct URLInputView: View {
 
                 picker()
             }
+
+            Text(helpText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.leading, 20)
+    }
+
+    private func secondaryTextField(
+        label: String,
+        placeholder: String,
+        text: Binding<String>,
+        helpText: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            TextField(placeholder, text: text)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1)
+                .frame(maxWidth: 280, alignment: .leading)
 
             Text(helpText)
                 .font(.caption)

@@ -38,6 +38,8 @@ struct YtDlpDownloadService: Sendable {
         url: String,
         videoFormatId: String?,
         audioFormatId: String?,
+        formatSelectorOverride: String? = nil,
+        includeNoPlaylistOverride: Bool? = nil,
         audioTranscodeFormat: AudioTranscodeFormat? = nil,
         cookiesFilePath: String? = nil,
         extraArguments: [String] = [],
@@ -56,13 +58,14 @@ struct YtDlpDownloadService: Sendable {
                     // machines where ffmpeg is not installed in PATH.
                     let ffmpeg = try locator.locate(.ffmpeg)
 
-                    let formatSelector = buildFormatSelector(
+                    let formatSelector = formatSelectorOverride ?? buildFormatSelector(
                         videoId: videoFormatId,
                         audioId: audioFormatId,
                         playlistMode: playlistMode,
                         playlistVideoQualityStrategy: playlistVideoQualityStrategy,
                         playlistAudioQualityStrategy: playlistAudioQualityStrategy
                     )
+                    let includeNoPlaylist = includeNoPlaylistOverride ?? (playlistMode == .onlyFirstItem)
                     let outputTemplate = outputDirectory
                         .appendingPathComponent("%(title)s.%(ext)s")
                         .path(percentEncoded: false)
@@ -75,7 +78,7 @@ struct YtDlpDownloadService: Sendable {
                             outputTemplate: outputTemplate,
                             ffmpegLocation: ffmpeg.path(percentEncoded: false),
                             subtitleTrack: subtitleTrack,
-                            includeNoPlaylist: playlistMode == .onlyFirstItem,
+                            includeNoPlaylist: includeNoPlaylist,
                             audioTranscodeFormat: audioTranscodeFormat,
                             cookiesFilePath: cookiesFilePath,
                             extraArguments: extraArguments
@@ -137,7 +140,7 @@ struct YtDlpDownloadService: Sendable {
                     // Fall back to the output directory if yt-dlp didn't emit one
                     // (e.g. older yt-dlp version or no post-processing step).
                     let outputURL: URL
-                    if playlistMode.downloadsWholePlaylist {
+                    if playlistMode.downloadsWholePlaylist && includeNoPlaylistOverride == nil {
                         outputURL = outputDirectory
                     } else {
                         outputURL = result.stdout

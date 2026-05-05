@@ -28,10 +28,24 @@ final class AppState: ObservableObject {
             if playlistMode != .wholePlaylistBestAudio {
                 playlistAudioQualityStrategy = .moreCompatible
             }
+            if playlistMode == .onlyFirstItem {
+                playlistSubtitleMode = .none
+                playlistSubtitleLanguage = ""
+                playlistSegmentMode = .fullItem
+                playlistSegmentRange = ""
+                playlistFormatMode = .unifiedStrategy
+                playlistPerItemFormatMap = ""
+            }
         }
     }
     @Published var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility
     @Published var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible
+    @Published var playlistSubtitleMode: PlaylistSubtitleMode = .none
+    @Published var playlistSubtitleLanguage: String = ""
+    @Published var playlistSegmentMode: PlaylistSegmentMode = .fullItem
+    @Published var playlistSegmentRange: String = ""
+    @Published var playlistFormatMode: PlaylistFormatMode = .unifiedStrategy
+    @Published var playlistPerItemFormatMap: String = ""
 
     // MARK: - Format selection
     @Published var selectedVideoFormat: VideoFormat?
@@ -211,12 +225,16 @@ final class AppState: ObservableObject {
 
         let videoId = isWholePlaylistDownload ? nil : selectedVideoFormat?.id
         let audioId = isWholePlaylistDownload ? nil : selectedAudioFormat?.id
-        let subtitleTrack = isWholePlaylistDownload ? nil : selectedSubtitle
+        let subtitleTrack: SubtitleTrack?
         let cookiesPath: String
         let passthroughArgs: [String]
         do {
+            subtitleTrack = try isWholePlaylistDownload
+                ? wholePlaylistSubtitleTrackOrThrow()
+                : selectedSubtitle
             cookiesPath = try normalizedCookiesFilePathOrThrow() ?? ""
             passthroughArgs = try parseExtraYtDlpArgumentsOrThrow()
+                + (isWholePlaylistDownload ? wholePlaylistArgumentsOrThrow() : [])
         } catch let error as AppError {
             downloadState = .failed(error)
             appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
@@ -260,37 +278,79 @@ final class AppState: ObservableObject {
 
         downloadTask = Task {
             do {
-                for try await event in service.download(
-                    url: url,
-                    videoFormatId: videoId,
-                    audioFormatId: audioId,
-                    audioTranscodeFormat: effectiveTranscode,
-                    cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
-                    extraArguments: passthroughArgs,
-                    subtitleTrack: subtitleTrack,
-                    outputDirectory: outputDir,
-                    playlistMode: playlistMode,
-                    playlistVideoQualityStrategy: playlistVideoQualityStrategy,
-                    playlistAudioQualityStrategy: playlistAudioQualityStrategy,
-                    onLog: makeServiceLogger(scope: .download)
-                ) {
-                    switch event {
-                    case .progress(let progress):
-                        await MainActor.run {
-                            guard isCurrentDownloadAttempt(attemptID) else { return }
-                            downloadState = .downloading(progress)
+                if isWholePlaylistDownload && playlistFormatMode == .perItemMapping {
+                    let perItemSelections = try parsePerItemFormatSelectionsOrThrow()
+                    for item in perItemSelections {
+                        guard isCurrentDownloadAttempt(attemptID) else { return }
+                        appendLog(scope: .download, level: .info, message: "Downloading playlist item \(item.index) with format \(item.formatSelector)")
+                        let itemArgs = passthroughArgs + ["--playlist-items", "\(item.index)"]
+                        for try await event in service.download(
+                            url: url,
+                            videoFormatId: nil,
+                            audioFormatId: nil,
+                            formatSelectorOverride: item.formatSelector,
+                            includeNoPlaylistOverride: false,
+                            audioTranscodeFormat: effectiveTranscode,
+                            cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
+                            extraArguments: itemArgs,
+                            subtitleTrack: subtitleTrack,
+                            outputDirectory: outputDir,
+                            playlistMode: .onlyFirstItem,
+                            playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+                            playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+                            onLog: makeServiceLogger(scope: .download)
+                        ) {
+                            switch event {
+                            case .progress(let progress):
+                                await MainActor.run {
+                                    guard isCurrentDownloadAttempt(attemptID) else { return }
+                                    downloadState = .downloading(progress)
+                                }
+                            case .completed:
+                                break
+                            }
                         }
-                    case .completed(let result):
-                        await MainActor.run {
-                            guard isCurrentDownloadAttempt(attemptID) else { return }
-                            downloadTask = nil
-                            downloadState = .succeeded(outputURL: result.outputURL)
-                            appendLog(
-                                scope: .download,
-                                level: .success,
-                                message: "Completed: \(result.outputURL.path(percentEncoded: false))"
-                            )
-                            self.sendCompletionNotification(outputURL: result.outputURL)
+                    }
+                    await MainActor.run {
+                        guard isCurrentDownloadAttempt(attemptID) else { return }
+                        downloadTask = nil
+                        downloadState = .succeeded(outputURL: outputDir)
+                        appendLog(scope: .download, level: .success, message: "Completed playlist per-item downloads")
+                        self.sendCompletionNotification(outputURL: outputDir)
+                    }
+                } else {
+                    for try await event in service.download(
+                        url: url,
+                        videoFormatId: videoId,
+                        audioFormatId: audioId,
+                        audioTranscodeFormat: effectiveTranscode,
+                        cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
+                        extraArguments: passthroughArgs,
+                        subtitleTrack: subtitleTrack,
+                        outputDirectory: outputDir,
+                        playlistMode: playlistMode,
+                        playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+                        playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+                        onLog: makeServiceLogger(scope: .download)
+                    ) {
+                        switch event {
+                        case .progress(let progress):
+                            await MainActor.run {
+                                guard isCurrentDownloadAttempt(attemptID) else { return }
+                                downloadState = .downloading(progress)
+                            }
+                        case .completed(let result):
+                            await MainActor.run {
+                                guard isCurrentDownloadAttempt(attemptID) else { return }
+                                downloadTask = nil
+                                downloadState = .succeeded(outputURL: result.outputURL)
+                                appendLog(
+                                    scope: .download,
+                                    level: .success,
+                                    message: "Completed: \(result.outputURL.path(percentEncoded: false))"
+                                )
+                                self.sendCompletionNotification(outputURL: result.outputURL)
+                            }
                         }
                     }
                 }
@@ -622,6 +682,87 @@ final class AppState: ObservableObject {
         let raw = extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return [] }
         return try parseShellLikeArguments(raw)
+    }
+
+    func wholePlaylistSubtitleTrackOrThrow() throws -> SubtitleTrack? {
+        guard isWholePlaylistDownload else { return nil }
+        guard playlistSubtitleMode != .none else { return nil }
+
+        let lang = playlistSubtitleLanguage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !lang.isEmpty else {
+            throw AppError(
+                message: "Playlist subtitle language is required.",
+                recoverySuggestion: "Enter a subtitle language code, for example en or zh-Hans."
+            )
+        }
+        return SubtitleTrack(
+            lang: lang,
+            label: lang,
+            isAuto: playlistSubtitleMode == .auto
+        )
+    }
+
+    func wholePlaylistArgumentsOrThrow() throws -> [String] {
+        guard isWholePlaylistDownload else { return [] }
+        guard playlistSegmentMode == .fixedRange else { return [] }
+
+        let raw = playlistSegmentRange.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
+            throw AppError(
+                message: "Playlist segment range is required.",
+                recoverySuggestion: "Enter a range like 00:30-01:00."
+            )
+        }
+        let normalized = raw.hasPrefix("*") ? raw : "*\(raw)"
+        return ["--download-sections", normalized]
+    }
+
+    struct PerItemFormatSelection {
+        let index: Int
+        let formatSelector: String
+    }
+
+    func parsePerItemFormatSelectionsOrThrow() throws -> [PerItemFormatSelection] {
+        guard isWholePlaylistDownload, playlistFormatMode == .perItemMapping else { return [] }
+
+        let raw = playlistPerItemFormatMap.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
+            throw AppError(
+                message: "Per-item format mapping is required.",
+                recoverySuggestion: "Use syntax like 1=137+140;2=136+140."
+            )
+        }
+
+        let pairs = raw.split(separator: ";", omittingEmptySubsequences: true)
+        var results: [PerItemFormatSelection] = []
+        for pair in pairs {
+            let token = pair.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty else { continue }
+            let parts = token.split(separator: "=", maxSplits: 1).map(String.init)
+            guard parts.count == 2 else {
+                throw AppError(
+                    message: "Invalid per-item mapping entry.",
+                    recoverySuggestion: "Each entry must be itemIndex=formatSelector, for example 1=137+140."
+                )
+            }
+            let indexRaw = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            let formatRaw = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let index = Int(indexRaw), index > 0, !formatRaw.isEmpty else {
+                throw AppError(
+                    message: "Invalid per-item mapping entry.",
+                    recoverySuggestion: "Item index must be a positive number and format selector cannot be empty."
+                )
+            }
+            results.append(PerItemFormatSelection(index: index, formatSelector: formatRaw))
+        }
+
+        guard !results.isEmpty else {
+            throw AppError(
+                message: "Per-item format mapping is required.",
+                recoverySuggestion: "Use syntax like 1=137+140;2=136+140."
+            )
+        }
+        return results
     }
 
     private func effectiveAudioTranscodeFormat(
