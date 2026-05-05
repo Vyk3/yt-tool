@@ -89,6 +89,45 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.canDownload)
     }
 
+    func testCanDownloadAllowsFallbackWhenProbeSucceedsWithNoSelectableFormats() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U"
+        state.selectedOutputDirectory = FileManager.default.temporaryDirectory
+        state.probeState = .success(
+            MediaInfo(
+                title: "Sample",
+                duration: nil,
+                webpageURL: "https://www.youtube.com/watch?v=P5yHEKqx86U",
+                videoFormats: [],
+                audioFormats: [],
+                subtitleTracks: [],
+                autoSubtitleTracks: []
+            )
+        )
+
+        XCTAssertTrue(state.hasNoSelectableFormatsAfterProbe)
+        XCTAssertTrue(state.canDownload)
+    }
+
+    func testCanDownloadFallbackStillRequiresOutputDirectory() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U"
+        state.probeState = .success(
+            MediaInfo(
+                title: "Sample",
+                duration: nil,
+                webpageURL: "https://www.youtube.com/watch?v=P5yHEKqx86U",
+                videoFormats: [],
+                audioFormats: [],
+                subtitleTracks: [],
+                autoSubtitleTracks: []
+            )
+        )
+
+        XCTAssertTrue(state.hasNoSelectableFormatsAfterProbe)
+        XCTAssertFalse(state.canDownload)
+    }
+
     func testNonPlaylistURLResetsPlaylistModeToOnlyFirstItem() {
         let state = AppState(defaults: freshDefaults())
 

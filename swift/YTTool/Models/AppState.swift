@@ -164,9 +164,11 @@ final class AppState: ObservableObject {
         if isWholePlaylistDownload {
             return !inputURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        guard case .success = probeState,
-              (selectedVideoFormat != nil || selectedAudioFormat != nil)
-        else { return false }
+        guard case .success = probeState else { return false }
+        if hasNoSelectableFormatsAfterProbe {
+            return true
+        }
+        guard selectedVideoFormat != nil || selectedAudioFormat != nil else { return false }
         return true
     }
 
@@ -276,6 +278,9 @@ final class AppState: ObservableObject {
                 ? "Preparing whole-playlist download"
                 : "Preparing download for \(info?.title ?? "item")"
         )
+        if hasNoSelectableFormatsAfterProbe {
+            appendLog(scope: .download, level: .info, message: "No selectable formats detected; fallback to best.")
+        }
         appendLog(scope: .download, level: .info, message: preview)
         downloadState = .preparing(commandPreview: preview)
 

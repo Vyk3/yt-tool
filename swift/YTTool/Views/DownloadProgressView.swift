@@ -71,7 +71,7 @@ struct DownloadProgressView: View {
         switch downloadState {
         case .idle:
             if showsNoSelectableFormatsHint {
-                Text("未显示可选格式，下载可继续。")
+                Text(canDownload ? "未显示可选格式，将尝试兜底下载（best）。" : "未显示可选格式，请重试 Probe 或查看日志。")
                     .foregroundStyle(.secondary)
             } else {
                 Text(canDownload
