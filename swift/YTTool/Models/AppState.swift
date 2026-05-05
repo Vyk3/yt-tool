@@ -180,6 +180,11 @@ final class AppState: ObservableObject {
         Self.isPlaylistURL(inputURL)
     }
 
+    var hasNoSelectableFormatsAfterProbe: Bool {
+        guard !isWholePlaylistDownload, case .success(let info) = probeState else { return false }
+        return info.videoFormats.isEmpty && info.audioFormats.isEmpty
+    }
+
     var isWholePlaylistDownload: Bool {
         isPlaylistInputURL && playlistMode.downloadsWholePlaylist
     }

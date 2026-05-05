@@ -37,6 +37,7 @@ struct ContentView: View {
             DownloadProgressView(
                 downloadState: state.downloadState,
                 canDownload: state.canDownload,
+                showsNoSelectableFormatsHint: state.hasNoSelectableFormatsAfterProbe,
                 isDownloading: state.isDownloading,
                 ffmpegWarningMessage: state.ffmpegWarningMessage,
                 onDownload: state.download,

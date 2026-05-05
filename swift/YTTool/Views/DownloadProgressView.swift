@@ -4,6 +4,7 @@ import SwiftUI
 struct DownloadProgressView: View {
     let downloadState: DownloadState
     let canDownload: Bool
+    let showsNoSelectableFormatsHint: Bool
     let isDownloading: Bool
     let ffmpegWarningMessage: String?
     let onDownload: () -> Void
@@ -69,10 +70,15 @@ struct DownloadProgressView: View {
     private var statusContent: some View {
         switch downloadState {
         case .idle:
-            Text(canDownload
-                 ? "Ready to download. Press Download to start."
-                 : "Select a format and output folder to enable download.")
-                .foregroundStyle(.secondary)
+            if showsNoSelectableFormatsHint {
+                Text("未显示可选格式，下载可继续。")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(canDownload
+                     ? "Ready to download. Press Download to start."
+                     : "Select a format and output folder to enable download.")
+                    .foregroundStyle(.secondary)
+            }
 
         case .preparing(let commandPreview):
             stagePanel(
