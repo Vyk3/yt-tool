@@ -6,134 +6,31 @@ on:
   pull_request:
 
 jobs:
-  pytest-linux:
-    name: pytest (${{ matrix.python-version }}, linux)
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install yt-dlp>=2026.3.17 pytest
-
-      - name: Run tests
-        run: python -m pytest tests/ -q
-
-  pytest-macos:
-    name: pytest (${{ matrix.python-version }}, macos)
+  swift-test:
+    name: swift test (macos)
     runs-on: macos-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
+      - name: Run Swift tests
+        run: swift test --disable-sandbox --package-path swift
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install yt-dlp>=2026.3.17 pytest
-
-      - name: Run tests
-        run: python -m pytest tests/ -q
-
-  # Stage-1 matrix reduction canary: keep Python 3.13 signal as non-gating.
-  pytest-linux-shadow:
-    name: pytest (3.13, linux shadow)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+  swift-build:
+    name: swift build (macos)
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-          cache: pip
-
-      - name: Install dependencies
+      - name: Build YTTool (Debug)
         run: |
-          python -m pip install --upgrade pip
-          pip install yt-dlp>=2026.3.17 pytest
-
-      - name: Run tests
-        run: python -m pytest tests/ -q
-
-  lint:
-    name: ruff
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install ruff
-        run: pip install ruff
-
-      - name: Run ruff
-        run: ruff check app/ tests/
-
-  launcher-windows-smoke:
-    name: launcher smoke (windows)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "yt-dlp>=2026.3.17"
-
-      - name: Smoke yt.cmd
-        shell: cmd
-        run: |
-          set YT_TOOL_MODE=cli
-          set YT_TOOL_NO_PAUSE=1
-          set PY_PYTHON=3.12
-          set PYTHONUTF8=1
-          echo.| call launcher\windows\yt.cmd
-          set RC=%ERRORLEVEL%
-          if not "%RC%"=="1" (
-            echo Unexpected exit code from yt.cmd: %RC%
-            exit /b 1
-          )
-
-      - name: Smoke yt.ps1
-        shell: pwsh
-        run: |
-          $PSNativeCommandUseErrorActionPreference = $false
-          $env:YT_TOOL_MODE = 'cli'
-          $env:YT_TOOL_NO_PAUSE = '1'
-          $env:PY_PYTHON = '3.12'
-          $env:PYTHONUTF8 = '1'
-          '' | pwsh -NoProfile -ExecutionPolicy Bypass -File .\launcher\windows\yt.ps1
-          if ($LASTEXITCODE -ne 1) {
-            throw "Unexpected exit code from yt.ps1: $LASTEXITCODE"
-          }
-          exit 0
+          xcodebuild \
+            -project swift/YTTool.xcodeproj \
+            -scheme YTTool \
+            -configuration Debug \
+            -derivedDataPath tmp/xcode-derived-data \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            build

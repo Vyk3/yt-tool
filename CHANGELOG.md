@@ -3,21 +3,20 @@
 ## Unreleased
 
 ### Changed
-- 收敛依赖入口：`requirements.txt` -> `requirements-cli.txt`，并在打包/发布链路显式安装 `".[gui]"`。
-- CI 进入矩阵收敛阶段一：主门禁为 Linux/macOS 的 Python 3.12，新增 Linux 3.13 shadow（non-gating）。
-- 下载链路重构为公共骨架：`app/core/downloader.py` 新增 `_build_download(...)`，5 类下载入口统一复用。
-- 服务层类型升级为兼容 Enum：`DownloadKind`/`TaskState` 由字符串 Literal 迁移到 `str + Enum`，保留 legacy 字符串输入兼容。
-- 打包脚本统一 ffmpeg 准备逻辑：新增 `scripts/build/common/prepare_ffmpeg.py`，macOS/Windows wrapper 仅做参数转发。
-- 平台检测统一来源：`platform.system()` 统一收敛到 `app/core/config.py` 常量。
+- **平台切换**：从 Python（PyInstaller + pywebview）全面迁移到 Swift 原生 macOS App（SwiftUI）。
+- **CI 更新**：CI workflow 从 Python pytest/ruff 替换为 Swift 测试（`swift test`）和构建检查（`xcodebuild build`）。
+- **Release 更新**：Release workflow 从 PyInstaller 打包切换为 `scripts/build/swift/build.sh --release`，产物为 `YTTool.zip`。
+- 清理 Python 应用代码（`app/`、`tests/`）、Windows 构建脚本、Python launcher 及相关依赖。
 
 ### Added
-- `tests/test_prepare_ffmpeg.py`：覆盖 ffmpeg 预检约束与缓存命中语义回归。
-- 下载参数金样测试：`tests/test_downloader.py` 增加 5 类下载入口参数快照测试。
-
-### Fixed
-- 修复 release workflow 安装依赖时遗漏 GUI extras 的风险。
-- 修复 workflow 在未知 `kind` 输入下可能抛异常的问题，统一返回结构化错误。
-
-### Verified
-- 本地质量门禁：`ruff check app/ tests/` + `pytest tests/ -q` 持续通过。
-- macOS 本地打包验收：`bash scripts/build/macos/build_app.sh --clean` 已生成 `.app` 与 `.dmg`。
+Swift 重写完整功能覆盖，包括：
+- 视频 / 音频下载，含格式选择与磁盘空间预检
+- 音频转码格式选择（`mp3 / m4a / wav`，含 `Keep original`）
+- Cookies 文件路径传透（probe / download 均支持）
+- 额外 yt-dlp 参数透传（含引号参数解析）
+- 播放列表模式（`Only first item` / `Whole playlist: best video` / `Whole playlist: best audio`）
+- 整列表字幕策略（manual / auto + lang）
+- 整列表片段策略（`Fixed time range` → `--download-sections`）
+- 整列表逐条格式映射（`Per-item mapping`）
+- 下载完成系统通知、会话 Session Log、URL 拖拽输入
+- ffmpeg / ffprobe 缺失时的 `FFmpeg unavailable` 明确提示

@@ -4,15 +4,6 @@
 *.swp
 *.swo
 
-# Python
-/.venv/
-/__pycache__/
-*.pyc
-*.pyz
-*.egg-info/
-/.pytest_cache/
-/.ruff_cache/
-
 # Build artifacts
 /build/
 /dist/
@@ -26,12 +17,7 @@
 /swift/YTTool/Resources/Binaries/ffmpeg
 /swift/YTTool/Resources/Binaries/ffprobe
 
-# PyInstaller
-*.spec
-!yt-tool.spec
-
 # Dependencies
-/vendor/bin/
 /node_modules/
 
 # Environment
@@ -58,13 +44,11 @@
 /MIGRATION_NOTES.md
 /RELEASE_CHECKLIST.md
 /TEST_REPORT.md
-/WINDOWS_ACCEPTANCE_TEMPLATE.md
-/SPRINT4_ACCEPTANCE.md
-
 # Local-only helper scripts
 /scripts/check_ci.sh
 /scripts/fast_path.sh
 /scripts/fmt.sh
+/scripts/gen_allowlist.py
 
 # Xcode per-user settings
 xcuserdata/
