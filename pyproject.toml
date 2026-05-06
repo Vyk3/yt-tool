@@ -8,7 +8,7 @@ version = "0.0.1"
 description = "CLI + GUI download tool powered by yt-dlp"
 requires-python = ">=3.10"
 dependencies = [
-    "yt-dlp>=2025.1.0",
+    "yt-dlp>=2026.3.17",
 ]
 
 [project.optional-dependencies]
