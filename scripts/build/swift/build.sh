@@ -57,6 +57,7 @@ done
 
 DIST_APP="$OUTPUT_DIR/YTTool.app"
 DIST_ZIP="$OUTPUT_DIR/YTTool.zip"
+DIST_DMG="$OUTPUT_DIR/YTTool.dmg"
 XCODE_LOG="$BUILD_ROOT/xcodebuild-archive.log"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -71,7 +72,7 @@ read_ytdlp_version() {
 }
 
 # ── Step 1: Prepare binaries ──────────────────────────────────────────────────
-step "1/6  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
+step "1/7  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
 
 source "$SCRIPT_DIR/pinned_versions.sh"
 set_ytdlp_channel_vars "$CHANNEL"
@@ -126,7 +127,7 @@ for bin in yt-dlp ffmpeg ffprobe; do
 done
 
 # ── Step 2: Archive ───────────────────────────────────────────────────────────
-step "2/6  xcodebuild archive"
+step "2/7  xcodebuild archive"
 
 mkdir -p "$BUILD_ROOT" "$OUTPUT_DIR"
 rm -rf "$ARCHIVE_PATH"
@@ -160,14 +161,14 @@ echo "  DerivedData: $DERIVED_DATA_PATH"
 echo "  xcodebuild log: $XCODE_LOG"
 
 # ── Step 3: Export .app ───────────────────────────────────────────────────────
-step "3/6  Export .app"
+step "3/7  Export .app"
 
 rm -rf "$DIST_APP"
 cp -R "$APP_IN_ARCHIVE" "$DIST_APP"
 echo "  Exported: $DIST_APP"
 
 # ── Step 4: Codesign ─────────────────────────────────────────────────────────
-step "4/6  Ad-hoc codesign"
+step "4/7  Ad-hoc codesign"
 
 BINARIES_IN_APP="$DIST_APP/Contents/Resources/Binaries"
 if [[ ! -d "$BINARIES_IN_APP" ]]; then
@@ -186,7 +187,7 @@ codesign --force --deep --sign - "$DIST_APP"
 echo "  App bundle: signed"
 
 # ── Step 5: Package ───────────────────────────────────────────────────────────
-step "5/6  Create distribution zip"
+step "5/7  Create distribution zip"
 
 rm -f "$DIST_ZIP"
 pushd "$OUTPUT_DIR" > /dev/null
@@ -195,8 +196,29 @@ popd > /dev/null
 ZIP_SIZE="$(du -sh "$DIST_ZIP" | cut -f1)"
 echo "  $DIST_ZIP  ($ZIP_SIZE)"
 
-# ── Step 6: Smoke test ────────────────────────────────────────────────────────
-step "6/6  Smoke test"
+# ── Step 6: Create DMG ────────────────────────────────────────────────────────
+step "6/7  Create distribution DMG"
+
+DMG_STAGING="$BUILD_ROOT/dmg-staging"
+rm -rf "$DMG_STAGING"
+mkdir -p "$DMG_STAGING"
+cp -R "$DIST_APP" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
+
+rm -f "$DIST_DMG"
+hdiutil create \
+    -volname "YTTool" \
+    -srcfolder "$DMG_STAGING" \
+    -ov \
+    -format UDZO \
+    -quiet \
+    "$DIST_DMG"
+rm -rf "$DMG_STAGING"
+DMG_SIZE="$(du -sh "$DIST_DMG" | cut -f1)"
+echo "  $DIST_DMG  ($DMG_SIZE)"
+
+# ── Step 7: Smoke test ────────────────────────────────────────────────────────
+step "7/7  Smoke test"
 
 if [[ $SKIP_TEST -eq 1 ]]; then
     echo "  (skipped via --skip-test)"
@@ -209,3 +231,4 @@ echo ""
 echo "Build complete."
 echo "  App : $DIST_APP"
 echo "  Zip : $DIST_ZIP ($ZIP_SIZE)"
+echo "  DMG : $DIST_DMG ($DMG_SIZE)"
