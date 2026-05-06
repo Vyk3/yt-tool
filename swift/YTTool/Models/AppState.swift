@@ -294,13 +294,17 @@ final class AppState: ObservableObject {
                         guard isCurrentDownloadAttempt(attemptID) else { return }
                         appendLog(scope: .download, level: .info, message: "Downloading playlist item \(item.index) with format \(item.formatSelector)")
                         let itemArgs = passthroughArgs + ["--playlist-items", "\(item.index)"]
+                        let perItemTranscode = effectivePerItemAudioTranscodeFormat(
+                            formatSelector: item.formatSelector,
+                            selectedFormat: effectiveTranscode
+                        )
                         for try await event in service.download(
                             url: url,
                             videoFormatId: nil,
                             audioFormatId: nil,
                             formatSelectorOverride: item.formatSelector,
                             includeNoPlaylistOverride: false,
-                            audioTranscodeFormat: effectiveTranscode,
+                            audioTranscodeFormat: perItemTranscode,
                             cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
                             extraArguments: itemArgs,
                             subtitleTrack: subtitleTrack,
@@ -784,5 +788,17 @@ final class AppState: ObservableObject {
         if playlistMode == .wholePlaylistBestAudio { return selectedFormat }
         if playlistMode == .onlyFirstItem, videoId == nil { return selectedFormat }
         return nil
+    }
+
+    func effectivePerItemAudioTranscodeFormat(
+        formatSelector: String,
+        selectedFormat: AudioTranscodeFormat?
+    ) -> AudioTranscodeFormat? {
+        guard let selectedFormat else { return nil }
+        let normalized = formatSelector.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return nil }
+        if normalized.contains("+") { return nil }
+        if normalized.contains("video") { return nil }
+        return selectedFormat
     }
 }
