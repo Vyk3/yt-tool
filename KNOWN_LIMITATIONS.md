@@ -1,165 +1,66 @@
 # Known Limitations
 
-本文档记录当前版本仍然存在的限制，避免将已完成功能误写成未实现。
+本文档记录当前 Swift 版本仍然存在的限制。
 
 ---
 
-## 1. 播放列表的整列表下载仍是“有限策略”模式
+## 1. ffmpeg / ffprobe 来源仅覆盖 Intel（evermeet.cx）
 
 ### 现状
-当输入为播放列表 URL 时，当前支持三类模式：
-
-- 仅处理首条，继续走单视频交互流程
-- 整个播放列表下载为视频或音频
-- 其中整列表视频模式还支持两种整体质量策略：
-  - `Best compatibility`
-  - `Prefer higher quality`
-
-但整列表模式下，程序不会逐条展示格式，也不会让用户交互选择每一项的清晰度、编码或字幕。
+`scripts/build/swift/pinned_versions.sh` 中固定的 ffmpeg / ffprobe 来源为 evermeet.cx 的 Intel 静态构建。
+Apple Silicon（arm64）原生静态构建尚未纳入 pinned 版本。
 
 ### 影响
-- 适合快速批量下载
-- 不适合对每一条内容做精细格式控制
+- dev 模式通过 `dev_install_binaries.sh` 从本机 Homebrew 复制二进制，Apple Silicon 下可正常运行
+- release 模式打包的 ffmpeg / ffprobe 是 Intel 构建，在 Apple Silicon 上通过 Rosetta 2 运行，功能正常但有轻微性能差异
 
 ### 后续建议
-- 为整列表音频补充对应的整体质量策略（如确有需要）
-- 或支持“先设一套规则，再批量套用”
+将 ffmpeg / ffprobe 来源切换至 BtbN/FFmpeg-Builds 的 macOS arm64 构建，或改用 universal binary 来源，并更新 `pinned_versions.sh` 中的 URL 和 SHA256。
 
 ---
 
-## 2. `live_chat` 轨道不是常规字幕
+## 2. 整列表模式逐条格式选择仍为文本语法
 
 ### 现状
-对于直播回放等内容，`yt-dlp` 返回的某些“字幕”轨道其实是 `live_chat`。
-当前版本已经会在菜单中标记它，并在下载前提示结果通常为 JSON。
+整列表下载时的逐条格式映射（`Per-item mapping`）使用文本输入语法：`itemIndex=formatSelector;itemIndex=formatSelector`（例如 `1=137+140;2=136+140`）。
 
 ### 影响
-- 下载结果可能是 `.live_chat.json`
-- 这不是程序错误，而是源数据本身就不是 `.srt` / `.vtt` 字幕
+- 需要用户手动查询并填写格式 ID，交互成本较高
+- 语法错误时在下载阶段才会报错
 
 ### 后续建议
-- 将 `live_chat` 与常规字幕在 UI 中进一步分组
-- 如有需要，增加后处理脚本把聊天回放转换为更易读的格式
+为整列表逐条格式选择提供可视化交互入口（先 probe 每条，再提供下拉选择）。
 
 ---
 
-## 3. 播放列表模式暂不提供整列表字幕下载 / 片段下载
+## 3. macOS Gatekeeper / 分发签名
 
 ### 现状
-当前播放列表模式支持：
-
-- 全部视频
-- 全部音频
-
-但不支持：
-
-- 整列表批量下载字幕
-- 整列表视频并附带字幕
-- 整列表片段下载
+`scripts/build/swift/build.sh` 使用 ad-hoc 签名（`codesign --sign -`）。
 
 ### 影响
-- 如果需要字幕，仍需对单条视频处理
-- 对字幕密集场景不够高效
+用户首次启动会看到"未经验证的开发者"弹窗；需右键点击 → 打开 绕过。
+App 可正常运行，不会被系统实际阻断。
 
 ### 后续建议
-- 增加整列表字幕下载模式
-- 为整列表模式补充字幕语言策略
+申请 Apple Developer Program 证书（$99/年），将 `build.sh` 中 `--sign -` 替换为开发者 ID（Developer ID Application: ...）并通过 `notarytool` 公证。
 
 ---
 
-## 4. 候选格式预检是 best-effort
+## 4. 磁盘空间预检是 best-effort
 
 ### 现状
-当前版本会在展示格式菜单前，预检排序靠前的一批视频 / 音频候选，过滤掉当下已不可用的格式。
-若下载时仍遇到 `format is not available`，会自动做一次重探测并重试；若目标格式已消失，则返回上层让用户重选。
+下载前对可估大小的候选格式做磁盘空间预检。仅对能从 probe 数据中读取到预估大小的格式生效；无法预估大小的格式（如部分直播回放）不做预检。
 
 ### 影响
-- 能显著降低“选中后才发现 format 不可用”的概率
-- 但不会对所有格式做全量探测，也不能保证 URL 在下载时仍然有效
-- 当前仅自动重试一次，极端波动场景下仍可能失败
-
-### 后续建议
-- 允许用户在“速度优先 / 严格校验”之间切换
-- 为自动重试提供可配置策略（次数 / 是否自动降级到相近格式）
+空间不足时大多数情况下能提前失败并给出明确提示，但少数无法预估大小的场景仍可能在下载到一半时才报错。
 
 ---
 
-## 5. Windows 启动器仍需真实环境验收
+## 5. `live_chat` 轨道不是常规字幕
 
 ### 现状
-核心 Python 流程已经有自动化测试，但 `launcher/windows/yt.cmd` 和
-`launcher/windows/yt.ps1` 的最终行为仍依赖真实 Windows 环境：
-
-- `cmd.exe`
-- PowerShell 执行策略
-- Windows 下的 PATH / Python 安装方式
-- Windows 路径与编码细节
+对于直播回放等内容，`yt-dlp` 返回的某些"字幕"轨道其实是 `live_chat`。当前版本在字幕列表中会标记该轨道类型。
 
 ### 影响
-- 在 macOS 上无法完成最终可信验收
-
-### 后续建议
-至少在真实 Windows 环境验证以下场景：
-
-- 带 URL 参数启动
-- 不带参数进入交互
-- Python 在 PATH 中 / 不在 PATH 中
-- `yt-dlp` 和 `ffmpeg` 已安装 / 缺失
-
----
-
-## 6. 下载结果摘要仍然偏轻量
-
-### 现状
-当前版本会尽量从 `yt-dlp` 输出中提取最终保存路径并打印，但不会生成统一的结构化摘要，例如：
-
-- 原始 URL
-- 下载类型
-- 实际格式组合
-- 字幕类型
-- 播放列表整体清单
-
-### 影响
-- 单文件下载已足够直观
-- 对整列表或复杂后处理场景，信息仍不够集中
-
-### 后续建议
-- 增加统一结果摘要对象
-- 为播放列表输出保存清单或汇总报告
-
----
-
-## 7. macOS Gatekeeper / 分发签名
-
-### 现状
-`scripts/build/macos/build_app.sh` 使用 ad-hoc 签名（`codesign --sign -`）。
-
-### 影响
-用户首次启动会看到“未经验证的开发者”弹窗；需右键点击 -> 打开 绕过。
-尽管如此，app 可正常运行，不会被系统实际阻断。
-
-### 后续建议
-申请 Apple Developer Program 证书（$99/年），在 `build_app.sh` 中
-将 `--sign -` 替换为开发者 ID（Developer ID Application: ...）。
-
----
-
-## 8. ffmpeg 在源码运行场景仍可能缺失
-
-### 现状
-正式发布产物默认捆绑 `ffmpeg` / `ffprobe`，开箱即用。
-但源码运行（`python -m app`）以及本地未开启 `--with-ffmpeg` 的自定义打包场景，
-仍依赖机器本地可用的 `ffmpeg`。
-当启用 ffmpeg 捆绑时，构建链路要求固定版本来源 URL + SHA256 校验，
-并拒绝 `/latest/` 这类可变地址。
-
-### 影响
-在“源码运行 / 未捆绑 ffmpeg”的场景下，以下功能会受限：
-- 视频流与音频流合并（video-only 格式下载）
-- 字幕嵌入（`--embed-subs`）
-- SponsorBlock 片段删除（`--sponsorblock-remove`）
-
-### 后续建议
-- 在应用内增加更明确的“当前是否已捆绑 ffmpeg”提示
-- 持续维护 ffmpeg/ffprobe 来源版本、校验和与许可证说明
-- 在发布流程中同步维护仓库根目录 `LICENSE_FFMPEG.txt`
+下载结果可能是 `.live_chat.json`，而非 `.srt` / `.vtt` 字幕文件。这是源数据本身的格式，不是程序错误。
