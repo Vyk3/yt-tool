@@ -22,21 +22,19 @@ YTDLP_VERSION="$YTDLP_STABLE_VERSION"
 YTDLP_URL="$YTDLP_STABLE_URL"
 YTDLP_SHA256="$YTDLP_STABLE_SHA256"
 
-# ffmpeg/ffprobe static macOS arm64 (from evermeet.cx — Intel — or use
-# BtbN/FFmpeg-Builds for universal/arm64).
-# Adjust URL to match the correct architecture for your release target.
+# ffmpeg/ffprobe static macOS builds.
 #
-# For arm64 (Apple Silicon):
-#   https://github.com/BtbN/FFmpeg-Builds/releases — look for
-#   "ffmpeg-master-latest-macos64-gpl.zip" (Intel) or similar.
-#   evermeet.cx builds are Intel only; for Apple Silicon prefer homebrew-bottled
-#   or BtbN builds until an arm64-static source is pinned here.
+# Current source: evermeet.cx — Intel (x86_64) only static builds.
+# These run on Apple Silicon via Rosetta 2 (installed by default on all
+# Apple Silicon Macs). build.sh will verify Rosetta is present before
+# proceeding in release mode.
 #
-# For now, dev mode copies local ffmpeg/ffprobe binaries from PATH (typically
-# Homebrew on Apple Silicon). Release mode requires these to be filled in.
+# To switch to native arm64 builds, pin a universal or arm64-native source
+# (no ready-made public static arm64 macOS ffmpeg source is currently
+# available from evermeet.cx or BtbN). Dev mode always copies local
+# Homebrew binaries, which are arm64-native on Apple Silicon.
 
 FFMPEG_VERSION="7.1.1"
-# Intel static (evermeet.cx); replace with arm64 source for release.
 FFMPEG_URL="https://evermeet.cx/ffmpeg/ffmpeg-${FFMPEG_VERSION}.zip"
 FFMPEG_SHA256="8d7917c1cebd7a29e68c0a0a6cc4ecc3fe05c7fffed958636c7018b319afdda4"
 
