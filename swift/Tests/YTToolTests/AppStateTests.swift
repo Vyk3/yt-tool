@@ -291,6 +291,24 @@ final class AppStateTests: XCTestCase {
         XCTAssertThrowsError(try state.parsePerItemFormatSelectionsOrThrow())
     }
 
+    func testPerItemMappingDisablesTranscodeForCombinedVideoAudioSelector() {
+        let state = AppState(defaults: freshDefaults())
+        let resolved = state.effectivePerItemAudioTranscodeFormat(
+            formatSelector: "137+140",
+            selectedFormat: .mp3
+        )
+        XCTAssertNil(resolved)
+    }
+
+    func testPerItemMappingKeepsTranscodeForAudioOnlySelector() {
+        let state = AppState(defaults: freshDefaults())
+        let resolved = state.effectivePerItemAudioTranscodeFormat(
+            formatSelector: "140",
+            selectedFormat: .m4a
+        )
+        XCTAssertEqual(resolved, .m4a)
+    }
+
     func testRefreshFFmpegWarningClearsWhenAllToolsExist() throws {
         let state = AppState(defaults: freshDefaults())
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
