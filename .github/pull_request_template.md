@@ -9,8 +9,7 @@
 
 ## 验证结果（必填）
 
-- [ ] `ruff check app/ tests/` 通过
-- [ ] `python -m pytest tests/ -q` 通过
+- [ ] `swift test --disable-sandbox --package-path swift` 通过
 - [ ] 其他构建/测试（按需填写）:
 
 ## 条件填写（仅在触发时）
