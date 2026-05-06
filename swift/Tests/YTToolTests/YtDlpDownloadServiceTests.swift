@@ -92,7 +92,7 @@ final class YtDlpDownloadServiceTests: XCTestCase {
                 }
             }
         ) {
-            if case .completed(let result) = event {
+            if case let .completed(result) = event {
                 XCTAssertEqual(result.outputURL, outputDirectory)
             }
         }

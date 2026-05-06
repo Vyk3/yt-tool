@@ -15,7 +15,7 @@ enum DownloadEvent {
     case completed(DownloadResult)
 }
 
-struct YtDlpDownloadService: Sendable {
+struct YtDlpDownloadService {
     var locator: BundledToolLocator
     var runner: ProcessRunner
 
@@ -94,21 +94,21 @@ struct YtDlpDownloadService: Sendable {
                     var lastResult: ProcessResult?
                     for try await event in runner.stream(config) {
                         switch event {
-                        case .stdout(let chunk):
+                        case let .stdout(chunk):
                             if let progress = stdoutProgressParser.consume(
                                 chunk: chunk,
                                 onNonProgressLine: { line in onLog(.stdout, line) }
                             ) {
                                 continuation.yield(.progress(progress))
                             }
-                        case .stderr(let chunk):
+                        case let .stderr(chunk):
                             if let progress = stderrProgressParser.consume(
                                 chunk: chunk,
                                 onNonProgressLine: { line in onLog(.stderr, line) }
                             ) {
                                 continuation.yield(.progress(progress))
                             }
-                        case .finished(let result):
+                        case let .finished(result):
                             lastResult = result
                         case .started:
                             break
@@ -139,11 +139,10 @@ struct YtDlpDownloadService: Sendable {
                     // P3 fix: use the filepath printed by --print after_move:filepath.
                     // Fall back to the output directory if yt-dlp didn't emit one
                     // (e.g. older yt-dlp version or no post-processing step).
-                    let outputURL: URL
-                    if playlistMode.downloadsWholePlaylist && includeNoPlaylistOverride == nil {
-                        outputURL = outputDirectory
+                    let outputURL: URL = if playlistMode.downloadsWholePlaylist, includeNoPlaylistOverride == nil {
+                        outputDirectory
                     } else {
-                        outputURL = result.stdout
+                        result.stdout
                             .components(separatedBy: "\n")
                             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                             .filter { !$0.isEmpty }
@@ -179,27 +178,27 @@ struct YtDlpDownloadService: Sendable {
         case .onlyFirstItem:
             switch (videoId, audioId) {
             case let (v?, a?):
-                return "\(v)+\(a)"
+                "\(v)+\(a)"
             case let (v?, nil):
-                return v
+                v
             case let (nil, a?):
-                return a
+                a
             case (nil, nil):
-                return "bestvideo+bestaudio/best"
+                "bestvideo+bestaudio/best"
             }
         case .wholePlaylistBestVideo:
             switch playlistVideoQualityStrategy {
             case .bestCompatibility:
-                return "bestvideo+bestaudio/best"
+                "bestvideo+bestaudio/best"
             case .preferHigherQuality:
-                return "bv*+ba/b"
+                "bv*+ba/b"
             }
         case .wholePlaylistBestAudio:
             switch playlistAudioQualityStrategy {
             case .moreCompatible:
-                return "ba/bestaudio/best"
+                "ba/bestaudio/best"
             case .higherQuality:
-                return "bestaudio/best"
+                "bestaudio/best"
             }
         }
     }

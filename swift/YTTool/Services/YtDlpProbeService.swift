@@ -1,13 +1,13 @@
 import Foundation
 
-enum ServiceLogKind: Sendable {
+enum ServiceLogKind {
     case command
     case stdout
     case stderr
     case lifecycle
 }
 
-struct YtDlpProbeService: Sendable {
+struct YtDlpProbeService {
     var locator: BundledToolLocator
     var runner: ProcessRunner
 

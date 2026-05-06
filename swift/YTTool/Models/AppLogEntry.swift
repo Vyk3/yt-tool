@@ -1,19 +1,19 @@
 import Foundation
 
-enum AppLogScope: String, CaseIterable, Sendable {
+enum AppLogScope: String, CaseIterable {
     case app = "APP"
     case probe = "PROBE"
     case download = "DOWNLOAD"
 }
 
-enum AppLogLevel: String, CaseIterable, Sendable {
+enum AppLogLevel: String, CaseIterable {
     case info = "INFO"
     case success = "OK"
     case warning = "WARN"
     case error = "ERROR"
 }
 
-struct AppLogEntry: Identifiable, Equatable, Sendable {
+struct AppLogEntry: Identifiable, Equatable {
     let id: UUID
     let timestamp: Date
     let scope: AppLogScope

@@ -1,0 +1,43 @@
+--swift-version 5.9
+
+# Indentation
+--indent 4
+--indent-case false
+
+# Braces / spacing
+--allman false
+--guard-else auto
+--empty-braces no-space
+
+# Imports
+--import-grouping testable-last
+
+# Trailing / semicolons
+--trailing-commas always
+--semicolons never
+--trim-whitespace always
+
+# Self
+--self remove
+
+# Wrapping — preserve existing multiline signatures
+--wrap-arguments preserve
+--wrap-parameters preserve
+--wrap-collections preserve
+--max-width none
+
+# Attributes — preserve @Published/@MainActor placement
+--func-attributes preserve
+--stored-var-attributes preserve
+--computed-var-attributes preserve
+--complex-attributes preserve
+
+# Extensions — do not inject MARK comments
+--mark-extensions never
+--mark-types never
+
+# File header — do not inject/strip
+--header ignore
+
+# Exclusions
+--exclude .build,DerivedData

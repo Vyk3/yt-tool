@@ -73,18 +73,18 @@ struct DownloadProgressView: View {
             if showsNoSelectableFormatsHint {
                 Text(
                     canDownload
-                    ? "未显示可选格式，将尝试兜底下载（best）。"
-                    : "未显示可选格式。请先选择输出文件夹；若已选择，请重试 Probe 或查看日志。"
+                        ? "未显示可选格式，将尝试兜底下载（best）。"
+                        : "未显示可选格式。请先选择输出文件夹；若已选择，请重试 Probe 或查看日志。"
                 )
-                    .foregroundStyle(.secondary)
+                .foregroundStyle(.secondary)
             } else {
                 Text(canDownload
-                     ? "Ready to download. Press Download to start."
-                     : "Select a format and output folder to enable download.")
+                    ? "Ready to download. Press Download to start."
+                    : "Select a format and output folder to enable download.")
                     .foregroundStyle(.secondary)
             }
 
-        case .preparing(let commandPreview):
+        case let .preparing(commandPreview):
             stagePanel(
                 title: "Preparing",
                 subtitle: "Building the yt-dlp command and starting the process.",
@@ -92,7 +92,7 @@ struct DownloadProgressView: View {
                 tint: .orange
             )
 
-        case .downloading(let progress):
+        case let .downloading(progress):
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
                     stageHeader(
@@ -122,10 +122,10 @@ struct DownloadProgressView: View {
             .padding(12)
             .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
 
-        case .succeeded(let outputURL):
+        case let .succeeded(outputURL):
             successPanel(outputURL)
 
-        case .failed(let error):
+        case let .failed(error):
             failurePanel(error)
 
         case .cancelled:
@@ -184,7 +184,8 @@ struct DownloadProgressView: View {
             detailBlock(label: "Reason", value: error.message)
 
             if let suggestion = error.recoverySuggestion?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !suggestion.isEmpty {
+               !suggestion.isEmpty
+            {
                 detailBlock(label: "Try this", value: suggestion)
             }
         }
@@ -248,21 +249,21 @@ struct DownloadProgressView: View {
     private func progressDetails(_ summaryLine: String) -> (size: String, speed: String, eta: String?)? {
         let text = summaryLine.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let ofRange = text.range(of: " of "),
-              let atRange = text.range(of: " at ", range: ofRange.upperBound..<text.endIndex)
+              let atRange = text.range(of: " at ", range: ofRange.upperBound ..< text.endIndex)
         else {
             return nil
         }
 
-        let size = text[ofRange.upperBound..<atRange.lowerBound].trimmingCharacters(in: .whitespaces)
-        let etaRange = text.range(of: " ETA ", range: atRange.upperBound..<text.endIndex)
+        let size = text[ofRange.upperBound ..< atRange.lowerBound].trimmingCharacters(in: .whitespaces)
+        let etaRange = text.range(of: " ETA ", range: atRange.upperBound ..< text.endIndex)
 
         if let etaRange {
-            let speed = text[atRange.upperBound..<etaRange.lowerBound].trimmingCharacters(in: .whitespaces)
-            let eta = text[etaRange.upperBound..<text.endIndex].trimmingCharacters(in: .whitespaces)
+            let speed = text[atRange.upperBound ..< etaRange.lowerBound].trimmingCharacters(in: .whitespaces)
+            let eta = text[etaRange.upperBound ..< text.endIndex].trimmingCharacters(in: .whitespaces)
             return (size: size, speed: speed, eta: eta.isEmpty ? nil : eta)
         }
 
-        let speed = text[atRange.upperBound..<text.endIndex].trimmingCharacters(in: .whitespaces)
+        let speed = text[atRange.upperBound ..< text.endIndex].trimmingCharacters(in: .whitespaces)
         return (size: size, speed: speed, eta: nil)
     }
 

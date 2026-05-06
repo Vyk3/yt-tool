@@ -77,10 +77,10 @@ func parseShellLikeArguments(_ input: String) throws -> [String] {
 
         var errorDescription: String? {
             switch self {
-            case .unterminatedQuote(let quote):
-                return "Unterminated quoted argument starting with \(quote)."
+            case let .unterminatedQuote(quote):
+                "Unterminated quoted argument starting with \(quote)."
             case .danglingEscape:
-                return "Trailing backslash must escape a following character."
+                "Trailing backslash must escape a following character."
             }
         }
     }

@@ -222,17 +222,16 @@ struct URLInputView: View {
     private var playlistModeHint: String {
         switch playlistMode {
         case .onlyFirstItem:
-            return "Probe inspects only the first item, then downloads it like a single video."
+            "Probe inspects only the first item, then downloads it like a single video."
         case .wholePlaylistBestVideo, .wholePlaylistBestAudio:
-            return "Whole playlist downloads every item automatically."
+            "Whole playlist downloads every item automatically."
         }
     }
 
-    @ViewBuilder
-    private func secondaryQualityPicker<PickerContent: View>(
+    private func secondaryQualityPicker(
         label: String,
         helpText: String,
-        @ViewBuilder picker: () -> PickerContent
+        @ViewBuilder picker: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -305,43 +304,43 @@ struct URLInputView: View {
 private func extractDroppedString(from item: NSSecureCoding?) -> String? {
     switch item {
     case let url as URL:
-        return url.absoluteString
+        url.absoluteString
     case let string as String:
-        return string
+        string
     case let data as Data:
-        return String(data: data, encoding: .utf8)
+        String(data: data, encoding: .utf8)
     case let nsString as NSString:
-        return nsString as String
+        nsString as String
     default:
-        return nil
+        nil
     }
 }
 
 private extension ProbeState {
     var statusLabel: String {
         switch self {
-        case .idle: return "Idle"
-        case .loading: return "Probing…"
-        case .success(let info): return "Ready: \(info.title)"
-        case .failure(let error): return error.message
+        case .idle: "Idle"
+        case .loading: "Probing…"
+        case let .success(info): "Ready: \(info.title)"
+        case let .failure(error): error.message
         }
     }
 
     var symbolName: String {
         switch self {
-        case .idle: return "circle.dotted"
-        case .loading: return "bolt.horizontal.circle"
-        case .success: return "checkmark.circle"
-        case .failure: return "xmark.octagon"
+        case .idle: "circle.dotted"
+        case .loading: "bolt.horizontal.circle"
+        case .success: "checkmark.circle"
+        case .failure: "xmark.octagon"
         }
     }
 
     var tintColor: Color {
         switch self {
-        case .idle: return .secondary
-        case .loading: return .orange
-        case .success: return .green
-        case .failure: return .red
+        case .idle: .secondary
+        case .loading: .orange
+        case .success: .green
+        case .failure: .red
         }
     }
 }

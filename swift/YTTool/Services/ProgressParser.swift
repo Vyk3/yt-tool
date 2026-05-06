@@ -10,9 +10,9 @@ import Foundation
 /// internal line buffer so that progress lines split across pipe callbacks
 /// are reconstructed correctly before matching.
 struct ProgressParser {
-    // nonisolated(unsafe) is required for Swift 6: Regex<> is not Sendable but the value
-    // is effectively immutable after init, so shared access is safe.
-    nonisolated(unsafe) private static let percentPattern = #/\[download\]\s+([\d.]+)%/#
+    /// nonisolated(unsafe) is required for Swift 6: Regex<> is not Sendable but the value
+    /// is effectively immutable after init, so shared access is safe.
+    private nonisolated(unsafe) static let percentPattern = #/\[download\]\s+([\d.]+)%/#
 
     /// Incomplete text from the previous chunk that did not end with a newline.
     private var lineBuffer: String = ""
@@ -44,7 +44,7 @@ struct ProgressParser {
         // The last component after splitting on "\n" is either empty (chunk
         // ended with a newline) or an incomplete line to buffer for next time.
         var components = text.components(separatedBy: "\n")
-        lineBuffer = components.removeLast()   // "" if chunk ended with \n
+        lineBuffer = components.removeLast() // "" if chunk ended with \n
 
         return components.compactMap { parse(line: $0) }.last
     }
