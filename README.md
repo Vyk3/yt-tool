@@ -9,7 +9,9 @@
 
 ## 给普通用户
 
-从 Release 页面下载 `YTTool.zip`，解压后将 `YTTool.app` 拖到 Applications。
+从 Release 页面下载 `YTTool.dmg`，打开后将 `YTTool.app` 拖到 Applications 文件夹即可完成安装。
+
+也可以下载 `YTTool.zip`，解压后手动将 `YTTool.app` 拖到 Applications。
 
 ### 首次打开提示"无法验证开发者"
 
@@ -48,7 +50,7 @@ bash scripts/build/swift/build.sh
 bash scripts/build/swift/build.sh --release
 ```
 
-产出：`swift/dist/YTTool.app` 和 `swift/dist/YTTool.zip`。
+产出：`swift/dist/YTTool.app`、`swift/dist/YTTool.zip`、`swift/dist/YTTool.dmg`。
 
 ## 相关文档
 
