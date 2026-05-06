@@ -71,17 +71,31 @@ func buildDownloadArguments(
 }
 
 func parseShellLikeArguments(_ input: String) throws -> [String] {
-    enum ParseError: Error { case unterminatedQuote(Character) }
+    enum ParseError: LocalizedError {
+        case unterminatedQuote(Character)
+        case danglingEscape
+
+        var errorDescription: String? {
+            switch self {
+            case .unterminatedQuote(let quote):
+                return "Unterminated quoted argument starting with \(quote)."
+            case .danglingEscape:
+                return "Trailing backslash must escape a following character."
+            }
+        }
+    }
 
     var args: [String] = []
     var current = ""
     var quote: Character?
     var escaping = false
+    var tokenStarted = false
 
     func flushCurrent() {
-        if !current.isEmpty {
+        if tokenStarted || !current.isEmpty {
             args.append(current)
             current = ""
+            tokenStarted = false
         }
     }
 
@@ -89,10 +103,12 @@ func parseShellLikeArguments(_ input: String) throws -> [String] {
         if escaping {
             current.append(ch)
             escaping = false
+            tokenStarted = true
             continue
         }
         if ch == "\\" {
             escaping = true
+            tokenStarted = true
             continue
         }
         if let currentQuote = quote {
@@ -105,6 +121,7 @@ func parseShellLikeArguments(_ input: String) throws -> [String] {
         }
         if ch == "\"" || ch == "'" {
             quote = ch
+            tokenStarted = true
             continue
         }
         if ch.isWhitespace {
@@ -112,6 +129,10 @@ func parseShellLikeArguments(_ input: String) throws -> [String] {
             continue
         }
         current.append(ch)
+        tokenStarted = true
+    }
+    if escaping {
+        throw ParseError.danglingEscape
     }
     if let quote {
         throw ParseError.unterminatedQuote(quote)

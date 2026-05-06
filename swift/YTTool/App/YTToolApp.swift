@@ -9,6 +9,10 @@ struct YTToolApp: App {
             ContentView(state: state)
                 .frame(minWidth: 900, minHeight: 620)
         }
-        .windowResizability(.contentSize)
+        .windowResizability(.automatic)
+
+        Settings {
+            SettingsView()
+        }
     }
 }

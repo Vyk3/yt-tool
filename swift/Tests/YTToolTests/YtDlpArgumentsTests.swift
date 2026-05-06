@@ -142,4 +142,15 @@ final class YtDlpArgumentsTests: XCTestCase {
         let args = try parseShellLikeArguments("--download-sections \"*00:30-01:00\" --playlist-items 1")
         XCTAssertEqual(args, ["--download-sections", "*00:30-01:00", "--playlist-items", "1"])
     }
+
+    func testParseShellLikeArgumentsPreservesEmptyQuotedValues() throws {
+        let args = try parseShellLikeArguments("--proxy \"\" --playlist-items 1")
+        XCTAssertEqual(args, ["--proxy", "", "--playlist-items", "1"])
+    }
+
+    func testParseShellLikeArgumentsRejectsDanglingEscape() {
+        XCTAssertThrowsError(try parseShellLikeArguments("--proxy foo\\")) { error in
+            XCTAssertEqual(error.localizedDescription, "Trailing backslash must escape a following character.")
+        }
+    }
 }

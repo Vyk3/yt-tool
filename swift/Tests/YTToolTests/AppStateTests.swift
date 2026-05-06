@@ -89,6 +89,45 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.canDownload)
     }
 
+    func testCanDownloadAllowsFallbackWhenProbeSucceedsWithNoSelectableFormats() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U"
+        state.selectedOutputDirectory = FileManager.default.temporaryDirectory
+        state.probeState = .success(
+            MediaInfo(
+                title: "Sample",
+                duration: nil,
+                webpageURL: "https://www.youtube.com/watch?v=P5yHEKqx86U",
+                videoFormats: [],
+                audioFormats: [],
+                subtitleTracks: [],
+                autoSubtitleTracks: []
+            )
+        )
+
+        XCTAssertTrue(state.hasNoSelectableFormatsAfterProbe)
+        XCTAssertTrue(state.canDownload)
+    }
+
+    func testCanDownloadFallbackStillRequiresOutputDirectory() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U"
+        state.probeState = .success(
+            MediaInfo(
+                title: "Sample",
+                duration: nil,
+                webpageURL: "https://www.youtube.com/watch?v=P5yHEKqx86U",
+                videoFormats: [],
+                audioFormats: [],
+                subtitleTracks: [],
+                autoSubtitleTracks: []
+            )
+        )
+
+        XCTAssertTrue(state.hasNoSelectableFormatsAfterProbe)
+        XCTAssertFalse(state.canDownload)
+    }
+
     func testNonPlaylistURLResetsPlaylistModeToOnlyFirstItem() {
         let state = AppState(defaults: freshDefaults())
 
@@ -165,6 +204,91 @@ final class AppStateTests: XCTestCase {
         state.playlistMode = .wholePlaylistBestVideo
 
         XCTAssertEqual(state.playlistAudioQualityStrategy, .moreCompatible)
+    }
+
+    func testWholePlaylistManualSubtitleTrackUsesLanguage() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistSubtitleMode = .manual
+        state.playlistSubtitleLanguage = "en"
+
+        let track = try state.wholePlaylistSubtitleTrackOrThrow()
+
+        XCTAssertNotNil(track)
+        XCTAssertEqual(track?.lang, "en")
+        XCTAssertEqual(track?.isAuto, false)
+    }
+
+    func testWholePlaylistAutoSubtitleTrackUsesLanguage() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistSubtitleMode = .auto
+        state.playlistSubtitleLanguage = "zh-Hans"
+
+        let track = try state.wholePlaylistSubtitleTrackOrThrow()
+
+        XCTAssertNotNil(track)
+        XCTAssertEqual(track?.lang, "zh-Hans")
+        XCTAssertEqual(track?.isAuto, true)
+    }
+
+    func testWholePlaylistSubtitleTrackRequiresLanguageWhenEnabled() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistSubtitleMode = .manual
+        state.playlistSubtitleLanguage = "  "
+
+        XCTAssertThrowsError(try state.wholePlaylistSubtitleTrackOrThrow())
+    }
+
+    func testWholePlaylistFixedSegmentAddsDownloadSectionsArgument() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistSegmentMode = .fixedRange
+        state.playlistSegmentRange = "00:30-01:00"
+
+        let args = try state.wholePlaylistArgumentsOrThrow()
+
+        XCTAssertEqual(args, ["--download-sections", "*00:30-01:00"])
+    }
+
+    func testWholePlaylistFixedSegmentPreservesExplicitWildcardRange() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistSegmentMode = .fixedRange
+        state.playlistSegmentRange = "*00:30-01:00"
+
+        let args = try state.wholePlaylistArgumentsOrThrow()
+
+        XCTAssertEqual(args, ["--download-sections", "*00:30-01:00"])
+    }
+
+    func testPerItemFormatMappingParsesEntries() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistFormatMode = .perItemMapping
+        state.playlistPerItemFormatMap = "1=137+140;2=136+140"
+
+        let parsed = try state.parsePerItemFormatSelectionsOrThrow()
+
+        XCTAssertEqual(parsed.map(\.index), [1, 2])
+        XCTAssertEqual(parsed.map(\.formatSelector), ["137+140", "136+140"])
+    }
+
+    func testPerItemFormatMappingRejectsMalformedEntry() {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistFormatMode = .perItemMapping
+        state.playlistPerItemFormatMap = "bad-entry"
+
+        XCTAssertThrowsError(try state.parsePerItemFormatSelectionsOrThrow())
     }
 
     func testRefreshFFmpegWarningClearsWhenAllToolsExist() throws {
