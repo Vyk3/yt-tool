@@ -2,7 +2,7 @@ import XCTest
 @testable import YTTool
 
 final class ProbeParserTests: XCTestCase {
-    func testProgressParserConsumeRecognizesProgressLinesFromStdoutChunks() {
+    func testProgressParserConsumeRecognizesProgressLinesFromStdoutChunks() throws {
         var parser = ProgressParser()
         var loggedLines: [String] = []
 
@@ -16,16 +16,16 @@ final class ProbeParserTests: XCTestCase {
         )
 
         XCTAssertNotNil(progress)
-        XCTAssertEqual(progress!.percentComplete, 0.177, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(progress?.percentComplete), 0.177, accuracy: 0.0001)
         XCTAssertEqual(
-            progress!.summaryLine,
+            progress?.summaryLine,
             "17.7% of  127.53MiB at    2.16MiB/s ETA 00:56 (frag 19/113)"
         )
         XCTAssertEqual(loggedLines, ["/Users/koa/Downloads/example.mp4"])
     }
 
     func testParseNormalProbePayload() throws {
-        let info = try ProbeParser().parse(Self.normalProbeJSON.data(using: .utf8)!)
+        let info = try ProbeParser().parse(XCTUnwrap(Self.normalProbeJSON.data(using: .utf8)))
 
         XCTAssertEqual(info.title, "Example Video")
         XCTAssertEqual(info.duration, 95)
@@ -36,7 +36,7 @@ final class ProbeParserTests: XCTestCase {
     }
 
     func testParseToleratesMissingOptionalFields() throws {
-        let info = try ProbeParser().parse(Self.missingFieldsJSON.data(using: .utf8)!)
+        let info = try ProbeParser().parse(XCTUnwrap(Self.missingFieldsJSON.data(using: .utf8)))
 
         XCTAssertEqual(info.title, "unknown")
         XCTAssertEqual(info.videoFormats.first?.resolution, "tiny")
@@ -54,7 +54,7 @@ final class ProbeParserTests: XCTestCase {
     }
 
     func testParseSubtitleTracks() throws {
-        let info = try ProbeParser().parse(Self.subtitleProbeJSON.data(using: .utf8)!)
+        let info = try ProbeParser().parse(XCTUnwrap(Self.subtitleProbeJSON.data(using: .utf8)))
 
         XCTAssertEqual(info.subtitleTracks.map(\.displayName), ["English", "Japanese"])
         XCTAssertEqual(info.subtitleTracks.first(where: { $0.lang == "en" })?.label, "English")
@@ -66,12 +66,12 @@ final class ProbeParserTests: XCTestCase {
     }
 
     func testSubtitleTracksAreSortedByDisplayName() throws {
-        let info = try ProbeParser().parse(Self.unsortedSubtitleProbeJSON.data(using: .utf8)!)
+        let info = try ProbeParser().parse(XCTUnwrap(Self.unsortedSubtitleProbeJSON.data(using: .utf8)))
         XCTAssertEqual(info.subtitleTracks.map(\.displayName), ["Arabic", "English", "Zulu"])
     }
 
     func testParseLiveChatIsFiltered() throws {
-        let info = try ProbeParser().parse(Self.liveChatProbeJSON.data(using: .utf8)!)
+        let info = try ProbeParser().parse(XCTUnwrap(Self.liveChatProbeJSON.data(using: .utf8)))
 
         XCTAssertFalse(info.subtitleTracks.contains(where: { $0.lang == "live_chat" }))
         XCTAssertFalse(info.autoSubtitleTracks.contains(where: { $0.lang == "live_chat" }))
@@ -79,7 +79,7 @@ final class ProbeParserTests: XCTestCase {
     }
 
     func testParseNoSubtitleKeysReturnsEmpty() throws {
-        let info = try ProbeParser().parse(Self.normalProbeJSON.data(using: .utf8)!)
+        let info = try ProbeParser().parse(XCTUnwrap(Self.normalProbeJSON.data(using: .utf8)))
 
         XCTAssertTrue(info.subtitleTracks.isEmpty)
         XCTAssertTrue(info.autoSubtitleTracks.isEmpty)

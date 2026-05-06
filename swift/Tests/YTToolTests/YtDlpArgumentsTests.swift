@@ -2,7 +2,6 @@ import XCTest
 @testable import YTTool
 
 final class YtDlpArgumentsTests: XCTestCase {
-
     // MARK: - isYouTubeURL
 
     func testYouTubeDotComIsRecognised() {

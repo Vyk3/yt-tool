@@ -2,8 +2,8 @@ import Foundation
 
 enum BundledTool: String, CaseIterable {
     case ytDlp = "yt-dlp"
-    case ffmpeg = "ffmpeg"
-    case ffprobe = "ffprobe"
+    case ffmpeg
+    case ffprobe
     case probeFixture = "probe-fixture"
 }
 

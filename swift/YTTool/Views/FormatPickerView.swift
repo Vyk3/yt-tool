@@ -5,21 +5,21 @@ import SwiftUI
 // Budget: content area ≈ 394pt per column (900pt window, 24pt outer padding, 16pt HStack gap).
 // 7 video columns + 6 spacings(6) + padding(24) = 332 + 36 + 24 = 392pt ≤ 394pt.
 private enum VideoCol {
-    static let id: CGFloat      = 30
-    static let res: CGFloat     = 44
-    static let codec: CGFloat   = 44
-    static let fps: CGFloat     = 38
+    static let id: CGFloat = 30
+    static let res: CGFloat = 44
+    static let codec: CGFloat = 44
+    static let fps: CGFloat = 38
     static let bitrate: CGFloat = 50
-    static let size: CGFloat    = 60
-    static let note: CGFloat    = 66   // "w/ audio" = 8 chars × 7.6pt ≈ 61pt; 66pt fits
+    static let size: CGFloat = 60
+    static let note: CGFloat = 66 // "w/ audio" = 8 chars × 7.6pt ≈ 61pt; 66pt fits
 }
 
 private enum AudioCol {
-    static let id: CGFloat      = 36
-    static let codec: CGFloat   = 44
+    static let id: CGFloat = 36
+    static let codec: CGFloat = 44
     static let bitrate: CGFloat = 50
-    static let size: CGFloat    = 60
-    static let note: CGFloat    = 66
+    static let size: CGFloat = 60
+    static let note: CGFloat = 66
 }
 
 // MARK: - View
@@ -42,10 +42,10 @@ struct FormatPickerView: View {
                 placeholder(idleMessage)
             case .loading:
                 ProgressView("Loading formats…")
-            case .failure(let error):
+            case let .failure(error):
                 placeholder(error.message)
-            case .success(let mediaInfo):
-                if isPlaylistURL && playlistMode.downloadsWholePlaylist {
+            case let .success(mediaInfo):
+                if isPlaylistURL, playlistMode.downloadsWholePlaylist {
                     placeholder("Whole playlist mode skips per-item format selection and downloads every item automatically.")
                 } else {
                     HStack(alignment: .top, spacing: 16) {
@@ -105,13 +105,13 @@ struct FormatPickerView: View {
 
     private var videoHeader: some View {
         HStack(spacing: 6) {
-            Text("ID")     .frame(width: VideoCol.id,      alignment: .leading)
-            Text("Res")    .frame(width: VideoCol.res,     alignment: .leading)
-            Text("Codec")  .frame(width: VideoCol.codec,   alignment: .leading)
-            Text("FPS")    .frame(width: VideoCol.fps,     alignment: .leading)
+            Text("ID").frame(width: VideoCol.id, alignment: .leading)
+            Text("Res").frame(width: VideoCol.res, alignment: .leading)
+            Text("Codec").frame(width: VideoCol.codec, alignment: .leading)
+            Text("FPS").frame(width: VideoCol.fps, alignment: .leading)
             Text("Bitrate").frame(width: VideoCol.bitrate, alignment: .leading)
-            Text("Size")   .frame(width: VideoCol.size,    alignment: .leading)
-            Text("Note")   .frame(width: VideoCol.note,    alignment: .leading)
+            Text("Size").frame(width: VideoCol.size, alignment: .leading)
+            Text("Note").frame(width: VideoCol.note, alignment: .leading)
         }
         .font(.caption.monospaced())
         .foregroundStyle(.secondary)
@@ -120,13 +120,13 @@ struct FormatPickerView: View {
 
     private func videoRow(_ fmt: VideoFormat, isSelected: Bool) -> some View {
         HStack(spacing: 6) {
-            Text(fmt.id)               .lineLimit(1).frame(width: VideoCol.id,      alignment: .leading)
-            Text(fmt.resolution)       .lineLimit(1).frame(width: VideoCol.res,     alignment: .leading)
-            Text(fmt.friendlyCodec)    .lineLimit(1).frame(width: VideoCol.codec,   alignment: .leading)
-            Text("\(fmt.fps)fps")      .lineLimit(1).frame(width: VideoCol.fps,     alignment: .leading)
-            Text(fmt.formattedBitrate) .lineLimit(1).frame(width: VideoCol.bitrate, alignment: .leading)
-            Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size,    alignment: .leading)
-            Text(fmt.note)             .lineLimit(1).frame(width: VideoCol.note,    alignment: .leading)
+            Text(fmt.id).lineLimit(1).frame(width: VideoCol.id, alignment: .leading)
+            Text(fmt.resolution).lineLimit(1).frame(width: VideoCol.res, alignment: .leading)
+            Text(fmt.friendlyCodec).lineLimit(1).frame(width: VideoCol.codec, alignment: .leading)
+            Text("\(fmt.fps)fps").lineLimit(1).frame(width: VideoCol.fps, alignment: .leading)
+            Text(fmt.formattedBitrate).lineLimit(1).frame(width: VideoCol.bitrate, alignment: .leading)
+            Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size, alignment: .leading)
+            Text(fmt.note).lineLimit(1).frame(width: VideoCol.note, alignment: .leading)
         }
         .font(.callout.monospaced())
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -173,11 +173,11 @@ struct FormatPickerView: View {
 
     private var audioHeader: some View {
         HStack(spacing: 6) {
-            Text("ID")     .frame(width: AudioCol.id,      alignment: .leading)
-            Text("Codec")  .frame(width: AudioCol.codec,   alignment: .leading)
+            Text("ID").frame(width: AudioCol.id, alignment: .leading)
+            Text("Codec").frame(width: AudioCol.codec, alignment: .leading)
             Text("Bitrate").frame(width: AudioCol.bitrate, alignment: .leading)
-            Text("Size")   .frame(width: AudioCol.size,    alignment: .leading)
-            Text("Note")   .frame(width: AudioCol.note,    alignment: .leading)
+            Text("Size").frame(width: AudioCol.size, alignment: .leading)
+            Text("Note").frame(width: AudioCol.note, alignment: .leading)
         }
         .font(.caption.monospaced())
         .foregroundStyle(.secondary)
@@ -186,11 +186,11 @@ struct FormatPickerView: View {
 
     private func audioRow(_ fmt: AudioFormat, isSelected: Bool) -> some View {
         HStack(spacing: 6) {
-            Text(fmt.id)               .lineLimit(1).frame(width: AudioCol.id,      alignment: .leading)
-            Text(fmt.friendlyCodec)    .lineLimit(1).frame(width: AudioCol.codec,   alignment: .leading)
-            Text(fmt.formattedBitrate) .lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
-            Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size,    alignment: .leading)
-            Text(fmt.note)             .lineLimit(1).frame(width: AudioCol.note,    alignment: .leading)
+            Text(fmt.id).lineLimit(1).frame(width: AudioCol.id, alignment: .leading)
+            Text(fmt.friendlyCodec).lineLimit(1).frame(width: AudioCol.codec, alignment: .leading)
+            Text(fmt.formattedBitrate).lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
+            Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size, alignment: .leading)
+            Text(fmt.note).lineLimit(1).frame(width: AudioCol.note, alignment: .leading)
         }
         .font(.callout.monospaced())
         .frame(maxWidth: .infinity, alignment: .leading)

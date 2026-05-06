@@ -6,23 +6,25 @@ enum AudioTranscodeFormat: String, CaseIterable, Identifiable {
     case m4a
     case wav
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var title: String {
         switch self {
-        case .original: return "Keep original"
-        case .mp3: return "MP3"
-        case .m4a: return "M4A"
-        case .wav: return "WAV"
+        case .original: "Keep original"
+        case .mp3: "MP3"
+        case .m4a: "M4A"
+        case .wav: "WAV"
         }
     }
 
     var ytDlpAudioFormat: String? {
         switch self {
-        case .original: return nil
-        case .mp3: return "mp3"
-        case .m4a: return "m4a"
-        case .wav: return "wav"
+        case .original: nil
+        case .mp3: "mp3"
+        case .m4a: "m4a"
+        case .wav: "wav"
         }
     }
 }

@@ -6,7 +6,7 @@ final class AppLogTests: XCTestCase {
     func testAppendLogKeepsRecentEntriesOnly() {
         let state = AppState(defaults: freshDefaults())
 
-        for index in 0..<300 {
+        for index in 0 ..< 300 {
             state.appendLog(scope: .probe, level: .info, message: "entry-\(index)")
         }
 

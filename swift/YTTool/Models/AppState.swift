@@ -6,10 +6,12 @@ final class AppState: ObservableObject {
     private enum StorageKey {
         static let selectedOutputDirectoryPath = "selectedOutputDirectoryPath"
     }
+
     private static let maxLogEntries = 250
     private static let diskSpaceSafetyMarginBytes: Int64 = 64 * 1_048_576
 
     // MARK: - Probe
+
     @Published var inputURL: String = "" {
         didSet {
             if !isPlaylistInputURL {
@@ -19,6 +21,7 @@ final class AppState: ObservableObject {
             }
         }
     }
+
     @Published var probeState: ProbeState = .idle
     @Published var playlistMode: PlaylistMode = .onlyFirstItem {
         didSet {
@@ -38,6 +41,7 @@ final class AppState: ObservableObject {
             }
         }
     }
+
     @Published var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility
     @Published var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible
     @Published var playlistSubtitleMode: PlaylistSubtitleMode = .none
@@ -48,6 +52,7 @@ final class AppState: ObservableObject {
     @Published var playlistPerItemFormatMap: String = ""
 
     // MARK: - Format selection
+
     @Published var selectedVideoFormat: VideoFormat?
     @Published var selectedAudioFormat: AudioFormat?
     @Published var selectedSubtitle: SubtitleTrack?
@@ -56,6 +61,7 @@ final class AppState: ObservableObject {
     @Published var extraYtDlpArguments: String = ""
 
     // MARK: - Output directory
+
     @Published var selectedOutputDirectory: URL? {
         didSet {
             if let path = selectedOutputDirectory?.path(percentEncoded: false) {
@@ -67,11 +73,13 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Download
+
     @Published var downloadState: DownloadState = .idle
     @Published private(set) var logs: [AppLogEntry] = []
     @Published private(set) var ffmpegWarningMessage: String?
 
     // MARK: - Private
+
     private let probeService = YtDlpProbeService()
     private let downloadRunner = ProcessRunner()
     private let defaults: UserDefaults
@@ -85,10 +93,11 @@ final class AppState: ObservableObject {
 
         if let path = defaults.string(forKey: StorageKey.selectedOutputDirectoryPath),
            !path.isEmpty,
-           Self.isUsableDirectory(URL(fileURLWithPath: path)) {
-            self.selectedOutputDirectory = URL(fileURLWithPath: path)
+           Self.isUsableDirectory(URL(fileURLWithPath: path))
+        {
+            selectedOutputDirectory = URL(fileURLWithPath: path)
         } else {
-            self.selectedOutputDirectory = nil
+            selectedOutputDirectory = nil
             defaults.removeObject(forKey: StorageKey.selectedOutputDirectoryPath)
         }
 
@@ -183,7 +192,7 @@ final class AppState: ObservableObject {
     }
 
     var hasNoSelectableFormatsAfterProbe: Bool {
-        guard !isWholePlaylistDownload, case .success(let info) = probeState else { return false }
+        guard !isWholePlaylistDownload, case let .success(info) = probeState else { return false }
         return info.videoFormats.isEmpty && info.audioFormats.isEmpty
     }
 
@@ -216,7 +225,7 @@ final class AppState: ObservableObject {
         if isWholePlaylistDownload {
             info = nil
         } else {
-            guard case .success(let probedInfo) = probeState else { return }
+            guard case let .success(probedInfo) = probeState else { return }
             info = probedInfo
         }
 
@@ -288,7 +297,7 @@ final class AppState: ObservableObject {
 
         downloadTask = Task {
             do {
-                if isWholePlaylistDownload && playlistFormatMode == .perItemMapping {
+                if isWholePlaylistDownload, playlistFormatMode == .perItemMapping {
                     let perItemSelections = try parsePerItemFormatSelectionsOrThrow()
                     for item in perItemSelections {
                         guard isCurrentDownloadAttempt(attemptID) else { return }
@@ -315,7 +324,7 @@ final class AppState: ObservableObject {
                             onLog: makeServiceLogger(scope: .download)
                         ) {
                             switch event {
-                            case .progress(let progress):
+                            case let .progress(progress):
                                 await MainActor.run {
                                     guard isCurrentDownloadAttempt(attemptID) else { return }
                                     downloadState = .downloading(progress)
@@ -348,12 +357,12 @@ final class AppState: ObservableObject {
                         onLog: makeServiceLogger(scope: .download)
                     ) {
                         switch event {
-                        case .progress(let progress):
+                        case let .progress(progress):
                             await MainActor.run {
                                 guard isCurrentDownloadAttempt(attemptID) else { return }
                                 downloadState = .downloading(progress)
                             }
-                        case .completed(let result):
+                        case let .completed(result):
                             await MainActor.run {
                                 guard isCurrentDownloadAttempt(attemptID) else { return }
                                 downloadTask = nil
@@ -409,9 +418,9 @@ final class AppState: ObservableObject {
 
     // MARK: - Helpers
 
-    // Call once from the main view's onAppear.
-    // Note: ad-hoc signed builds may not register with the notification center —
-    // use an Xcode dev build or Developer ID signing to test notifications.
+    /// Call once from the main view's onAppear.
+    /// Note: ad-hoc signed builds may not register with the notification center —
+    /// use an Xcode dev build or Developer ID signing to test notifications.
     func requestNotificationPermission() {
         UNUserNotificationCenter.current()
             .requestAuthorization(options: [.alert, .sound]) { granted, error in
@@ -492,12 +501,11 @@ final class AppState: ObservableObject {
 
     private func makeServiceLogger(scope: AppLogScope) -> @Sendable (ServiceLogKind, String) -> Void {
         { [weak self] kind, message in
-            let level: AppLogLevel
-            switch kind {
+            let level: AppLogLevel = switch kind {
             case .command, .lifecycle, .stdout:
-                level = .info
+                .info
             case .stderr:
-                level = .warning
+                .warning
             }
             Task { @MainActor in
                 self?.appendLog(scope: scope, level: level, message: message)
@@ -558,7 +566,8 @@ final class AppState: ObservableObject {
 
         if haystack.contains("no space left on device")
             || haystack.contains("enospc")
-            || haystack.contains("disk full") {
+            || haystack.contains("disk full")
+        {
             return AppError(
                 message: "Insufficient disk space.",
                 recoverySuggestion: "Free up disk space or choose another output folder, then try again."
@@ -569,14 +578,13 @@ final class AppState: ObservableObject {
     }
 
     private func ffmpegWarningMessage(for missingTools: [BundledTool]) -> String {
-        let detail: String
-        switch Set(missingTools) {
+        let detail = switch Set(missingTools) {
         case [.ffmpeg]:
-            detail = "ffmpeg is missing."
+            "ffmpeg is missing."
         case [.ffprobe]:
-            detail = "ffprobe is missing."
+            "ffprobe is missing."
         default:
-            detail = "ffmpeg and ffprobe are missing."
+            "ffmpeg and ffprobe are missing."
         }
 
         return "\(detail)\nVideo and audio streams may fail to merge.\nReinstall development binaries or rebuild the app bundle."
@@ -595,28 +603,27 @@ final class AppState: ObservableObject {
         playlistAudioQualityStrategy: PlaylistAudioQualityStrategy,
         outputDir: URL
     ) -> String {
-        let format: String
-        switch playlistMode {
+        let format: String = switch playlistMode {
         case .onlyFirstItem:
             switch (videoId, audioId) {
-            case let (v?, a?): format = "\(v)+\(a)"
-            case let (v?, nil): format = v
-            case let (nil, a?): format = a
-            case (nil, nil): format = "best"
+            case let (v?, a?): "\(v)+\(a)"
+            case let (v?, nil): v
+            case let (nil, a?): a
+            case (nil, nil): "best"
             }
         case .wholePlaylistBestVideo:
             switch playlistVideoQualityStrategy {
             case .bestCompatibility:
-                format = "bestvideo+bestaudio/best"
+                "bestvideo+bestaudio/best"
             case .preferHigherQuality:
-                format = "bv*+ba/b"
+                "bv*+ba/b"
             }
         case .wholePlaylistBestAudio:
             switch playlistAudioQualityStrategy {
             case .moreCompatible:
-                format = "ba/bestaudio/best"
+                "ba/bestaudio/best"
             case .higherQuality:
-                format = "bestaudio/best"
+                "bestaudio/best"
             }
         }
         let playlistFlag = playlistMode.downloadsWholePlaylist ? "" : " --no-playlist"

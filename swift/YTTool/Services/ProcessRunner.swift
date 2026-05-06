@@ -60,11 +60,11 @@ final class ProcessRunner: @unchecked Sendable {
 
         for try await event in stream(configuration) {
             switch event {
-            case .stdout(let chunk):
+            case let .stdout(chunk):
                 stdout += chunk
-            case .stderr(let chunk):
+            case let .stderr(chunk):
                 stderr += chunk
-            case .finished(let result):
+            case let .finished(result):
                 return result
             case .started:
                 continue

@@ -95,13 +95,13 @@ struct LogPanelView: View {
     private func color(for level: AppLogLevel) -> Color {
         switch level {
         case .info:
-            return .secondary
+            .secondary
         case .success:
-            return .green
+            .green
         case .warning:
-            return .orange
+            .orange
         case .error:
-            return .red
+            .red
         }
     }
 
