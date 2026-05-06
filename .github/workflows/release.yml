@@ -22,7 +22,7 @@ jobs:
 
       - name: Build release app
         run: |
-          bash scripts/build/swift/build.sh \
+          zsh scripts/build/swift/build.sh \
             --release \
             --channel "${{ github.event.inputs.channel || 'stable' }}" \
             --skip-test
