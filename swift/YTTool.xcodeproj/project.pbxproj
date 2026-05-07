@@ -30,6 +30,8 @@
 		A00000000000000000000028 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000037 /* SettingsView.swift */; };
 		A00000000000000000000023 /* AppLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000032 /* AppLogEntry.swift */; };
 		A00000000000000000000024 /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000033 /* LogPanelView.swift */; };
+		A00000000000000000000029 /* DownloaderPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000038 /* DownloaderPreference.swift */; };
+		A0000000000000000000002A /* Aria2cLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000039 /* Aria2cLocator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +58,8 @@
 		A00000000000000000000037 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/SettingsView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000032 /* AppLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/AppLogEntry.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000033 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/LogPanelView.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000038 /* DownloaderPreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloaderPreference.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000039 /* Aria2cLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/Aria2cLocator.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -130,6 +134,7 @@
 				A00000000000000000000009 /* MediaInfo.swift */,
 				A00000000000000000000035 /* AudioTranscodeFormat.swift */,
 				A00000000000000000000032 /* AppLogEntry.swift */,
+				A00000000000000000000038 /* DownloaderPreference.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -144,6 +149,7 @@
 				A000000000000000000000F0 /* ProgressParser.swift */,
 				A00000000000000000000031 /* YtDlpDownloadService.swift */,
 				A00000000000000000000034 /* YtDlpArguments.swift */,
+				A00000000000000000000039 /* Aria2cLocator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -255,6 +261,8 @@
 				A00000000000000000000024 /* LogPanelView.swift in Sources */,
 				A00000000000000000000027 /* AdvancedOptionsView.swift in Sources */,
 				A00000000000000000000028 /* SettingsView.swift in Sources */,
+				A00000000000000000000029 /* DownloaderPreference.swift in Sources */,
+				A0000000000000000000002A /* Aria2cLocator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
