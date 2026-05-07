@@ -476,18 +476,22 @@ final class AppState: ObservableObject {
 
         guard !urls.isEmpty else { return }
 
+        let normalizedCookies: String?
         let parsedExtra: [String]
         do {
+            normalizedCookies = try normalizedCookiesFilePathOrThrow()
             parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch let error as AppError {
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
+            return
         } catch {
-            appendLog(scope: .download, level: .error, message: "Invalid extra arguments: \(error.localizedDescription)")
+            appendLog(scope: .download, level: .error, message: "Invalid arguments: \(error.localizedDescription)")
             return
         }
 
         let config = QueueItemConfig(
             outputDirectory: outputDir,
-            cookiesFilePath: cookiesFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? nil : cookiesFilePath.trimmingCharacters(in: .whitespacesAndNewlines),
+            cookiesFilePath: normalizedCookies,
             extraArguments: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference

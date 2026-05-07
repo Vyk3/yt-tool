@@ -135,6 +135,10 @@ final class DownloadQueue: ObservableObject {
             }
             onLog?(.download, .warning, "[\(truncatedURL(item.url))] Cancelled")
         } catch {
+            guard item.status != .cancelled else {
+                onLog?(.download, .warning, "[\(truncatedURL(item.url))] Cancelled")
+                return
+            }
             item.status = .failed
             item.error = (error as? AppError) ?? AppError(
                 message: "Download failed.",
