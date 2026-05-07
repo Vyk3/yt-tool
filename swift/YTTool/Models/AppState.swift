@@ -1,6 +1,22 @@
 import Foundation
 import UserNotifications
 
+enum AppMode: String, CaseIterable, Identifiable {
+    case single
+    case queue
+
+    var id: String {
+        rawValue
+    }
+
+    var label: String {
+        switch self {
+        case .single: "Single"
+        case .queue: "Queue"
+        }
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     private enum StorageKey {
@@ -65,6 +81,12 @@ final class AppState: ObservableObject {
     }
 
     @Published private(set) var aria2cAvailable: Bool = false
+
+    // MARK: - Queue
+
+    @Published var appMode: AppMode = .single
+    @Published var queueInputURLs: String = ""
+    let downloadQueue = DownloadQueue()
 
     // MARK: - Output directory
 
@@ -437,6 +459,46 @@ final class AppState: ObservableObject {
         Task { try? await downloadRunner.cancel() }
         downloadState = .cancelled
         appendLog(scope: .download, level: .warning, message: "Cancel requested")
+    }
+
+    // MARK: - Queue
+
+    func addToQueue() {
+        guard let outputDir = validatedSelectedOutputDirectory else {
+            appendLog(scope: .download, level: .error, message: "Select an output folder before adding to queue.")
+            return
+        }
+
+        let urls = queueInputURLs
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !urls.isEmpty else { return }
+
+        let parsedExtra = (try? parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))) ?? []
+
+        let config = QueueItemConfig(
+            outputDirectory: outputDir,
+            cookiesFilePath: cookiesFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil : cookiesFilePath.trimmingCharacters(in: .whitespacesAndNewlines),
+            extraArguments: parsedExtra,
+            audioTranscodeFormat: audioTranscodeFormat,
+            downloaderPreference: downloaderPreference
+        )
+
+        downloadQueue.addURLs(urls, config: config)
+        queueInputURLs = ""
+        appendLog(scope: .download, level: .info, message: "Added \(urls.count) URL(s) to queue")
+    }
+
+    func startQueue() {
+        downloadQueue.startProcessing(
+            locator: BundledToolLocator(),
+            onLog: { [weak self] scope, level, message in
+                self?.appendLog(scope: scope, level: level, message: message)
+            }
+        )
     }
 
     // MARK: - Helpers
