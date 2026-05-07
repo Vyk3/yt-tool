@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @ObservedObject var state: AppState
+
     private let repoURL = URL(string: "https://github.com/Vyk3/yt-tool")!
     private let releaseURL = URL(string: "https://github.com/Vyk3/yt-tool/releases")!
 
@@ -17,10 +19,14 @@ struct SettingsView: View {
                 Link("Check latest release", destination: releaseURL)
             }
 
+            Divider()
+
+            UpdateView(state: state)
+
             Spacer(minLength: 0)
         }
         .padding(20)
-        .frame(minWidth: 460, minHeight: 220)
+        .frame(minWidth: 460, minHeight: 320)
     }
 
     private var appVersion: String {

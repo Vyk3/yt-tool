@@ -22,6 +22,8 @@ final class AppState: ObservableObject {
     private enum StorageKey {
         static let selectedOutputDirectoryPath = "selectedOutputDirectoryPath"
         static let downloaderPreference = "downloaderPreference"
+        static let updateChannel = "updateChannel"
+        static let autoCheckForUpdates = "autoCheckForUpdates"
     }
 
     private static let maxLogEntries = 250
@@ -88,6 +90,23 @@ final class AppState: ObservableObject {
     @Published var queueInputURLs: String = ""
     let downloadQueue = DownloadQueue()
 
+    // MARK: - Update
+
+    @Published var updateState: UpdateState = .idle
+    @Published var currentYtDlpVersion: String?
+    @Published var updateChannel: UpdateChannel = .stable {
+        didSet { defaults.set(updateChannel.rawValue, forKey: StorageKey.updateChannel) }
+    }
+
+    @Published var autoCheckForUpdates: Bool = true {
+        didSet { defaults.set(autoCheckForUpdates, forKey: StorageKey.autoCheckForUpdates) }
+    }
+
+    var ytDlpSource: String {
+        FileManager.default.fileExists(atPath: BundledToolLocator.userLocalURL(for: .ytDlp).path)
+            ? "user-installed" : "bundled"
+    }
+
     // MARK: - Output directory
 
     @Published var selectedOutputDirectory: URL? {
@@ -113,6 +132,8 @@ final class AppState: ObservableObject {
     private let defaults: UserDefaults
     private var probeTask: Task<Void, Never>?
     private var downloadTask: Task<Void, Never>?
+    private var updateTask: Task<Void, Never>?
+    private var latestRelease: YtDlpReleaseInfo?
     private var probeAttemptID: Int = 0
     private var downloadAttemptID: Int = 0
 
@@ -136,7 +157,20 @@ final class AppState: ObservableObject {
         }
         aria2cAvailable = Aria2cLocator().findAria2c() != nil
 
+        if let raw = defaults.string(forKey: StorageKey.updateChannel),
+           let channel = UpdateChannel(rawValue: raw)
+        {
+            updateChannel = channel
+        }
+        if defaults.object(forKey: StorageKey.autoCheckForUpdates) != nil {
+            autoCheckForUpdates = defaults.bool(forKey: StorageKey.autoCheckForUpdates)
+        }
+
         refreshFFmpegWarning()
+
+        Task { @MainActor [weak self] in
+            await self?.performStartupUpdateTasks()
+        }
     }
 
     // MARK: - Probe
@@ -509,6 +543,121 @@ final class AppState: ObservableObject {
                 self?.appendLog(scope: scope, level: level, message: message)
             }
         )
+    }
+
+    // MARK: - Update
+
+    func checkForUpdate() {
+        switch updateState {
+        case .checking, .downloading, .verifying:
+            return
+        default:
+            break
+        }
+
+        updateTask?.cancel()
+        latestRelease = nil
+        updateState = .checking
+        appendLog(scope: .update, level: .info, message: "Checking for updates (\(updateChannel.label) channel)...")
+
+        updateTask = Task {
+            do {
+                let service = YtDlpUpdateService()
+                let release = try await service.fetchLatestRelease(channel: updateChannel)
+                let current = currentYtDlpVersion ?? "unknown"
+
+                latestRelease = release
+                if current != "unknown", !Self.isVersionNewer(release.version, than: current) {
+                    updateState = .upToDate(version: current)
+                    appendLog(scope: .update, level: .success, message: "yt-dlp is up to date (\(current))")
+                } else {
+                    updateState = .available(current: current, latest: release.version)
+                    appendLog(
+                        scope: .update, level: .info,
+                        message: "Update available: \(current) \u{2192} \(release.version)"
+                    )
+                }
+            } catch is CancellationError {
+                // ignored
+            } catch {
+                let mapped = (error as? AppError) ?? AppError(
+                    message: "Update check failed.",
+                    recoverySuggestion: error.localizedDescription
+                )
+                updateState = .failed(mapped)
+                appendLog(scope: .update, level: .error, message: "Update check failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func installUpdate() {
+        guard case .available = updateState, let release = latestRelease else { return }
+
+        updateTask?.cancel()
+        updateState = .downloading(progress: 0)
+        appendLog(scope: .update, level: .info, message: "Downloading yt-dlp \(release.version)...")
+
+        updateTask = Task {
+            do {
+                let service = YtDlpUpdateService()
+                let newVersion = try await service.install(
+                    from: release,
+                    onProgress: { [weak self] progress in
+                        Task { @MainActor in
+                            self?.updateState = .downloading(progress: progress)
+                        }
+                    },
+                    onVerifying: { [weak self] in
+                        Task { @MainActor in
+                            self?.updateState = .verifying
+                            self?.appendLog(scope: .update, level: .info, message: "Verifying and installing...")
+                        }
+                    }
+                )
+
+                await refreshCurrentYtDlpVersion()
+                updateState = .completed(newVersion: newVersion)
+                appendLog(scope: .update, level: .success, message: "yt-dlp updated to \(newVersion)")
+            } catch is CancellationError {
+                updateState = .idle
+            } catch {
+                let mapped = (error as? AppError) ?? AppError(
+                    message: "Update failed.",
+                    recoverySuggestion: error.localizedDescription
+                )
+                updateState = .failed(mapped)
+                appendLog(scope: .update, level: .error, message: "Update failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func performStartupUpdateTasks() async {
+        let service = YtDlpUpdateService()
+        let isValid = await service.validateUserLocalBinary()
+        if !isValid {
+            try? FileManager.default.removeItem(at: BundledToolLocator.userLocalURL(for: .ytDlp))
+            appendLog(
+                scope: .update, level: .warning,
+                message: "Removed invalid user-local yt-dlp, falling back to bundled"
+            )
+        }
+
+        await refreshCurrentYtDlpVersion()
+
+        if autoCheckForUpdates {
+            checkForUpdate()
+        }
+    }
+
+    private func refreshCurrentYtDlpVersion() async {
+        let service = YtDlpUpdateService()
+        currentYtDlpVersion = await service.currentVersion()
+    }
+
+    /// yt-dlp tags use YYYY.MM.DD (stable) or YYYY.MM.DD.XXXXXX (nightly);
+    /// lexicographic comparison is correct for these fixed-width date-based formats.
+    nonisolated static func isVersionNewer(_ latest: String, than current: String) -> Bool {
+        latest > current
     }
 
     // MARK: - Helpers

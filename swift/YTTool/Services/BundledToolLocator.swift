@@ -12,6 +12,14 @@ struct BundledToolLocator: @unchecked Sendable {
     var fileManager: FileManager = .default
     var overrides: [BundledTool: URL] = [:]
 
+    static let userLocalBinariesDirectory: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("YTTool", isDirectory: true)
+        .appendingPathComponent("Binaries", isDirectory: true)
+
+    static func userLocalURL(for tool: BundledTool) -> URL {
+        userLocalBinariesDirectory.appendingPathComponent(tool.rawValue, isDirectory: false)
+    }
+
     init(
         bundle: Bundle = .main,
         fileManager: FileManager = .default,
@@ -32,7 +40,10 @@ struct BundledToolLocator: @unchecked Sendable {
             guard fileManager.fileExists(atPath: candidate.path) else {
                 continue
             }
-            return try validateExecutable(at: candidate, tool: tool)
+            guard fileManager.isExecutableFile(atPath: candidate.path) else {
+                continue
+            }
+            return candidate
         }
 
         throw AppError(
@@ -48,17 +59,27 @@ struct BundledToolLocator: @unchecked Sendable {
     }
 
     func candidateURLs(for tool: BundledTool) -> [URL] {
-        let resourceRoot = bundle.resourceURL
-        let bundleCandidate = resourceRoot?.appending(path: "Binaries/\(tool.rawValue)", directoryHint: .notDirectory)
-        guard shouldIncludeProjectFallback else {
-            return [bundleCandidate].compactMap { $0 }
+        var candidates: [URL] = []
+
+        if tool == .ytDlp {
+            candidates.append(Self.userLocalURL(for: tool))
         }
 
-        let projectCandidate = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "Resources/Binaries/\(tool.rawValue)", directoryHint: .notDirectory)
-        return [bundleCandidate, projectCandidate].compactMap { $0 }
+        if let bundleCandidate = bundle.resourceURL?
+            .appending(path: "Binaries/\(tool.rawValue)", directoryHint: .notDirectory)
+        {
+            candidates.append(bundleCandidate)
+        }
+
+        if shouldIncludeProjectFallback {
+            let projectCandidate = URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appending(path: "Resources/Binaries/\(tool.rawValue)", directoryHint: .notDirectory)
+            candidates.append(projectCandidate)
+        }
+
+        return candidates
     }
 
     private var shouldIncludeProjectFallback: Bool {

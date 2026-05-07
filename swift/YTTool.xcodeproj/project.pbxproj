@@ -36,6 +36,9 @@
 		A0000000000000000000002C /* DownloadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003B /* DownloadQueue.swift */; };
 		A0000000000000000000002D /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003C /* QueueView.swift */; };
 		A0000000000000000000002E /* QueueItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003D /* QueueItemRow.swift */; };
+		A0000000000000000000002F /* UpdateState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003E /* UpdateState.swift */; };
+		A00000000000000000000052 /* YtDlpUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003F /* YtDlpUpdateService.swift */; };
+		A00000000000000000000053 /* UpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000049 /* UpdateView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +71,9 @@
 		A0000000000000000000003B /* DownloadQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadQueue.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000003C /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/QueueView.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000003D /* QueueItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/QueueItemRow.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000003E /* UpdateState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/UpdateState.swift; sourceTree = SOURCE_ROOT; };
+		A0000000000000000000003F /* YtDlpUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpUpdateService.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000049 /* UpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/UpdateView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -131,6 +137,7 @@
 				A00000000000000000000037 /* SettingsView.swift */,
 				A0000000000000000000003C /* QueueView.swift */,
 				A0000000000000000000003D /* QueueItemRow.swift */,
+				A00000000000000000000049 /* UpdateView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -147,6 +154,7 @@
 				A00000000000000000000038 /* DownloaderPreference.swift */,
 				A0000000000000000000003A /* QueueItem.swift */,
 				A0000000000000000000003B /* DownloadQueue.swift */,
+				A0000000000000000000003E /* UpdateState.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -162,6 +170,7 @@
 				A00000000000000000000031 /* YtDlpDownloadService.swift */,
 				A00000000000000000000034 /* YtDlpArguments.swift */,
 				A00000000000000000000039 /* Aria2cLocator.swift */,
+				A0000000000000000000003F /* YtDlpUpdateService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -279,6 +288,9 @@
 				A0000000000000000000002C /* DownloadQueue.swift in Sources */,
 				A0000000000000000000002D /* QueueView.swift in Sources */,
 				A0000000000000000000002E /* QueueItemRow.swift in Sources */,
+				A0000000000000000000002F /* UpdateState.swift in Sources */,
+				A00000000000000000000052 /* YtDlpUpdateService.swift in Sources */,
+				A00000000000000000000053 /* UpdateView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
