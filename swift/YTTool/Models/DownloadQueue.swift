@@ -57,7 +57,9 @@ final class DownloadQueue: ObservableObject {
         onLog: ((AppLogScope, AppLogLevel, String) -> Void)? = nil
     ) {
         guard !isProcessing else { return }
-        self.onLog = onLog
+        if let onLog {
+            self.onLog = onLog
+        }
         isProcessing = true
         processingTask = Task {
             while !Task.isCancelled {
@@ -65,7 +67,6 @@ final class DownloadQueue: ObservableObject {
                 await processItem(next, locator: locator)
             }
             isProcessing = false
-            self.onLog = nil
         }
     }
 
