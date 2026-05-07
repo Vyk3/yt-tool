@@ -36,6 +36,7 @@ struct AdvancedOptionsView: View {
                         }
                         .labelsHidden()
                         .frame(maxWidth: 220, alignment: .leading)
+                        // Keep enabled when set to .aria2c so user can switch back if aria2c was removed
                         .disabled(!aria2cAvailable && downloaderPreference == .native)
                     }
                     if !aria2cAvailable {
