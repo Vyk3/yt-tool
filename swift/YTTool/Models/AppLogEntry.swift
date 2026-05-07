@@ -4,6 +4,7 @@ enum AppLogScope: String, CaseIterable {
     case app = "APP"
     case probe = "PROBE"
     case download = "DOWNLOAD"
+    case update = "UPDATE"
 }
 
 enum AppLogLevel: String, CaseIterable {

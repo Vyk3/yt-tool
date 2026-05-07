@@ -12,7 +12,7 @@ struct YTToolApp: App {
         .windowResizability(.automatic)
 
         Settings {
-            SettingsView()
+            SettingsView(state: state)
         }
     }
 }
