@@ -48,6 +48,7 @@ struct YtDlpDownloadService {
         playlistMode: PlaylistMode = .onlyFirstItem,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
         playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible,
+        aria2cPath: String? = nil,
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -81,7 +82,8 @@ struct YtDlpDownloadService {
                             includeNoPlaylist: includeNoPlaylist,
                             audioTranscodeFormat: audioTranscodeFormat,
                             cookiesFilePath: cookiesFilePath,
-                            extraArguments: extraArguments
+                            extraArguments: extraArguments,
+                            aria2cPath: aria2cPath
                         ),
                         terminationGracePeriod: .seconds(3)
                     )

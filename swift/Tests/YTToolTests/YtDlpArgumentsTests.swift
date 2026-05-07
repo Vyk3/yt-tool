@@ -152,4 +152,62 @@ final class YtDlpArgumentsTests: XCTestCase {
             XCTAssertEqual(error.localizedDescription, "Trailing backslash must escape a following character.")
         }
     }
+
+    // MARK: - aria2c integration
+
+    func testDownloadArgumentsIncludesAria2cWhenPathProvided() {
+        let args = buildDownloadArguments(
+            url: "https://example.com/video",
+            formatSelector: "137+251",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            aria2cPath: "/opt/homebrew/bin/aria2c"
+        )
+        XCTAssertTrue(args.contains("--downloader"))
+        XCTAssertTrue(args.contains("aria2c"))
+        XCTAssertTrue(args.contains("--downloader-args"))
+        XCTAssertTrue(args.contains("aria2c:-x 16 -s 16 -k 1M"))
+        XCTAssertTrue(args.contains("--downloader-path"))
+        XCTAssertTrue(args.contains("aria2c:/opt/homebrew/bin/aria2c"))
+    }
+
+    func testDownloadArgumentsOmitsAria2cWhenPathNil() {
+        let args = buildDownloadArguments(
+            url: "https://example.com/video",
+            formatSelector: "137+251",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            aria2cPath: nil
+        )
+        XCTAssertFalse(args.contains("--downloader"))
+        XCTAssertFalse(args.contains("--downloader-path"))
+    }
+
+    func testYouTubeOmitsConcurrentFragmentsWhenAria2cEnabled() {
+        let url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        let args = buildDownloadArguments(
+            url: url,
+            formatSelector: "bestvideo+bestaudio/best",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            aria2cPath: "/opt/homebrew/bin/aria2c"
+        )
+        XCTAssertFalse(args.contains("--concurrent-fragments"))
+        XCTAssertTrue(args.contains("--downloader"))
+        XCTAssertTrue(args.contains("--embed-thumbnail"))
+    }
+
+    func testYouTubeIncludesConcurrentFragmentsWithoutAria2c() {
+        let url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        let args = buildDownloadArguments(
+            url: url,
+            formatSelector: "bestvideo+bestaudio/best",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            aria2cPath: nil
+        )
+        XCTAssertTrue(args.contains("--concurrent-fragments"))
+        XCTAssertTrue(args.contains("4"))
+        XCTAssertFalse(args.contains("--downloader"))
+    }
 }

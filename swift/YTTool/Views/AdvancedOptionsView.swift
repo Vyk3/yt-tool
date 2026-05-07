@@ -4,6 +4,8 @@ struct AdvancedOptionsView: View {
     @Binding var audioTranscodeFormat: AudioTranscodeFormat
     @Binding var cookiesFilePath: String
     @Binding var extraYtDlpArguments: String
+    @Binding var downloaderPreference: DownloaderPreference
+    let aria2cAvailable: Bool
     @State private var expanded = false
 
     var body: some View {
@@ -20,6 +22,27 @@ struct AdvancedOptionsView: View {
                     }
                     .labelsHidden()
                     .frame(maxWidth: 220, alignment: .leading)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text("Download engine")
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        Picker("Download engine", selection: $downloaderPreference) {
+                            ForEach(DownloaderPreference.allCases) { pref in
+                                Text(pref.label).tag(pref)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 220, alignment: .leading)
+                        .disabled(!aria2cAvailable && downloaderPreference == .native)
+                    }
+                    if !aria2cAvailable {
+                        Text("aria2c not found. Install via: brew install aria2")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
