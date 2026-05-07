@@ -48,7 +48,9 @@ struct ContentView: View {
             AdvancedOptionsView(
                 audioTranscodeFormat: $state.audioTranscodeFormat,
                 cookiesFilePath: $state.cookiesFilePath,
-                extraYtDlpArguments: $state.extraYtDlpArguments
+                extraYtDlpArguments: $state.extraYtDlpArguments,
+                downloaderPreference: $state.downloaderPreference,
+                aria2cAvailable: state.aria2cAvailable
             )
 
             LogPanelView(entries: state.logs)

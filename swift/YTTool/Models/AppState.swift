@@ -5,6 +5,7 @@ import UserNotifications
 final class AppState: ObservableObject {
     private enum StorageKey {
         static let selectedOutputDirectoryPath = "selectedOutputDirectoryPath"
+        static let downloaderPreference = "downloaderPreference"
     }
 
     private static let maxLogEntries = 250
@@ -59,6 +60,11 @@ final class AppState: ObservableObject {
     @Published var audioTranscodeFormat: AudioTranscodeFormat = .original
     @Published var cookiesFilePath: String = ""
     @Published var extraYtDlpArguments: String = ""
+    @Published var downloaderPreference: DownloaderPreference = .native {
+        didSet { defaults.set(downloaderPreference.rawValue, forKey: StorageKey.downloaderPreference) }
+    }
+
+    @Published private(set) var aria2cAvailable: Bool = false
 
     // MARK: - Output directory
 
@@ -100,6 +106,13 @@ final class AppState: ObservableObject {
             selectedOutputDirectory = nil
             defaults.removeObject(forKey: StorageKey.selectedOutputDirectoryPath)
         }
+
+        if let raw = defaults.string(forKey: StorageKey.downloaderPreference),
+           let pref = DownloaderPreference(rawValue: raw)
+        {
+            downloaderPreference = pref
+        }
+        aria2cAvailable = Aria2cLocator().findAria2c() != nil
 
         refreshFFmpegWarning()
     }
@@ -266,6 +279,14 @@ final class AppState: ObservableObject {
             playlistMode: playlistMode,
             selectedFormat: audioTranscodeFormat
         )
+        let resolvedAria2cPath: String? = if downloaderPreference == .aria2c {
+            Aria2cLocator().findAria2c()?.path
+        } else {
+            nil
+        }
+        if downloaderPreference == .aria2c, resolvedAria2cPath == nil {
+            appendLog(scope: .download, level: .warning, message: "aria2c not found in PATH; falling back to built-in downloader")
+        }
 
         let preview = buildCommandPreview(
             title: info?.title,
@@ -321,6 +342,7 @@ final class AppState: ObservableObject {
                             playlistMode: .onlyFirstItem,
                             playlistVideoQualityStrategy: playlistVideoQualityStrategy,
                             playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+                            aria2cPath: resolvedAria2cPath,
                             onLog: makeServiceLogger(scope: .download)
                         ) {
                             switch event {
@@ -354,6 +376,7 @@ final class AppState: ObservableObject {
                         playlistMode: playlistMode,
                         playlistVideoQualityStrategy: playlistVideoQualityStrategy,
                         playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+                        aria2cPath: resolvedAria2cPath,
                         onLog: makeServiceLogger(scope: .download)
                     ) {
                         switch event {

@@ -33,7 +33,8 @@ func buildDownloadArguments(
     includeNoPlaylist: Bool = true,
     audioTranscodeFormat: AudioTranscodeFormat? = nil,
     cookiesFilePath: String? = nil,
-    extraArguments: [String] = []
+    extraArguments: [String] = [],
+    aria2cPath: String? = nil
 ) -> [String] {
     var args = [
         "-f", formatSelector,
@@ -43,6 +44,12 @@ func buildDownloadArguments(
         "--progress",
         "--newline",
     ]
+    if let aria2cPath {
+        args += [
+            "--downloader", aria2cPath,
+            "--downloader-args", "aria2c:-x 16 -s 16 -k 1M",
+        ]
+    }
     if let cookiesFilePath, !cookiesFilePath.isEmpty {
         args += ["--cookies", cookiesFilePath]
     }
@@ -60,11 +67,14 @@ func buildDownloadArguments(
         }
         args += [
             "--extractor-args", "youtube:player_client=default",
-            "--concurrent-fragments", "4",
             "--embed-thumbnail",
             "--embed-chapters",
             "--embed-metadata",
         ]
+        // aria2c handles its own multi-connection; --concurrent-fragments is redundant
+        if aria2cPath == nil {
+            args += ["--concurrent-fragments", "4"]
+        }
     }
     args.append(url)
     return args
