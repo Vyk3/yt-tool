@@ -164,11 +164,10 @@ final class YtDlpArgumentsTests: XCTestCase {
             aria2cPath: "/opt/homebrew/bin/aria2c"
         )
         XCTAssertTrue(args.contains("--downloader"))
-        XCTAssertTrue(args.contains("aria2c"))
+        XCTAssertTrue(args.contains("/opt/homebrew/bin/aria2c"))
         XCTAssertTrue(args.contains("--downloader-args"))
         XCTAssertTrue(args.contains("aria2c:-x 16 -s 16 -k 1M"))
-        XCTAssertTrue(args.contains("--downloader-path"))
-        XCTAssertTrue(args.contains("aria2c:/opt/homebrew/bin/aria2c"))
+        XCTAssertFalse(args.contains("--downloader-path"))
     }
 
     func testDownloadArgumentsOmitsAria2cWhenPathNil() {
@@ -180,7 +179,6 @@ final class YtDlpArgumentsTests: XCTestCase {
             aria2cPath: nil
         )
         XCTAssertFalse(args.contains("--downloader"))
-        XCTAssertFalse(args.contains("--downloader-path"))
     }
 
     func testYouTubeOmitsConcurrentFragmentsWhenAria2cEnabled() {

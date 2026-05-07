@@ -46,9 +46,8 @@ func buildDownloadArguments(
     ]
     if let aria2cPath {
         args += [
-            "--downloader", "aria2c",
+            "--downloader", aria2cPath,
             "--downloader-args", "aria2c:-x 16 -s 16 -k 1M",
-            "--downloader-path", "aria2c:\(aria2cPath)",
         ]
     }
     if let cookiesFilePath, !cookiesFilePath.isEmpty {
