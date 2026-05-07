@@ -476,7 +476,13 @@ final class AppState: ObservableObject {
 
         guard !urls.isEmpty else { return }
 
-        let parsedExtra = (try? parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))) ?? []
+        let parsedExtra: [String]
+        do {
+            parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch {
+            appendLog(scope: .download, level: .error, message: "Invalid extra arguments: \(error.localizedDescription)")
+            return
+        }
 
         let config = QueueItemConfig(
             outputDirectory: outputDir,
