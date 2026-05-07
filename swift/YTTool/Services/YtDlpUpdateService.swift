@@ -81,6 +81,7 @@ struct YtDlpUpdateService {
             ofItemAtPath: tempURL.path
         )
 
+        await clearQuarantine(at: tempURL)
         try await codesign(binaryAt: tempURL)
 
         let newVersion = try await verifyBinary(at: tempURL)
@@ -102,7 +103,14 @@ struct YtDlpUpdateService {
             try FileManager.default.moveItem(at: tempURL, to: destinationURL)
         } catch {
             if didBackup {
-                try? FileManager.default.moveItem(at: backupURL, to: destinationURL)
+                do {
+                    try FileManager.default.moveItem(at: backupURL, to: destinationURL)
+                } catch let restoreError {
+                    throw AppError(
+                        message: "Failed to install update and could not restore previous version.",
+                        recoverySuggestion: "Install: \(error.localizedDescription) Restore: \(restoreError.localizedDescription)"
+                    )
+                }
             }
             throw AppError(message: "Failed to install update.", recoverySuggestion: error.localizedDescription)
         }
@@ -148,6 +156,15 @@ struct YtDlpUpdateService {
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
             session.downloadTask(with: request).resume()
         }
+    }
+
+    private func clearQuarantine(at url: URL) async {
+        let runner = ProcessRunner()
+        let config = ProcessConfiguration(
+            executableURL: URL(fileURLWithPath: "/usr/bin/xattr"),
+            arguments: ["-cr", url.path]
+        )
+        _ = try? await runner.run(config)
     }
 
     private func codesign(binaryAt url: URL) async throws {

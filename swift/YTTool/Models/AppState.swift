@@ -567,7 +567,7 @@ final class AppState: ObservableObject {
                 let current = currentYtDlpVersion ?? "unknown"
 
                 latestRelease = release
-                if current != "unknown", release.version <= current {
+                if current != "unknown", !Self.isVersionNewer(release.version, than: current) {
                     updateState = .upToDate(version: current)
                     appendLog(scope: .update, level: .success, message: "yt-dlp is up to date (\(current))")
                 } else {
@@ -652,6 +652,12 @@ final class AppState: ObservableObject {
     private func refreshCurrentYtDlpVersion() async {
         let service = YtDlpUpdateService()
         currentYtDlpVersion = await service.currentVersion()
+    }
+
+    /// yt-dlp tags use YYYY.MM.DD (stable) or YYYY.MM.DD.XXXXXX (nightly);
+    /// lexicographic comparison is correct for these fixed-width date-based formats.
+    nonisolated static func isVersionNewer(_ latest: String, than current: String) -> Bool {
+        latest > current
     }
 
     // MARK: - Helpers

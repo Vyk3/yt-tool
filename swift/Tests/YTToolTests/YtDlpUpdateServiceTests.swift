@@ -133,4 +133,34 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         let url = BundledToolLocator.userLocalURL(for: .ytDlp)
         XCTAssertTrue(url.path.hasSuffix("/YTTool/Binaries/yt-dlp"))
     }
+
+    func testLocateSkipsNonExecutableUserLocal() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let nonExecFile = tempDir.appendingPathComponent("yt-dlp")
+        FileManager.default.createFile(atPath: nonExecFile.path, contents: nil)
+
+        let locator = BundledToolLocator(overrides: [.ytDlp: nonExecFile])
+        XCTAssertThrowsError(try locator.locate(.ytDlp))
+    }
+
+    // MARK: - Version comparison (isVersionNewer)
+
+    func testIsVersionNewerStable() {
+        XCTAssertTrue(AppState.isVersionNewer("2025.04.01", than: "2025.03.31"))
+        XCTAssertFalse(AppState.isVersionNewer("2025.03.31", than: "2025.03.31"))
+        XCTAssertFalse(AppState.isVersionNewer("2025.03.30", than: "2025.03.31"))
+    }
+
+    func testIsVersionNewerNightly() {
+        XCTAssertTrue(AppState.isVersionNewer("2025.03.31.123457", than: "2025.03.31.123456"))
+        XCTAssertFalse(AppState.isVersionNewer("2025.03.31.123456", than: "2025.03.31.123456"))
+    }
+
+    func testIsVersionNewerCrossChannel() {
+        XCTAssertTrue(AppState.isVersionNewer("2025.04.01.000001", than: "2025.03.31"))
+    }
 }

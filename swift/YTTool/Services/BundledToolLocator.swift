@@ -40,7 +40,10 @@ struct BundledToolLocator: @unchecked Sendable {
             guard fileManager.fileExists(atPath: candidate.path) else {
                 continue
             }
-            return try validateExecutable(at: candidate, tool: tool)
+            guard fileManager.isExecutableFile(atPath: candidate.path) else {
+                continue
+            }
+            return candidate
         }
 
         throw AppError(
