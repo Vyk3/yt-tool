@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## [0.1.1] — 2026-05-08
+
+### Added
+- **aria2c 集成**：支持通过 PATH 检测的 aria2c 实现多连接加速下载（`--downloader aria2c -x 16 -s 16`），不可用时自动回退内置下载器。Advanced Options 中可切换。
+- **下载队列**：支持多 URL 批量入队、顺序下载。入队时快照当前配置，队列项互不影响。支持拖拽重排序、取消、重试、清除已完成项。
+- **yt-dlp 自更新**：Settings 中可检查并安装 yt-dlp 新版本（Stable / Nightly 频道），无需等待 app 更新。更新后的二进制存放于 `~/Library/Application Support/YTTool/Binaries/`，优先于 bundled 版本加载。启动时自动验证用户本地二进制完整性。
+
+---
+
+## [0.1.0] — 2026-05-06
 
 ### Changed
 - **平台切换**：从 Python（PyInstaller + pywebview）全面迁移到 Swift 原生 macOS App（SwiftUI）。
