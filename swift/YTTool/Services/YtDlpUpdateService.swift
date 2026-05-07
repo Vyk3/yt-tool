@@ -152,6 +152,7 @@ struct YtDlpUpdateService {
                 delegate: delegate,
                 delegateQueue: nil
             )
+            delegate.session = session
             var request = URLRequest(url: url)
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
             session.downloadTask(with: request).resume()
@@ -226,6 +227,7 @@ private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelega
     private let onComplete: @Sendable (Result<URL, Error>) -> Void
     private var completed = false
     private let lock = NSLock()
+    var session: URLSession?
 
     init(
         onProgress: @escaping @Sendable (Double) -> Void,
@@ -243,6 +245,7 @@ private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelega
         }
         completed = true
         lock.unlock()
+        session?.finishTasksAndInvalidate()
         onComplete(result)
     }
 
