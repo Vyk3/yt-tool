@@ -18,7 +18,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
 
         let info = try YtDlpUpdateService.parseRelease(from: json)
         XCTAssertEqual(info.version, "2025.03.31")
-        XCTAssertEqual(info.downloadURL.absoluteString, "https://example.com/yt-dlp_macos")
+        XCTAssertEqual(info.downloadURL.absoluteString, "https://example.com/yt-dlp")
     }
 
     func testParseNightlyRelease() throws {
@@ -26,7 +26,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         {
             "tag_name": "2025.03.31.123456",
             "assets": [
-                {"name": "yt-dlp_macos", "browser_download_url": "https://example.com/nightly/yt-dlp_macos"}
+                {"name": "yt-dlp", "browser_download_url": "https://example.com/nightly/yt-dlp"}
             ]
         }
         """.data(using: .utf8)!
@@ -48,7 +48,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         XCTAssertThrowsError(try YtDlpUpdateService.parseRelease(from: json)) { error in
             let appError = error as? AppError
             XCTAssertNotNil(appError)
-            XCTAssertTrue(appError?.recoverySuggestion?.contains("No macOS binary") ?? false)
+            XCTAssertTrue(appError?.recoverySuggestion?.contains("No yt-dlp zipapp") ?? false)
         }
     }
 
@@ -132,6 +132,11 @@ final class YtDlpUpdateServiceTests: XCTestCase {
     func testUserLocalURLConstruction() {
         let url = BundledToolLocator.userLocalURL(for: .ytDlp)
         XCTAssertTrue(url.path.hasSuffix("/YTTool/Binaries/yt-dlp"))
+    }
+
+    func testUserLocalZipappURLConstruction() {
+        let url = YtDlpUpdateService.userLocalZipappURL
+        XCTAssertTrue(url.path.hasSuffix("/YTTool/Binaries/yt-dlp-zipapp"))
     }
 
     func testLocateSkipsNonExecutableUserLocal() throws {
