@@ -94,6 +94,7 @@ def _is_executable_file(path: Path) -> bool:
 _YTDLP_WRAPPER = """\
 #!/bin/sh
 DIR="$(cd "$(dirname "$0")" && pwd)"
+export PYTHONDONTWRITEBYTECODE=1
 PYTHON="$DIR/../Python/bin/python3.12"
 if [ -x "$PYTHON" ]; then
     exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"

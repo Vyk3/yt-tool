@@ -252,6 +252,7 @@ struct YtDlpUpdateService {
         let script = """
         #!/bin/sh
         DIR="$(cd "$(dirname "$0")" && pwd)"
+        export PYTHONDONTWRITEBYTECODE=1
         PYTHON=\(escapedPython)
         if [ -x "$PYTHON" ]; then
             exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"

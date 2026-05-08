@@ -92,24 +92,46 @@ rm -rf \
     "$STDLIB/pydoc_data" \
     "$STDLIB/unittest" \
     "$STDLIB/config-3.12-darwin" \
+    "$STDLIB/xmlrpc" \
+    "$STDLIB/wsgiref" \
+    "$STDLIB/doctest.py" \
+    "$STDLIB/pdb.py" \
+    "$STDLIB/profile.py" \
+    "$STDLIB/pstats.py" \
+    "$STDLIB/cProfile.py" \
+    "$STDLIB/curses" \
     "$EXTRACTED/include" \
     "$EXTRACTED/share"
 
+# Remove Tcl/Tk, itcl, thread, pkgconfig — not needed for yt-dlp.
+setopt nullglob
 rm -f "$EXTRACTED"/lib/libtcl* "$EXTRACTED"/lib/libtk*
 rm -rf "$EXTRACTED"/lib/tcl* "$EXTRACTED"/lib/tk*
-
+rm -rf "$EXTRACTED"/lib/itcl* "$EXTRACTED"/lib/thread*
+rm -rf "$EXTRACTED"/lib/pkgconfig
 rm -f "$EXTRACTED"/bin/2to3* "$EXTRACTED"/bin/idle* "$EXTRACTED"/bin/pip* "$EXTRACTED"/bin/pydoc*
+# Remove _tkinter extension (requires removed Tcl/Tk libs).
+rm -f "$STDLIB"/lib-dynload/_tkinter*
+unsetopt nullglob
 
 find "$EXTRACTED" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+echo "  Stripping debug symbols from dylibs..."
+find "$EXTRACTED" -name '*.dylib' -exec strip -x {} + 2>/dev/null || true
+find "$EXTRACTED" -name '*.so' -exec strip -x {} + 2>/dev/null || true
+strip -x "$EXTRACTED/bin/python3.12" 2>/dev/null || true
 
 STRIPPED_SIZE="$(du -sh "$EXTRACTED" | cut -f1)"
 echo "  Stripped size: $STRIPPED_SIZE"
 
 echo "  Verifying runtime works..."
-if ! "$EXTRACTED/bin/python3.12" -c "import sys; print(f'Python {sys.version}')" 2>/dev/null; then
+if ! PYTHONDONTWRITEBYTECODE=1 "$EXTRACTED/bin/python3.12" -c "import sys; print(f'Python {sys.version}')" 2>/dev/null; then
     echo "ERROR: Stripped Python runtime is broken" >&2
     exit 1
 fi
+
+# Final cleanup: remove any __pycache__ generated during verification.
+find "$EXTRACTED" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$(dirname "$OUTPUT_DIR")"

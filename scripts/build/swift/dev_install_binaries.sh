@@ -52,6 +52,7 @@ write_ytdlp_wrapper() {
   cat > "$dst" <<'WRAPPER'
 #!/bin/sh
 DIR="$(cd "$(dirname "$0")" && pwd)"
+export PYTHONDONTWRITEBYTECODE=1
 PYTHON="$DIR/../Python/bin/python3.12"
 if [ -x "$PYTHON" ]; then
     exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"

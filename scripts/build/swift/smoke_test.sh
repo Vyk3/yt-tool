@@ -81,7 +81,7 @@ PYTHON_DIR="$RESOURCES/Python"
 PYTHON_BIN="$PYTHON_DIR/bin/python3.12"
 if [[ -d "$PYTHON_DIR" ]]; then
     if [[ -x "$PYTHON_BIN" ]]; then
-        PYVER="$("$PYTHON_BIN" -c 'import sys; print(sys.version.split()[0])' 2>/dev/null || echo 'ERROR')"
+        PYVER="$(PYTHONDONTWRITEBYTECODE=1 "$PYTHON_BIN" -c 'import sys; print(sys.version.split()[0])' 2>/dev/null || echo 'ERROR')"
         if [[ "$PYVER" != "ERROR" ]]; then
             _ok "Embedded Python runtime: $PYVER"
         else
