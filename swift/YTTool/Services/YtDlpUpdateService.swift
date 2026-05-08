@@ -102,25 +102,25 @@ struct YtDlpUpdateService {
         let wrapperBackup = wrapperURL.appendingPathExtension("backup")
         let zipappBackup = zipappURL.appendingPathExtension("backup")
 
-        // Backup existing files.
+        // Backup + install inside a single do/catch so any failure
+        // (including backup failures) triggers a full restore.
         var didBackupWrapper = false
         var didBackupZipapp = false
-        if FileManager.default.fileExists(atPath: wrapperURL.path) {
-            try? FileManager.default.removeItem(at: wrapperBackup)
-            try FileManager.default.moveItem(at: wrapperURL, to: wrapperBackup)
-            didBackupWrapper = true
-        }
-        if FileManager.default.fileExists(atPath: zipappURL.path) {
-            try? FileManager.default.removeItem(at: zipappBackup)
-            try FileManager.default.moveItem(at: zipappURL, to: zipappBackup)
-            didBackupZipapp = true
-        }
-
         do {
+            if FileManager.default.fileExists(atPath: wrapperURL.path) {
+                try? FileManager.default.removeItem(at: wrapperBackup)
+                try FileManager.default.moveItem(at: wrapperURL, to: wrapperBackup)
+                didBackupWrapper = true
+            }
+            if FileManager.default.fileExists(atPath: zipappURL.path) {
+                try? FileManager.default.removeItem(at: zipappBackup)
+                try FileManager.default.moveItem(at: zipappURL, to: zipappBackup)
+                didBackupZipapp = true
+            }
             try FileManager.default.moveItem(at: tempURL, to: zipappURL)
             try writeWrapper(at: wrapperURL)
         } catch {
-            // Restore on failure.
+            // Restore on failure (best-effort, swallowed errors logged).
             try? FileManager.default.removeItem(at: zipappURL)
             try? FileManager.default.removeItem(at: wrapperURL)
             if didBackupZipapp {
@@ -203,11 +203,24 @@ struct YtDlpUpdateService {
         }
     }
 
-    /// Verify a downloaded zipapp by running it with system python3.
+    /// Resolve the best available Python interpreter, matching wrapper logic:
+    /// prefer the app bundle's embedded Python, fall back to system python3.
+    private func resolvePython() -> URL {
+        if let bundlePython = Bundle.main.resourceURL?
+            .appendingPathComponent("Python/bin/python3.12"),
+           FileManager.default.isExecutableFile(atPath: bundlePython.path)
+        {
+            return bundlePython
+        }
+        return URL(fileURLWithPath: "/usr/bin/python3")
+    }
+
+    /// Verify a downloaded zipapp by running it with the best available Python.
     private func verifyZipapp(at url: URL) async throws -> String {
+        let python = resolvePython()
         let runner = ProcessRunner()
         let config = ProcessConfiguration(
-            executableURL: URL(fileURLWithPath: "/usr/bin/python3"),
+            executableURL: python,
             arguments: [url.path, "--version"]
         )
         let result = try await runner.run(config)
@@ -221,15 +234,25 @@ struct YtDlpUpdateService {
         return version
     }
 
+    /// Escape a path for safe embedding in a POSIX single-quoted string.
+    /// The only character that needs escaping in single quotes is `'` itself,
+    /// which is handled by ending the quote, inserting an escaped `'`, and reopening.
+    static func shellEscapeSingleQuoted(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
     /// Write a wrapper shell script that invokes the zipapp via the best available Python.
     private func writeWrapper(at wrapperURL: URL) throws {
         let pythonInBundle = Bundle.main.resourceURL?
             .appendingPathComponent("Python/bin/python3.12").path ?? ""
 
+        // Use single-quote escaping to prevent shell interpretation of the embedded path.
+        let escapedPython = Self.shellEscapeSingleQuoted(pythonInBundle)
+
         let script = """
         #!/bin/sh
         DIR="$(cd "$(dirname "$0")" && pwd)"
-        PYTHON="\(pythonInBundle)"
+        PYTHON=\(escapedPython)
         if [ -x "$PYTHON" ]; then
             exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"
         else

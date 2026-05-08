@@ -139,6 +139,38 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         XCTAssertTrue(url.path.hasSuffix("/YTTool/Binaries/yt-dlp-zipapp"))
     }
 
+    // MARK: - Shell escaping
+
+    func testShellEscapeSimplePath() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Applications/YTTool.app/Contents/Resources/Python/bin/python3.12")
+        XCTAssertEqual(result, "'/Applications/YTTool.app/Contents/Resources/Python/bin/python3.12'")
+    }
+
+    func testShellEscapePathWithSpaces() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/test user/Apps/YTTool.app/Contents/Resources/Python/bin/python3.12")
+        XCTAssertEqual(result, "'/Users/test user/Apps/YTTool.app/Contents/Resources/Python/bin/python3.12'")
+    }
+
+    func testShellEscapePathWithSingleQuote() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/it's me/Apps/python3.12")
+        XCTAssertEqual(result, "'/Users/it'\\''s me/Apps/python3.12'")
+    }
+
+    func testShellEscapePathWithDollarSign() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/$HOME/Apps/python3.12")
+        XCTAssertEqual(result, "'/Users/$HOME/Apps/python3.12'")
+    }
+
+    func testShellEscapePathWithBackticks() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/`whoami`/Apps/python3.12")
+        XCTAssertEqual(result, "'/Users/`whoami`/Apps/python3.12'")
+    }
+
+    func testShellEscapeEmptyPath() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("")
+        XCTAssertEqual(result, "''")
+    }
+
     func testLocateSkipsNonExecutableUserLocal() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
