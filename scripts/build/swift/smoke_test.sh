@@ -7,8 +7,11 @@
 #   1. Bundle exists and is a directory
 #   2. Executable is present
 #   3. Info.plist is present
-#   4. All three required binaries are present and executable
-#   5. Ad-hoc codesignature is valid (codesign --verify)
+#   4. yt-dlp wrapper and zipapp are present and executable
+#   5. ffmpeg and ffprobe are present and executable
+#   6. Embedded Python runtime (if present) is functional
+#   7. yt-dlp --version works via wrapper
+#   8. Ad-hoc codesignature is valid (codesign --verify)
 
 set -euo pipefail
 
@@ -59,12 +62,46 @@ else
     _fail "Info.plist missing"
 fi
 
-# 4. Vendored binaries
-for bin in yt-dlp ffmpeg ffprobe; do
+# 4. yt-dlp wrapper and zipapp
+check_file_exec "$BINARIES/yt-dlp" "Vendored binary: Binaries/yt-dlp (wrapper)"
+if [[ -f "$BINARIES/yt-dlp-zipapp" ]]; then
+    _ok "Vendored binary: Binaries/yt-dlp-zipapp"
+else
+    _fail "Vendored binary: Binaries/yt-dlp-zipapp — missing"
+fi
+
+# 5. ffmpeg and ffprobe
+for bin in ffmpeg ffprobe; do
     check_file_exec "$BINARIES/$bin" "Vendored binary: Binaries/$bin"
 done
 
-# 5. Codesign (ad-hoc)
+# 6. Embedded Python runtime (optional for dev builds)
+PYTHON_DIR="$RESOURCES/Python"
+PYTHON_BIN="$PYTHON_DIR/bin/python3.12"
+if [[ -d "$PYTHON_DIR" ]]; then
+    if [[ -x "$PYTHON_BIN" ]]; then
+        PYVER="$("$PYTHON_BIN" -c 'import sys; print(sys.version.split()[0])' 2>/dev/null || echo 'ERROR')"
+        if [[ "$PYVER" != "ERROR" ]]; then
+            _ok "Embedded Python runtime: $PYVER"
+        else
+            _fail "Embedded Python runtime — python3.12 present but broken"
+        fi
+    else
+        _fail "Embedded Python runtime — python3.12 missing or not executable"
+    fi
+else
+    echo "  [SKIP] Embedded Python runtime not present (dev build)"
+fi
+
+# 7. yt-dlp --version via wrapper
+YTDLP_VER="$("$BINARIES/yt-dlp" --version 2>/dev/null || echo 'ERROR')"
+if [[ "$YTDLP_VER" != "ERROR" && -n "$YTDLP_VER" ]]; then
+    _ok "yt-dlp --version via wrapper: $YTDLP_VER"
+else
+    _fail "yt-dlp --version via wrapper failed"
+fi
+
+# 8. Codesign (ad-hoc)
 echo ""
 echo "--- codesign --verify ---"
 if codesign --verify --deep --strict "$APP" 2>&1; then

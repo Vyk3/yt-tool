@@ -91,6 +91,18 @@ def _is_executable_file(path: Path) -> bool:
     return path.is_file() and (path.stat().st_mode & stat.S_IXUSR) != 0
 
 
+_YTDLP_WRAPPER = """\
+#!/bin/sh
+DIR="$(cd "$(dirname "$0")" && pwd)"
+PYTHON="$DIR/../Python/bin/python3.12"
+if [ -x "$PYTHON" ]; then
+    exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"
+else
+    exec python3 "$DIR/yt-dlp-zipapp" "$@"
+fi
+"""
+
+
 def _prepare_ytdlp(
     *,
     vendor_bin_dir: Path,
@@ -105,20 +117,24 @@ def _prepare_ytdlp(
     if _is_mutable_url(url):
         _die(f"Refuse mutable yt-dlp URL: {url}")
 
-    out = vendor_bin_dir / "yt-dlp"
-    if not clean and _is_executable_file(out):
-        print(f"yt-dlp already present: {out}")
+    zipapp_out = vendor_bin_dir / "yt-dlp-zipapp"
+    wrapper_out = vendor_bin_dir / "yt-dlp"
+    if not clean and zipapp_out.is_file() and _is_executable_file(wrapper_out):
+        print(f"yt-dlp already present: {zipapp_out}")
         return
 
     with tempfile.TemporaryDirectory(prefix="yt-tool-ytdlp-") as tmp:
         tmp_file = Path(tmp) / "yt-dlp"
-        print("Downloading yt-dlp...")
+        print("Downloading yt-dlp zipapp...")
         _download(url, tmp_file)
         _verify_sha256(tmp_file, sha256, source_url=url, label="yt-dlp")
-        shutil.copy2(tmp_file, out)
+        shutil.copy2(tmp_file, zipapp_out)
 
-    _ensure_executable(out)
-    print(f"yt-dlp binary: {out}")
+    wrapper_out.write_text(_YTDLP_WRAPPER)
+    _ensure_executable(wrapper_out)
+    _ensure_executable(zipapp_out)
+    print(f"yt-dlp zipapp: {zipapp_out}")
+    print(f"yt-dlp wrapper: {wrapper_out}")
 
 
 def _prepare_ffmpeg(

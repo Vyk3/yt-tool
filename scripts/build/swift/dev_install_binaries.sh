@@ -6,14 +6,11 @@
 # Production builds must use prepare_binaries.py with pinned URLs and SHA256.
 #
 # Usage:
-#   scripts/build/swift/dev_install_binaries.sh [--force] [--channel stable|nightly] [--ytdlp-path /path/to/yt-dlp_macos]
+#   scripts/build/swift/dev_install_binaries.sh [--force] [--channel stable|nightly] [--ytdlp-path /path/to/yt-dlp]
 #
 # Behavior:
-# - yt-dlp: download the pinned standalone macOS binary from pinned_versions.sh
+# - yt-dlp: download the pinned zipapp and create a wrapper using system python3
 # - ffmpeg/ffprobe: generate wrappers to local PATH tools (typically Homebrew)
-#
-# This avoids bundling Homebrew's Python shim for yt-dlp, which is fragile and
-# can behave differently from the standalone binary used in release packaging.
 
 set -euo pipefail
 
@@ -31,8 +28,8 @@ while [[ $# -gt 0 ]]; do
     --channel) CHANNEL="$2"; shift 2 ;;
     --ytdlp-path) YTDLP_LOCAL_PATH="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--force] [--channel stable|nightly] [--ytdlp-path /path/to/yt-dlp_macos]"
-      echo "Installs standalone yt-dlp plus ffmpeg/ffprobe into $BINARIES_DIR."
+      echo "Usage: $0 [--force] [--channel stable|nightly] [--ytdlp-path /path/to/yt-dlp]"
+      echo "Installs yt-dlp zipapp plus ffmpeg/ffprobe into $BINARIES_DIR."
       exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -50,26 +47,38 @@ read_ytdlp_version() {
   echo "$version"
 }
 
+write_ytdlp_wrapper() {
+  local dst="$1"
+  cat > "$dst" <<'WRAPPER'
+#!/bin/sh
+DIR="$(cd "$(dirname "$0")" && pwd)"
+PYTHON="$DIR/../Python/bin/python3.12"
+if [ -x "$PYTHON" ]; then
+    exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"
+else
+    exec python3 "$DIR/yt-dlp-zipapp" "$@"
+fi
+WRAPPER
+  chmod +x "$dst"
+}
+
 install_ytdlp() {
-  local dst="$BINARIES_DIR/yt-dlp"
-  local current_version=""
+  local zipapp_dst="$BINARIES_DIR/yt-dlp-zipapp"
+  local wrapper_dst="$BINARIES_DIR/yt-dlp"
 
   if [[ -z "${YTDLP_URL:-}" ]]; then
     echo "ERROR: YTDLP_URL is empty in pinned_versions.sh" >&2
     return 1
   fi
 
-  if [[ "$FORCE" -eq 0 && -x "$dst" ]]; then
-    if ! head -n 1 "$dst" | grep -q '^#!'; then
-      current_version="$(read_ytdlp_version "$dst" || true)"
-      if [[ "$current_version" == "$YTDLP_VERSION" ]]; then
-        echo "yt-dlp already present: $dst (standalone binary, channel: $CHANNEL, version: $current_version)"
-        return 0
-      fi
-      echo "yt-dlp version mismatch at $dst (have: ${current_version:-unknown}, want: $YTDLP_VERSION); reinstalling for channel $CHANNEL"
-    else
-      echo "yt-dlp present but looks like a script shim; replacing with standalone binary"
+  if [[ "$FORCE" -eq 0 && -f "$zipapp_dst" && -x "$wrapper_dst" ]]; then
+    local current_version
+    current_version="$(read_ytdlp_version "$wrapper_dst" || true)"
+    if [[ "$current_version" == "$YTDLP_VERSION" ]]; then
+      echo "yt-dlp already present: $zipapp_dst (zipapp, channel: $CHANNEL, version: $current_version)"
+      return 0
     fi
+    echo "yt-dlp version mismatch (have: ${current_version:-unknown}, want: $YTDLP_VERSION); reinstalling for channel $CHANNEL"
   fi
 
   if [[ -n "$YTDLP_LOCAL_PATH" ]]; then
@@ -77,26 +86,29 @@ install_ytdlp() {
       echo "ERROR: --ytdlp-path does not exist: $YTDLP_LOCAL_PATH" >&2
       return 1
     fi
-    cp "$YTDLP_LOCAL_PATH" "$dst"
-    chmod +x "$dst"
-    echo "yt-dlp  →  $dst  (from local file: $YTDLP_LOCAL_PATH, channel: $CHANNEL, version: $(read_ytdlp_version "$dst" || echo unknown))"
-    echo "          sha256=$(shasum -a 256 "$dst" | cut -d' ' -f1)"
-    return 0
+    cp "$YTDLP_LOCAL_PATH" "$zipapp_dst"
+    chmod +x "$zipapp_dst"
+  else
+    local tmp
+    tmp="$(mktemp)"
+
+    if ! curl -fsSL -o "$tmp" "$YTDLP_URL"; then
+      rm -f "$tmp"
+      echo "ERROR: failed to download yt-dlp from $YTDLP_URL" >&2
+      echo "Hint: download the yt-dlp zipapp in a browser, then rerun with --ytdlp-path /path/to/yt-dlp" >&2
+      return 1
+    fi
+
+    mv "$tmp" "$zipapp_dst"
+    chmod +x "$zipapp_dst"
   fi
 
-  local tmp
-  tmp="$(mktemp)"
+  write_ytdlp_wrapper "$wrapper_dst"
 
-  if ! curl -fsSL -o "$tmp" "$YTDLP_URL"; then
-    rm -f "$tmp"
-    echo "ERROR: failed to download yt-dlp from $YTDLP_URL" >&2
-    echo "Hint: download yt-dlp_macos in a browser, then rerun with --ytdlp-path /path/to/yt-dlp_macos" >&2
-    return 1
-  fi
-
-  mv "$tmp" "$dst"
-  chmod +x "$dst"
-  echo "yt-dlp  →  $dst  (channel: $CHANNEL, version: $(read_ytdlp_version "$dst" || echo unknown), $(shasum -a 256 "$dst" | cut -d' ' -f1))"
+  local installed_version
+  installed_version="$(read_ytdlp_version "$wrapper_dst" || echo unknown)"
+  echo "yt-dlp  →  $zipapp_dst  (zipapp, channel: $CHANNEL, version: $installed_version)"
+  echo "        →  $wrapper_dst  (wrapper, sha256=$(shasum -a 256 "$wrapper_dst" | cut -d' ' -f1))"
 }
 
 install_path_tool_wrapper() {

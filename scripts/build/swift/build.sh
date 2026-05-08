@@ -72,7 +72,7 @@ read_ytdlp_version() {
 }
 
 # ── Step 1: Prepare binaries ──────────────────────────────────────────────────
-step "1/7  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
+step "1/8  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
 
 source "$SCRIPT_DIR/pinned_versions.sh"
 set_ytdlp_channel_vars "$CHANNEL"
@@ -105,7 +105,7 @@ if [[ "$MODE" == "release" ]]; then
         --ffprobe-url   "$FFPROBE_URL"   --ffprobe-sha256 "$FFPROBE_SHA256"
 else
     current_ytdlp="$BINARIES_SRC/yt-dlp"
-    [[ -e "$current_ytdlp" ]] || die "Binary not found: $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
+    [[ -e "$current_ytdlp" ]] || die "yt-dlp not found: $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
     current_ytdlp_version="$(read_ytdlp_version "$current_ytdlp" || true)"
     if [[ "$current_ytdlp_version" != "$YTDLP_VERSION" ]]; then
         die "dev mode yt-dlp channel mismatch: requested $CHANNEL ($YTDLP_VERSION) but found ${current_ytdlp_version:-unknown} in $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
@@ -113,8 +113,8 @@ else
     echo "dev mode: using existing binaries in $BINARIES_SRC (channel: $CHANNEL, yt-dlp version: $current_ytdlp_version)"
 fi
 
-# Verify binaries exist
-for bin in yt-dlp ffmpeg ffprobe; do
+# Verify binaries exist (yt-dlp wrapper + zipapp + ffmpeg + ffprobe)
+for bin in yt-dlp yt-dlp-zipapp ffmpeg ffprobe; do
     bin_path="$BINARIES_SRC/$bin"
     if [[ ! -e "$bin_path" ]]; then
         die "Binary not found: $bin_path\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
@@ -127,7 +127,7 @@ for bin in yt-dlp ffmpeg ffprobe; do
 done
 
 # ── Step 2: Archive ───────────────────────────────────────────────────────────
-step "2/7  xcodebuild archive"
+step "2/8  xcodebuild archive"
 
 mkdir -p "$BUILD_ROOT" "$OUTPUT_DIR"
 rm -rf "$ARCHIVE_PATH"
@@ -161,14 +161,27 @@ echo "  DerivedData: $DERIVED_DATA_PATH"
 echo "  xcodebuild log: $XCODE_LOG"
 
 # ── Step 3: Export .app ───────────────────────────────────────────────────────
-step "3/7  Export .app"
+step "3/8  Export .app"
 
 rm -rf "$DIST_APP"
 cp -R "$APP_IN_ARCHIVE" "$DIST_APP"
 echo "  Exported: $DIST_APP"
 
-# ── Step 4: Codesign ─────────────────────────────────────────────────────────
-step "4/7  Ad-hoc codesign"
+# ── Step 4: Embed Python runtime (release only) ─────────────────────────────
+step "4/8  Embed Python runtime"
+
+PYTHON_IN_APP="$DIST_APP/Contents/Resources/Python"
+if [[ "$MODE" == "release" ]]; then
+    PYTHON_STAGING="$BUILD_ROOT/python-runtime"
+    "$SCRIPT_DIR/prepare_python.sh" --output "$PYTHON_STAGING"
+    cp -R "$PYTHON_STAGING" "$PYTHON_IN_APP"
+    echo "  Embedded: $PYTHON_IN_APP ($(du -sh "$PYTHON_IN_APP" | cut -f1))"
+else
+    echo "  (skipped in dev mode — wrapper falls back to system python3)"
+fi
+
+# ── Step 5: Codesign ─────────────────────────────────────────────────────────
+step "5/8  Ad-hoc codesign"
 
 BINARIES_IN_APP="$DIST_APP/Contents/Resources/Binaries"
 if [[ ! -d "$BINARIES_IN_APP" ]]; then
@@ -182,12 +195,20 @@ for bin_path in "$BINARIES_IN_APP"/*; do
     echo "    $(basename "$bin_path"): signed"
 done
 
+if [[ -d "$PYTHON_IN_APP" ]]; then
+    echo "  Signing embedded Python runtime..."
+    PYTHON_BIN="$PYTHON_IN_APP/bin/python3.12"
+    PYTHON_LIB="$PYTHON_IN_APP/lib/libpython3.12.dylib"
+    [[ -f "$PYTHON_LIB" ]] && codesign --force --sign - "$PYTHON_LIB" && echo "    libpython3.12.dylib: signed"
+    [[ -f "$PYTHON_BIN" ]] && codesign --force --sign - "$PYTHON_BIN" && echo "    python3.12: signed"
+fi
+
 echo "  Signing app bundle..."
 codesign --force --deep --sign - "$DIST_APP"
 echo "  App bundle: signed"
 
-# ── Step 5: Package ───────────────────────────────────────────────────────────
-step "5/7  Create distribution zip"
+# ── Step 6: Package ───────────────────────────────────────────────────────────
+step "6/8  Create distribution zip"
 
 rm -f "$DIST_ZIP"
 pushd "$OUTPUT_DIR" > /dev/null
@@ -196,8 +217,8 @@ popd > /dev/null
 ZIP_SIZE="$(du -sh "$DIST_ZIP" | cut -f1)"
 echo "  $DIST_ZIP  ($ZIP_SIZE)"
 
-# ── Step 6: Create DMG ────────────────────────────────────────────────────────
-step "6/7  Create distribution DMG"
+# ── Step 7: Create DMG ────────────────────────────────────────────────────────
+step "7/8  Create distribution DMG"
 
 DMG_STAGING="$BUILD_ROOT/dmg-staging"
 rm -rf "$DMG_STAGING"
@@ -217,8 +238,8 @@ rm -rf "$DMG_STAGING"
 DMG_SIZE="$(du -sh "$DIST_DMG" | cut -f1)"
 echo "  $DIST_DMG  ($DMG_SIZE)"
 
-# ── Step 7: Smoke test ────────────────────────────────────────────────────────
-step "7/7  Smoke test"
+# ── Step 8: Smoke test ────────────────────────────────────────────────────────
+step "8/8  Smoke test"
 
 if [[ $SKIP_TEST -eq 1 ]]; then
     echo "  (skipped via --skip-test)"
