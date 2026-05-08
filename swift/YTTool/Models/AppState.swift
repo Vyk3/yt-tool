@@ -880,7 +880,7 @@ final class AppState: ObservableObject {
         let transcodeFlags = audioTranscodeFormat?.ytDlpAudioFormat.map { " -x --audio-format \($0)" } ?? ""
         let extraFlags = extraArguments.isEmpty ? "" : " " + extraArguments.joined(separator: " ")
         let target = title ?? "playlist items"
-        return "yt-dlp -f \(format)\(playlistFlag)\(subtitleFlags)\(cookiesFlags)\(transcodeFlags)\(extraFlags) -o \"\(outputDir.lastPathComponent)/%(title)s.%(ext)s\" …  # \(target)"
+        return "yt-dlp -f \(format)\(playlistFlag)\(subtitleFlags)\(cookiesFlags)\(transcodeFlags)\(extraFlags) -o \"\(outputDir.lastPathComponent)/%(title)s [%(resolution)s].%(ext)s\" …  # \(target)"
     }
 
     private func formatDiskBytes(_ bytes: Int64) -> String {
