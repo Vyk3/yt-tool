@@ -99,6 +99,19 @@ install_ytdlp() {
       return 1
     fi
 
+    if [[ -n "${YTDLP_SHA256:-}" ]]; then
+      local actual_sha
+      actual_sha="$(shasum -a 256 "$tmp" | cut -d' ' -f1)"
+      if [[ "$actual_sha" != "$YTDLP_SHA256" ]]; then
+        rm -f "$tmp"
+        echo "ERROR: yt-dlp SHA256 mismatch" >&2
+        echo "  expected: $YTDLP_SHA256" >&2
+        echo "  actual:   $actual_sha" >&2
+        return 1
+      fi
+      echo "  SHA256 verified: $actual_sha"
+    fi
+
     mv "$tmp" "$zipapp_dst"
     chmod +x "$zipapp_dst"
   fi

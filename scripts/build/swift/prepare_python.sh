@@ -42,9 +42,14 @@ case "$ARCH" in
         PYTHON_URL="$PYTHON_AARCH64_URL"
         PYTHON_SHA256="$PYTHON_AARCH64_SHA256"
         ;;
+    x86_64)
+        echo "ERROR: No pinned Python runtime for x86_64." >&2
+        echo "Release builds currently require Apple Silicon (aarch64)." >&2
+        echo "To add x86_64 support, pin PYTHON_X86_64_URL and PYTHON_X86_64_SHA256 in pinned_versions.sh." >&2
+        exit 2
+        ;;
     *)
         echo "ERROR: No pinned Python runtime for architecture: $ARCH" >&2
-        echo "Only aarch64 (Apple Silicon) is currently supported." >&2
         exit 2
         ;;
 esac

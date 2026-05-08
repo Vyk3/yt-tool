@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # Smoke-test a built YTTool.app bundle.
 #
-# Usage: scripts/build/swift/smoke_test.sh /path/to/YTTool.app
+# Usage: scripts/build/swift/smoke_test.sh [--release] /path/to/YTTool.app
 #
 # Checks:
 #   1. Bundle exists and is a directory
@@ -15,6 +15,11 @@
 
 set -euo pipefail
 
+RELEASE_MODE=0
+if [[ "${1:-}" == "--release" ]]; then
+    RELEASE_MODE=1
+    shift
+fi
 APP="${1:-}"
 PASS=0
 FAIL=0
@@ -64,11 +69,7 @@ fi
 
 # 4. yt-dlp wrapper and zipapp
 check_file_exec "$BINARIES/yt-dlp" "Vendored binary: Binaries/yt-dlp (wrapper)"
-if [[ -f "$BINARIES/yt-dlp-zipapp" ]]; then
-    _ok "Vendored binary: Binaries/yt-dlp-zipapp"
-else
-    _fail "Vendored binary: Binaries/yt-dlp-zipapp — missing"
-fi
+check_file_exec "$BINARIES/yt-dlp-zipapp" "Vendored binary: Binaries/yt-dlp-zipapp"
 
 # 5. ffmpeg and ffprobe
 for bin in ffmpeg ffprobe; do
@@ -90,7 +91,11 @@ if [[ -d "$PYTHON_DIR" ]]; then
         _fail "Embedded Python runtime — python3.12 missing or not executable"
     fi
 else
-    echo "  [SKIP] Embedded Python runtime not present (dev build)"
+    if [[ $RELEASE_MODE -eq 1 ]]; then
+        _fail "Embedded Python runtime — required for release but missing"
+    else
+        echo "  [SKIP] Embedded Python runtime not present (dev build)"
+    fi
 fi
 
 # 7. yt-dlp --version via wrapper

@@ -196,11 +196,14 @@ for bin_path in "$BINARIES_IN_APP"/*; do
 done
 
 if [[ -d "$PYTHON_IN_APP" ]]; then
-    echo "  Signing embedded Python runtime..."
-    PYTHON_BIN="$PYTHON_IN_APP/bin/python3.12"
-    PYTHON_LIB="$PYTHON_IN_APP/lib/libpython3.12.dylib"
-    [[ -f "$PYTHON_LIB" ]] && codesign --force --sign - "$PYTHON_LIB" && echo "    libpython3.12.dylib: signed"
-    [[ -f "$PYTHON_BIN" ]] && codesign --force --sign - "$PYTHON_BIN" && echo "    python3.12: signed"
+    echo "  Signing embedded Python runtime (all Mach-O files)..."
+    PYTHON_SIGNED=0
+    while IFS= read -r macho_file; do
+        codesign --force --sign - "$macho_file"
+        echo "    $(echo "$macho_file" | sed "s|$PYTHON_IN_APP/||"): signed"
+        (( PYTHON_SIGNED+=1 ))
+    done < <(find "$PYTHON_IN_APP" -type f -exec file {} + | grep -i 'mach-o' | cut -d: -f1)
+    echo "  Python runtime: $PYTHON_SIGNED Mach-O files signed"
 fi
 
 echo "  Signing app bundle..."
@@ -244,7 +247,9 @@ step "8/8  Smoke test"
 if [[ $SKIP_TEST -eq 1 ]]; then
     echo "  (skipped via --skip-test)"
 else
-    "$SCRIPT_DIR/smoke_test.sh" "$DIST_APP"
+    SMOKE_ARGS=("$DIST_APP")
+    [[ "$MODE" == "release" ]] && SMOKE_ARGS=("--release" "$DIST_APP")
+    "$SCRIPT_DIR/smoke_test.sh" "${SMOKE_ARGS[@]}"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
