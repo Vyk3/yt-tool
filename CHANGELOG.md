@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.2] — 2026-05-12
+
+### Changed
+- yt-dlp 运行时从 PyInstaller 独立二进制切换为 Python zipapp + 嵌入式 Python 3.12 运行时
+  - 启动时间：12.9s → 0.5s；yt-dlp 体积：35MB → 3MB
+- ffmpeg / ffprobe 升级至 8.1，切换为 arm64 原生构建（OSXExperts.NET）
+- 发布产物统一为 arm64 架构，.zip 从 97MB 降至 74MB，.dmg 从 82MB 降至 70MB
+
+### Removed
+- 移除发布产物中的 x86_64（Intel）ffmpeg / ffprobe 构建路径
+- 官方打包发布版不再提供 Intel Mac build
+
+### Notes
+- 官方打包发布版（YTTool.dmg / YTTool.zip）仅支持 Apple Silicon（M1 或更新）
+- Intel Mac 不属于当前发布产物支持范围
+
+---
+
 ## [0.1.1] — 2026-05-08
 
 ### Added
