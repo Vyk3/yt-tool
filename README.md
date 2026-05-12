@@ -1,3 +1,5 @@
+[English](README.en.md) | 简体中文
+
 # yt-tool
 
 `yt-tool` 是一个基于 `yt-dlp` 的 macOS 原生下载工具，提供 SwiftUI GUI，支持视频、音频、字幕和播放列表下载。
