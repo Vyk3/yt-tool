@@ -30,8 +30,12 @@ done
 [[ -n "$OUTPUT_DIR" ]] || { echo "ERROR: --output is required" >&2; exit 2; }
 
 if [[ "$CLEAN" -eq 0 && -x "$OUTPUT_DIR/bin/python3.12" ]]; then
-    echo "Python runtime already present: $OUTPUT_DIR"
-    exit 0
+    CACHED_VER="$(PYTHONDONTWRITEBYTECODE=1 "$OUTPUT_DIR/bin/python3.12" -c 'import sys; print(sys.version.split()[0])' 2>/dev/null || echo 'unknown')"
+    if [[ "$CACHED_VER" == "$PYTHON_VERSION" ]]; then
+        echo "Python runtime already present and matches pinned version ($CACHED_VER): $OUTPUT_DIR"
+        exit 0
+    fi
+    echo "Cached Python version ($CACHED_VER) does not match pinned version ($PYTHON_VERSION); rebuilding."
 fi
 
 echo "=== Preparing embedded Python ${PYTHON_VERSION}+${PYTHON_BUILD_TAG} ==="
