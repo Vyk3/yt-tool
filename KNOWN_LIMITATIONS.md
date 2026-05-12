@@ -4,18 +4,13 @@
 
 ---
 
-## 1. ffmpeg / ffprobe 来源仅覆盖 Intel（evermeet.cx）
+## 1. 官方打包发布版仅支持 Apple Silicon
 
 ### 现状
-`scripts/build/swift/pinned_versions.sh` 中固定的 ffmpeg / ffprobe 来源为 evermeet.cx 的 Intel 静态构建。
-Apple Silicon（arm64）原生静态构建尚未纳入 pinned 版本。
+官方打包发布版（`YTTool.dmg` / `YTTool.zip`）为 arm64-only 构建。`build.sh` 在 release 模式下强制要求 arm64 运行环境（`uname -m == arm64`），所有捆绑二进制（ffmpeg / ffprobe / Python 运行时）均为 arm64 原生构建。
 
 ### 影响
-- dev 模式通过 `dev_install_binaries.sh` 从本机 Homebrew 复制二进制，Apple Silicon 下可正常运行
-- release 模式打包的 ffmpeg / ffprobe 是 Intel 构建，在 Apple Silicon 上通过 Rosetta 2 运行，功能正常但有轻微性能差异
-
-### 后续建议
-将 ffmpeg / ffprobe 来源切换至 BtbN/FFmpeg-Builds 的 macOS arm64 构建，或改用 universal binary 来源，并更新 `pinned_versions.sh` 中的 URL 和 SHA256。
+Intel Mac 不在当前打包发布版的支持范围内。从源码构建不受此限制。
 
 ---
 
@@ -33,7 +28,7 @@ Apple Silicon（arm64）原生静态构建尚未纳入 pinned 版本。
 
 ---
 
-## 3. macOS Gatekeeper / 分发签名
+## 3. macOS Gatekeeper / 分发签名（Apple 公证未完成）
 
 ### 现状
 `scripts/build/swift/build.sh` 使用 ad-hoc 签名（`codesign --sign -`）。

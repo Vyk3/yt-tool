@@ -7,6 +7,11 @@
 - 项目代码采用 `MIT` 许可证，见 [LICENSE](LICENSE)。
 - 发布产物中捆绑的 `ffmpeg` / `ffprobe` 第三方许可证见 [LICENSE_FFMPEG.txt](LICENSE_FFMPEG.txt)。
 
+## 系统要求
+
+- **Apple Silicon（M1 或更新）**：官方打包发布版（YTTool.dmg / YTTool.zip）为 arm64-only，不支持 Intel Mac。
+- **macOS 13 Ventura 或更新版本**。
+
 ## 给普通用户
 
 从 Release 页面下载 `YTTool.dmg`，打开后将 `YTTool.app` 拖到 Applications 文件夹即可完成安装。

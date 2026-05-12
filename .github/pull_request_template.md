@@ -12,6 +12,14 @@
 - [ ] `swift test --disable-sandbox --package-path swift` 通过
 - [ ] 其他构建/测试（按需填写）:
 
+## 文档影响
+
+- [ ] 无用户可见行为变化（无需更新文档）
+- [ ] 已更新 CHANGELOG.md
+- [ ] 已更新 README.md
+- [ ] 已更新 KNOWN_LIMITATIONS.md
+- [ ] 已更新 release notes / release template / 发布说明
+
 ## 条件填写（仅在触发时）
 
 ### 强制多-agent（触发项）
