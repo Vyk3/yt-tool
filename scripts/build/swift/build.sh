@@ -85,15 +85,7 @@ if [[ "$MODE" == "release" ]]; then
         val="${(P)var}"
         [[ -n "$val" ]] || die "$var is empty. Fill in pinned_versions.sh (run compute_shas.sh)."
     done
-    # On Apple Silicon, warn (or abort) when the pinned ffmpeg source is Intel-only.
-    if [[ "$(uname -m)" == "arm64" && "$FFMPEG_URL" == *"evermeet.cx"* ]]; then
-        if ! arch -arch x86_64 /usr/bin/true 2>/dev/null; then
-            die "Rosetta 2 is not installed but the pinned ffmpeg/ffprobe are Intel-only (evermeet.cx).
-  Install Rosetta 2: softwareupdate --install-rosetta --agree-to-license
-  Or pin an arm64-native source in pinned_versions.sh."
-        fi
-        echo "  WARNING: Pinned ffmpeg/ffprobe are Intel x86_64 (evermeet.cx). Running via Rosetta 2 on Apple Silicon."
-    fi
+    [[ "$(uname -m)" == "arm64" ]] || die "Release builds are arm64-only and must run on Apple Silicon."
     # Release always passes --clean so that any stale dev binaries (e.g. from
     # dev_install_binaries.sh) are replaced by the pinned, SHA-verified versions.
     # This prevents a prior dev run from silently defeating supply-chain checks.
@@ -146,6 +138,7 @@ xcodebuild archive \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=NO \
     DEVELOPMENT_TEAM="" \
+    ARCHS=arm64 \
     > "$XCODE_LOG" 2>&1 \
     || { grep -E "^(error:|warning:|Build FAILED)" "$XCODE_LOG" | head -20 >&2
          echo "Full log: $XCODE_LOG" >&2

@@ -11,7 +11,8 @@
 #   5. ffmpeg and ffprobe are present and executable
 #   6. Embedded Python runtime (if present) is functional
 #   7. yt-dlp --version works via wrapper
-#   8. Ad-hoc codesignature is valid (codesign --verify)
+#   8. Release binaries are arm64
+#   9. Ad-hoc codesignature is valid (codesign --verify)
 
 set -euo pipefail
 
@@ -36,6 +37,18 @@ check_file_exec() {
         _fail "$label — exists but not executable"
     else
         _fail "$label — missing"
+    fi
+}
+
+check_arm64_only() {
+    local target="$1"
+    local label="$2"
+    local desc
+    desc="$(file "$target" 2>/dev/null || true)"
+    if [[ "$desc" == *"arm64"* && "$desc" != *"x86_64"* ]]; then
+        _ok "$label is arm64"
+    else
+        _fail "$label is not arm64-only: ${desc:-unreadable}"
     fi
 }
 
@@ -106,7 +119,15 @@ else
     _fail "yt-dlp --version via wrapper failed"
 fi
 
-# 8. Codesign (ad-hoc)
+# 8. Release architecture
+if [[ $RELEASE_MODE -eq 1 ]]; then
+    check_arm64_only "$EXECUTABLE" "Main executable"
+    check_arm64_only "$BINARIES/ffmpeg" "Vendored binary: Binaries/ffmpeg"
+    check_arm64_only "$BINARIES/ffprobe" "Vendored binary: Binaries/ffprobe"
+    check_arm64_only "$PYTHON_BIN" "Embedded Python runtime"
+fi
+
+# 9. Codesign (ad-hoc)
 echo ""
 echo "--- codesign --verify ---"
 if codesign --verify --deep --strict "$APP" 2>&1; then

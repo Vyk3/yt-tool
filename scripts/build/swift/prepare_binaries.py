@@ -173,7 +173,6 @@ def _prepare_ffmpeg(
         print("Downloading ffmpeg archive...")
         ffmpeg_archive = tmp_dir / "ffmpeg.zip"
         _download(ffmpeg_url, ffmpeg_archive)
-        _verify_sha256(ffmpeg_archive, ffmpeg_sha256, source_url=ffmpeg_url, label="ffmpeg")
 
         _extract_named_member(ffmpeg_archive, ["ffmpeg"], ffmpeg_bin)
         # Attempt to pull ffprobe from the same archive (some bundles ship both).
@@ -186,13 +185,14 @@ def _prepare_ffmpeg(
         print("Downloading ffprobe archive...")
         ffprobe_archive = tmp_dir / "ffprobe.zip"
         _download(ffprobe_url, ffprobe_archive)
-        _verify_sha256(ffprobe_archive, ffprobe_sha256, source_url=ffprobe_url, label="ffprobe")
         _extract_named_member(ffprobe_archive, ["ffprobe"], ffprobe_bin)
 
     if not ffmpeg_bin.exists():
         _die(f"ffmpeg archive does not contain ffmpeg: {ffmpeg_url}")
     if not ffprobe_bin.exists():
         _die(f"ffprobe archive does not contain ffprobe: {ffprobe_url}")
+    _verify_sha256(ffmpeg_bin, ffmpeg_sha256, source_url=ffmpeg_url, label="ffmpeg binary")
+    _verify_sha256(ffprobe_bin, ffprobe_sha256, source_url=ffprobe_url, label="ffprobe binary")
     _ensure_executable(ffmpeg_bin)
     _ensure_executable(ffprobe_bin)
     print(f"ffmpeg binary: {ffmpeg_bin}")
@@ -206,9 +206,9 @@ def main() -> int:
     parser.add_argument("--ytdlp-url", default="", help="Pinned yt-dlp download URL.")
     parser.add_argument("--ytdlp-sha256", default="", help="Expected SHA256 of the yt-dlp binary.")
     parser.add_argument("--ffmpeg-url", default="", help="Pinned ffmpeg archive URL.")
-    parser.add_argument("--ffmpeg-sha256", default="", help="Expected SHA256 of ffmpeg archive.")
+    parser.add_argument("--ffmpeg-sha256", default="", help="Expected SHA256 of extracted ffmpeg binary.")
     parser.add_argument("--ffprobe-url", default="", help="Pinned ffprobe archive URL.")
-    parser.add_argument("--ffprobe-sha256", default="", help="Expected SHA256 of ffprobe archive.")
+    parser.add_argument("--ffprobe-sha256", default="", help="Expected SHA256 of extracted ffprobe binary.")
     parser.add_argument(
         "--skip",
         choices=["ytdlp", "ffmpeg"],
