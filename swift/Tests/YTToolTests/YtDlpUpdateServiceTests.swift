@@ -18,7 +18,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
 
         let info = try YtDlpUpdateService.parseRelease(from: json)
         XCTAssertEqual(info.version, "2025.03.31")
-        XCTAssertEqual(info.downloadURL.absoluteString, "https://example.com/yt-dlp_macos")
+        XCTAssertEqual(info.downloadURL.absoluteString, "https://example.com/yt-dlp")
     }
 
     func testParseNightlyRelease() throws {
@@ -26,7 +26,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         {
             "tag_name": "2025.03.31.123456",
             "assets": [
-                {"name": "yt-dlp_macos", "browser_download_url": "https://example.com/nightly/yt-dlp_macos"}
+                {"name": "yt-dlp", "browser_download_url": "https://example.com/nightly/yt-dlp"}
             ]
         }
         """.data(using: .utf8)!
@@ -48,7 +48,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         XCTAssertThrowsError(try YtDlpUpdateService.parseRelease(from: json)) { error in
             let appError = error as? AppError
             XCTAssertNotNil(appError)
-            XCTAssertTrue(appError?.recoverySuggestion?.contains("No macOS binary") ?? false)
+            XCTAssertTrue(appError?.recoverySuggestion?.contains("No yt-dlp zipapp") ?? false)
         }
     }
 
@@ -132,6 +132,43 @@ final class YtDlpUpdateServiceTests: XCTestCase {
     func testUserLocalURLConstruction() {
         let url = BundledToolLocator.userLocalURL(for: .ytDlp)
         XCTAssertTrue(url.path.hasSuffix("/YTTool/Binaries/yt-dlp"))
+    }
+
+    func testUserLocalZipappURLConstruction() {
+        let url = YtDlpUpdateService.userLocalZipappURL
+        XCTAssertTrue(url.path.hasSuffix("/YTTool/Binaries/yt-dlp-zipapp"))
+    }
+
+    // MARK: - Shell escaping
+
+    func testShellEscapeSimplePath() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Applications/YTTool.app/Contents/Resources/Python/bin/python3.12")
+        XCTAssertEqual(result, "'/Applications/YTTool.app/Contents/Resources/Python/bin/python3.12'")
+    }
+
+    func testShellEscapePathWithSpaces() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/test user/Apps/YTTool.app/Contents/Resources/Python/bin/python3.12")
+        XCTAssertEqual(result, "'/Users/test user/Apps/YTTool.app/Contents/Resources/Python/bin/python3.12'")
+    }
+
+    func testShellEscapePathWithSingleQuote() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/it's me/Apps/python3.12")
+        XCTAssertEqual(result, "'/Users/it'\\''s me/Apps/python3.12'")
+    }
+
+    func testShellEscapePathWithDollarSign() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/$HOME/Apps/python3.12")
+        XCTAssertEqual(result, "'/Users/$HOME/Apps/python3.12'")
+    }
+
+    func testShellEscapePathWithBackticks() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("/Users/`whoami`/Apps/python3.12")
+        XCTAssertEqual(result, "'/Users/`whoami`/Apps/python3.12'")
+    }
+
+    func testShellEscapeEmptyPath() {
+        let result = YtDlpUpdateService.shellEscapeSingleQuoted("")
+        XCTAssertEqual(result, "''")
     }
 
     func testLocateSkipsNonExecutableUserLocal() throws {

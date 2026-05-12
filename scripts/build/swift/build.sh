@@ -72,7 +72,7 @@ read_ytdlp_version() {
 }
 
 # ── Step 1: Prepare binaries ──────────────────────────────────────────────────
-step "1/7  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
+step "1/8  Prepare binaries (mode: $MODE, channel: $CHANNEL)"
 
 source "$SCRIPT_DIR/pinned_versions.sh"
 set_ytdlp_channel_vars "$CHANNEL"
@@ -85,15 +85,7 @@ if [[ "$MODE" == "release" ]]; then
         val="${(P)var}"
         [[ -n "$val" ]] || die "$var is empty. Fill in pinned_versions.sh (run compute_shas.sh)."
     done
-    # On Apple Silicon, warn (or abort) when the pinned ffmpeg source is Intel-only.
-    if [[ "$(uname -m)" == "arm64" && "$FFMPEG_URL" == *"evermeet.cx"* ]]; then
-        if ! arch -arch x86_64 /usr/bin/true 2>/dev/null; then
-            die "Rosetta 2 is not installed but the pinned ffmpeg/ffprobe are Intel-only (evermeet.cx).
-  Install Rosetta 2: softwareupdate --install-rosetta --agree-to-license
-  Or pin an arm64-native source in pinned_versions.sh."
-        fi
-        echo "  WARNING: Pinned ffmpeg/ffprobe are Intel x86_64 (evermeet.cx). Running via Rosetta 2 on Apple Silicon."
-    fi
+    [[ "$(uname -m)" == "arm64" ]] || die "Release builds are arm64-only and must run on Apple Silicon."
     # Release always passes --clean so that any stale dev binaries (e.g. from
     # dev_install_binaries.sh) are replaced by the pinned, SHA-verified versions.
     # This prevents a prior dev run from silently defeating supply-chain checks.
@@ -105,7 +97,7 @@ if [[ "$MODE" == "release" ]]; then
         --ffprobe-url   "$FFPROBE_URL"   --ffprobe-sha256 "$FFPROBE_SHA256"
 else
     current_ytdlp="$BINARIES_SRC/yt-dlp"
-    [[ -e "$current_ytdlp" ]] || die "Binary not found: $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
+    [[ -e "$current_ytdlp" ]] || die "yt-dlp not found: $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
     current_ytdlp_version="$(read_ytdlp_version "$current_ytdlp" || true)"
     if [[ "$current_ytdlp_version" != "$YTDLP_VERSION" ]]; then
         die "dev mode yt-dlp channel mismatch: requested $CHANNEL ($YTDLP_VERSION) but found ${current_ytdlp_version:-unknown} in $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
@@ -113,8 +105,8 @@ else
     echo "dev mode: using existing binaries in $BINARIES_SRC (channel: $CHANNEL, yt-dlp version: $current_ytdlp_version)"
 fi
 
-# Verify binaries exist
-for bin in yt-dlp ffmpeg ffprobe; do
+# Verify binaries exist (yt-dlp wrapper + zipapp + ffmpeg + ffprobe)
+for bin in yt-dlp yt-dlp-zipapp ffmpeg ffprobe; do
     bin_path="$BINARIES_SRC/$bin"
     if [[ ! -e "$bin_path" ]]; then
         die "Binary not found: $bin_path\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"
@@ -127,7 +119,7 @@ for bin in yt-dlp ffmpeg ffprobe; do
 done
 
 # ── Step 2: Archive ───────────────────────────────────────────────────────────
-step "2/7  xcodebuild archive"
+step "2/8  xcodebuild archive"
 
 mkdir -p "$BUILD_ROOT" "$OUTPUT_DIR"
 rm -rf "$ARCHIVE_PATH"
@@ -146,6 +138,7 @@ xcodebuild archive \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=NO \
     DEVELOPMENT_TEAM="" \
+    ARCHS=arm64 \
     > "$XCODE_LOG" 2>&1 \
     || { grep -E "^(error:|warning:|Build FAILED)" "$XCODE_LOG" | head -20 >&2
          echo "Full log: $XCODE_LOG" >&2
@@ -161,14 +154,27 @@ echo "  DerivedData: $DERIVED_DATA_PATH"
 echo "  xcodebuild log: $XCODE_LOG"
 
 # ── Step 3: Export .app ───────────────────────────────────────────────────────
-step "3/7  Export .app"
+step "3/8  Export .app"
 
 rm -rf "$DIST_APP"
 cp -R "$APP_IN_ARCHIVE" "$DIST_APP"
 echo "  Exported: $DIST_APP"
 
-# ── Step 4: Codesign ─────────────────────────────────────────────────────────
-step "4/7  Ad-hoc codesign"
+# ── Step 4: Embed Python runtime (release only) ─────────────────────────────
+step "4/8  Embed Python runtime"
+
+PYTHON_IN_APP="$DIST_APP/Contents/Resources/Python"
+if [[ "$MODE" == "release" ]]; then
+    PYTHON_STAGING="$BUILD_ROOT/python-runtime"
+    "$SCRIPT_DIR/prepare_python.sh" --output "$PYTHON_STAGING"
+    cp -R "$PYTHON_STAGING" "$PYTHON_IN_APP"
+    echo "  Embedded: $PYTHON_IN_APP ($(du -sh "$PYTHON_IN_APP" | cut -f1))"
+else
+    echo "  (skipped in dev mode — wrapper falls back to system python3)"
+fi
+
+# ── Step 5: Codesign ─────────────────────────────────────────────────────────
+step "5/8  Ad-hoc codesign"
 
 BINARIES_IN_APP="$DIST_APP/Contents/Resources/Binaries"
 if [[ ! -d "$BINARIES_IN_APP" ]]; then
@@ -182,12 +188,23 @@ for bin_path in "$BINARIES_IN_APP"/*; do
     echo "    $(basename "$bin_path"): signed"
 done
 
+if [[ -d "$PYTHON_IN_APP" ]]; then
+    echo "  Signing embedded Python runtime (all Mach-O files)..."
+    PYTHON_SIGNED=0
+    while IFS= read -r macho_file; do
+        codesign --force --sign - "$macho_file"
+        echo "    $(echo "$macho_file" | sed "s|$PYTHON_IN_APP/||"): signed"
+        (( PYTHON_SIGNED+=1 ))
+    done < <(find "$PYTHON_IN_APP" -type f -exec file {} + | grep -i 'mach-o' | cut -d: -f1)
+    echo "  Python runtime: $PYTHON_SIGNED Mach-O files signed"
+fi
+
 echo "  Signing app bundle..."
 codesign --force --deep --sign - "$DIST_APP"
 echo "  App bundle: signed"
 
-# ── Step 5: Package ───────────────────────────────────────────────────────────
-step "5/7  Create distribution zip"
+# ── Step 6: Package ───────────────────────────────────────────────────────────
+step "6/8  Create distribution zip"
 
 rm -f "$DIST_ZIP"
 pushd "$OUTPUT_DIR" > /dev/null
@@ -196,8 +213,8 @@ popd > /dev/null
 ZIP_SIZE="$(du -sh "$DIST_ZIP" | cut -f1)"
 echo "  $DIST_ZIP  ($ZIP_SIZE)"
 
-# ── Step 6: Create DMG ────────────────────────────────────────────────────────
-step "6/7  Create distribution DMG"
+# ── Step 7: Create DMG ────────────────────────────────────────────────────────
+step "7/8  Create distribution DMG"
 
 DMG_STAGING="$BUILD_ROOT/dmg-staging"
 rm -rf "$DMG_STAGING"
@@ -217,13 +234,15 @@ rm -rf "$DMG_STAGING"
 DMG_SIZE="$(du -sh "$DIST_DMG" | cut -f1)"
 echo "  $DIST_DMG  ($DMG_SIZE)"
 
-# ── Step 7: Smoke test ────────────────────────────────────────────────────────
-step "7/7  Smoke test"
+# ── Step 8: Smoke test ────────────────────────────────────────────────────────
+step "8/8  Smoke test"
 
 if [[ $SKIP_TEST -eq 1 ]]; then
     echo "  (skipped via --skip-test)"
 else
-    "$SCRIPT_DIR/smoke_test.sh" "$DIST_APP"
+    SMOKE_ARGS=("$DIST_APP")
+    [[ "$MODE" == "release" ]] && SMOKE_ARGS=("--release" "$DIST_APP")
+    "$SCRIPT_DIR/smoke_test.sh" "${SMOKE_ARGS[@]}"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

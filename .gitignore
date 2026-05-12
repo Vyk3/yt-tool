@@ -14,6 +14,7 @@
 
 # Swift bundled binaries (dev-installed via dev_install_binaries.sh, not committed)
 /swift/YTTool/Resources/Binaries/yt-dlp
+/swift/YTTool/Resources/Binaries/yt-dlp-zipapp
 /swift/YTTool/Resources/Binaries/ffmpeg
 /swift/YTTool/Resources/Binaries/ffprobe
 

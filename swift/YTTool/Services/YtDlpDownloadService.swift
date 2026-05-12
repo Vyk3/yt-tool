@@ -68,7 +68,7 @@ struct YtDlpDownloadService {
                     )
                     let includeNoPlaylist = includeNoPlaylistOverride ?? (playlistMode == .onlyFirstItem)
                     let outputTemplate = outputDirectory
-                        .appendingPathComponent("%(title)s.%(ext)s")
+                        .appendingPathComponent("%(title)s [%(resolution)s].%(ext)s")
                         .path(percentEncoded: false)
 
                     let config = ProcessConfiguration(

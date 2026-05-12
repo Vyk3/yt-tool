@@ -375,6 +375,91 @@ final class YtDlpDownloadServiceTests: XCTestCase {
         XCTAssertTrue(commandSink.value?.contains("--playlist-items 2") == true)
     }
 
+    func testOutputTemplateIncludesResolution() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        let commandSink = ThreadSafeStringBox()
+        for try await _ in service.download(
+            url: "https://example.com/watch?v=123",
+            videoFormatId: "137",
+            audioFormatId: "140",
+            outputDirectory: outputDirectory,
+            onLog: { kind, message in
+                if kind == .command { commandSink.value = message }
+            }
+        ) {}
+
+        let command = try XCTUnwrap(commandSink.value)
+        XCTAssertTrue(command.contains("%(title)s [%(resolution)s].%(ext)s"), "Output template must include %(resolution)s for format differentiation")
+    }
+
+    func testCompletedEventParsesFilepathWithBracketsAndSpaces() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("Test Video [1080p].mp4")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        var completedURL: URL?
+        for try await event in service.download(
+            url: "https://example.com/watch?v=123",
+            videoFormatId: "137",
+            audioFormatId: "140",
+            outputDirectory: outputDirectory,
+            onLog: { _, _ in }
+        ) {
+            if case let .completed(result) = event {
+                completedURL = result.outputURL
+            }
+        }
+
+        let url = try XCTUnwrap(completedURL)
+        XCTAssertEqual(url.lastPathComponent, "Test Video [1080p].mp4")
+    }
+
+    func testCompletedEventParsesAudioOnlyFilepath() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("Test Video [audio only].webm")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+
+        var completedURL: URL?
+        for try await event in service.download(
+            url: "https://example.com/watch?v=123",
+            videoFormatId: nil,
+            audioFormatId: "251",
+            outputDirectory: outputDirectory,
+            onLog: { _, _ in }
+        ) {
+            if case let .completed(result) = event {
+                completedURL = result.outputURL
+            }
+        }
+
+        let url = try XCTUnwrap(completedURL)
+        XCTAssertEqual(url.lastPathComponent, "Test Video [audio only].webm")
+    }
+
     private func makeDownloadScript(resultFile: URL) throws -> URL {
         let contents = """
         #!/bin/sh

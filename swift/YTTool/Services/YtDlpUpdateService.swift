@@ -6,7 +6,14 @@ struct YtDlpReleaseInfo: Equatable {
 }
 
 struct YtDlpUpdateService {
-    private static let macOSAssetName = "yt-dlp_macos"
+    /// GitHub release asset name for the cross-platform Python zipapp.
+    private static let zipappAssetName = "yt-dlp"
+
+    /// User-local path for the yt-dlp zipapp (the actual Python archive).
+    static var userLocalZipappURL: URL {
+        BundledToolLocator.userLocalBinariesDirectory
+            .appendingPathComponent("yt-dlp-zipapp", isDirectory: false)
+    }
 
     private var userAgent: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
@@ -52,10 +59,10 @@ struct YtDlpUpdateService {
 
     static func parseRelease(from data: Data) throws -> YtDlpReleaseInfo {
         let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
-        guard let asset = release.assets.first(where: { $0.name == macOSAssetName }) else {
+        guard let asset = release.assets.first(where: { $0.name == zipappAssetName }) else {
             throw AppError(
                 message: "Update check failed.",
-                recoverySuggestion: "No macOS binary found in release \(release.tagName)."
+                recoverySuggestion: "No yt-dlp zipapp found in release \(release.tagName)."
             )
         }
         guard let downloadURL = URL(string: asset.browserDownloadURL) else {
@@ -84,50 +91,63 @@ struct YtDlpUpdateService {
         await clearQuarantine(at: tempURL)
         try await codesign(binaryAt: tempURL)
 
-        let newVersion = try await verifyBinary(at: tempURL)
+        // Verify the zipapp works before placing it.
+        let newVersion = try await verifyZipapp(at: tempURL)
 
         let destinationDir = BundledToolLocator.userLocalBinariesDirectory
         try FileManager.default.createDirectory(at: destinationDir, withIntermediateDirectories: true)
 
-        let destinationURL = BundledToolLocator.userLocalURL(for: .ytDlp)
-        let backupURL = destinationURL.appendingPathExtension("backup")
+        let wrapperURL = BundledToolLocator.userLocalURL(for: .ytDlp)
+        let zipappURL = Self.userLocalZipappURL
+        let wrapperBackup = wrapperURL.appendingPathExtension("backup")
+        let zipappBackup = zipappURL.appendingPathExtension("backup")
 
-        var didBackup = false
-        if FileManager.default.fileExists(atPath: destinationURL.path) {
-            try? FileManager.default.removeItem(at: backupURL)
-            try FileManager.default.moveItem(at: destinationURL, to: backupURL)
-            didBackup = true
-        }
-
+        // Backup + install inside a single do/catch so any failure
+        // (including backup failures) triggers a full restore.
+        var didBackupWrapper = false
+        var didBackupZipapp = false
         do {
-            try FileManager.default.moveItem(at: tempURL, to: destinationURL)
+            if FileManager.default.fileExists(atPath: wrapperURL.path) {
+                try? FileManager.default.removeItem(at: wrapperBackup)
+                try FileManager.default.moveItem(at: wrapperURL, to: wrapperBackup)
+                didBackupWrapper = true
+            }
+            if FileManager.default.fileExists(atPath: zipappURL.path) {
+                try? FileManager.default.removeItem(at: zipappBackup)
+                try FileManager.default.moveItem(at: zipappURL, to: zipappBackup)
+                didBackupZipapp = true
+            }
+            try FileManager.default.moveItem(at: tempURL, to: zipappURL)
+            try writeWrapper(at: wrapperURL)
         } catch {
-            if didBackup {
-                do {
-                    try FileManager.default.moveItem(at: backupURL, to: destinationURL)
-                } catch let restoreError {
-                    throw AppError(
-                        message: "Failed to install update and could not restore previous version.",
-                        recoverySuggestion: "Install: \(error.localizedDescription) Restore: \(restoreError.localizedDescription)"
-                    )
-                }
+            // Restore on failure (best-effort, swallowed errors logged).
+            try? FileManager.default.removeItem(at: zipappURL)
+            try? FileManager.default.removeItem(at: wrapperURL)
+            if didBackupZipapp {
+                try? FileManager.default.moveItem(at: zipappBackup, to: zipappURL)
+            }
+            if didBackupWrapper {
+                try? FileManager.default.moveItem(at: wrapperBackup, to: wrapperURL)
             }
             throw AppError(message: "Failed to install update.", recoverySuggestion: error.localizedDescription)
         }
 
-        try? FileManager.default.removeItem(at: backupURL)
+        try? FileManager.default.removeItem(at: wrapperBackup)
+        try? FileManager.default.removeItem(at: zipappBackup)
         return newVersion
     }
 
     // MARK: - Self-heal
 
     func validateUserLocalBinary() async -> Bool {
-        let url = BundledToolLocator.userLocalURL(for: .ytDlp)
-        guard FileManager.default.fileExists(atPath: url.path) else { return true }
-        guard FileManager.default.isExecutableFile(atPath: url.path) else { return false }
+        let wrapperURL = BundledToolLocator.userLocalURL(for: .ytDlp)
+        let zipappURL = Self.userLocalZipappURL
+        guard FileManager.default.fileExists(atPath: wrapperURL.path) else { return true }
+        guard FileManager.default.isExecutableFile(atPath: wrapperURL.path) else { return false }
+        guard FileManager.default.fileExists(atPath: zipappURL.path) else { return false }
 
         let runner = ProcessRunner()
-        let config = ProcessConfiguration(executableURL: url, arguments: ["--version"])
+        let config = ProcessConfiguration(executableURL: wrapperURL, arguments: ["--version"])
         guard let result = try? await runner.run(config),
               result.exitCode == 0,
               !result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -183,18 +203,68 @@ struct YtDlpUpdateService {
         }
     }
 
-    private func verifyBinary(at url: URL) async throws -> String {
+    /// Resolve the best available Python interpreter, matching wrapper logic:
+    /// prefer the app bundle's embedded Python, fall back to system python3.
+    private func resolvePython() -> URL {
+        if let bundlePython = Bundle.main.resourceURL?
+            .appendingPathComponent("Python/bin/python3.12"),
+           FileManager.default.isExecutableFile(atPath: bundlePython.path)
+        {
+            return bundlePython
+        }
+        return URL(fileURLWithPath: "/usr/bin/python3")
+    }
+
+    /// Verify a downloaded zipapp by running it with the best available Python.
+    private func verifyZipapp(at url: URL) async throws -> String {
+        let python = resolvePython()
         let runner = ProcessRunner()
-        let config = ProcessConfiguration(executableURL: url, arguments: ["--version"])
+        let config = ProcessConfiguration(
+            executableURL: python,
+            arguments: [url.path, "--version"]
+        )
         let result = try await runner.run(config)
         let version = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         guard result.exitCode == 0, !version.isEmpty else {
             throw AppError(
-                message: "Binary verification failed.",
-                recoverySuggestion: "The downloaded yt-dlp binary did not produce a valid version output."
+                message: "Zipapp verification failed.",
+                recoverySuggestion: "The downloaded yt-dlp zipapp did not produce a valid version output. Ensure python3 is available."
             )
         }
         return version
+    }
+
+    /// Escape a path for safe embedding in a POSIX single-quoted string.
+    /// The only character that needs escaping in single quotes is `'` itself,
+    /// which is handled by ending the quote, inserting an escaped `'`, and reopening.
+    static func shellEscapeSingleQuoted(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    /// Write a wrapper shell script that invokes the zipapp via the best available Python.
+    private func writeWrapper(at wrapperURL: URL) throws {
+        let pythonInBundle = Bundle.main.resourceURL?
+            .appendingPathComponent("Python/bin/python3.12").path ?? ""
+
+        // Use single-quote escaping to prevent shell interpretation of the embedded path.
+        let escapedPython = Self.shellEscapeSingleQuoted(pythonInBundle)
+
+        let script = """
+        #!/bin/sh
+        DIR="$(cd "$(dirname "$0")" && pwd)"
+        export PYTHONDONTWRITEBYTECODE=1
+        PYTHON=\(escapedPython)
+        if [ -x "$PYTHON" ]; then
+            exec "$PYTHON" "$DIR/yt-dlp-zipapp" "$@"
+        else
+            exec python3 "$DIR/yt-dlp-zipapp" "$@"
+        fi
+        """
+        try script.write(to: wrapperURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: wrapperURL.path
+        )
     }
 }
 

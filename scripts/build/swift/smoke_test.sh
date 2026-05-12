@@ -1,17 +1,26 @@
 #!/usr/bin/env zsh
 # Smoke-test a built YTTool.app bundle.
 #
-# Usage: scripts/build/swift/smoke_test.sh /path/to/YTTool.app
+# Usage: scripts/build/swift/smoke_test.sh [--release] /path/to/YTTool.app
 #
 # Checks:
 #   1. Bundle exists and is a directory
 #   2. Executable is present
 #   3. Info.plist is present
-#   4. All three required binaries are present and executable
-#   5. Ad-hoc codesignature is valid (codesign --verify)
+#   4. yt-dlp wrapper and zipapp are present and executable
+#   5. ffmpeg and ffprobe are present and executable
+#   6. Embedded Python runtime (if present) is functional
+#   7. yt-dlp --version works via wrapper
+#   8. Release binaries are arm64
+#   9. Ad-hoc codesignature is valid (codesign --verify)
 
 set -euo pipefail
 
+RELEASE_MODE=0
+if [[ "${1:-}" == "--release" ]]; then
+    RELEASE_MODE=1
+    shift
+fi
 APP="${1:-}"
 PASS=0
 FAIL=0
@@ -28,6 +37,18 @@ check_file_exec() {
         _fail "$label — exists but not executable"
     else
         _fail "$label — missing"
+    fi
+}
+
+check_arm64_only() {
+    local target="$1"
+    local label="$2"
+    local desc
+    desc="$(file "$target" 2>/dev/null || true)"
+    if [[ "$desc" == *"arm64"* && "$desc" != *"x86_64"* ]]; then
+        _ok "$label is arm64"
+    else
+        _fail "$label is not arm64-only: ${desc:-unreadable}"
     fi
 }
 
@@ -59,12 +80,54 @@ else
     _fail "Info.plist missing"
 fi
 
-# 4. Vendored binaries
-for bin in yt-dlp ffmpeg ffprobe; do
+# 4. yt-dlp wrapper and zipapp
+check_file_exec "$BINARIES/yt-dlp" "Vendored binary: Binaries/yt-dlp (wrapper)"
+check_file_exec "$BINARIES/yt-dlp-zipapp" "Vendored binary: Binaries/yt-dlp-zipapp"
+
+# 5. ffmpeg and ffprobe
+for bin in ffmpeg ffprobe; do
     check_file_exec "$BINARIES/$bin" "Vendored binary: Binaries/$bin"
 done
 
-# 5. Codesign (ad-hoc)
+# 6. Embedded Python runtime (optional for dev builds)
+PYTHON_DIR="$RESOURCES/Python"
+PYTHON_BIN="$PYTHON_DIR/bin/python3.12"
+if [[ -d "$PYTHON_DIR" ]]; then
+    if [[ -x "$PYTHON_BIN" ]]; then
+        PYVER="$(PYTHONDONTWRITEBYTECODE=1 "$PYTHON_BIN" -c 'import sys; print(sys.version.split()[0])' 2>/dev/null || echo 'ERROR')"
+        if [[ "$PYVER" != "ERROR" ]]; then
+            _ok "Embedded Python runtime: $PYVER"
+        else
+            _fail "Embedded Python runtime — python3.12 present but broken"
+        fi
+    else
+        _fail "Embedded Python runtime — python3.12 missing or not executable"
+    fi
+else
+    if [[ $RELEASE_MODE -eq 1 ]]; then
+        _fail "Embedded Python runtime — required for release but missing"
+    else
+        echo "  [SKIP] Embedded Python runtime not present (dev build)"
+    fi
+fi
+
+# 7. yt-dlp --version via wrapper
+YTDLP_VER="$("$BINARIES/yt-dlp" --version 2>/dev/null || echo 'ERROR')"
+if [[ "$YTDLP_VER" != "ERROR" && -n "$YTDLP_VER" ]]; then
+    _ok "yt-dlp --version via wrapper: $YTDLP_VER"
+else
+    _fail "yt-dlp --version via wrapper failed"
+fi
+
+# 8. Release architecture
+if [[ $RELEASE_MODE -eq 1 ]]; then
+    check_arm64_only "$EXECUTABLE" "Main executable"
+    check_arm64_only "$BINARIES/ffmpeg" "Vendored binary: Binaries/ffmpeg"
+    check_arm64_only "$BINARIES/ffprobe" "Vendored binary: Binaries/ffprobe"
+    check_arm64_only "$PYTHON_BIN" "Embedded Python runtime"
+fi
+
+# 9. Codesign (ad-hoc)
 echo ""
 echo "--- codesign --verify ---"
 if codesign --verify --deep --strict "$APP" 2>&1; then
