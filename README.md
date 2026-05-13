@@ -29,7 +29,7 @@
 
 ## 给开发者
 
-详细说明见 [`swift/README.md`](swift/README.md)。
+详细说明见 [`swift/DEVLOG.md`](swift/DEVLOG.md)。
 
 ### 快速上手
 
@@ -61,6 +61,6 @@ bash scripts/build/swift/build.sh --release
 
 ## 相关文档
 
-- Swift 端完整说明：[`swift/README.md`](swift/README.md)
+- Swift 端开发日志：[`swift/DEVLOG.md`](swift/DEVLOG.md)
 - 变更记录：[CHANGELOG.md](CHANGELOG.md)
-- 已知限制：[KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)
+- 已知限制：[KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md)

@@ -18,8 +18,8 @@
 /swift/YTTool/Resources/Binaries/ffmpeg
 /swift/YTTool/Resources/Binaries/ffprobe
 
-# Dependencies
-/node_modules/
+# Swift build output
+/swift/dist/
 
 # Environment
 /.env
