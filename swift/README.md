@@ -6,8 +6,6 @@
 - [URL Support Policy](docs/url-support-policy.md)
 
 相关决策：
-- `P0` 决策文档见 [docs/p0-capability-ceiling.md](docs/p0-capability-ceiling.md)
-- `P1` 设计文档见 [docs/p1-canary-channel.md](docs/p1-canary-channel.md)
 - `P2` 决策文档见 [docs/p2-youtube-specialization.md](docs/p2-youtube-specialization.md)
 
 当前状态：
