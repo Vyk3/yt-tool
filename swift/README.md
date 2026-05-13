@@ -5,9 +5,6 @@
 相关文档：
 - [URL Support Policy](docs/url-support-policy.md)
 
-相关决策：
-- `P2` 决策文档见 [docs/p2-youtube-specialization.md](docs/p2-youtube-specialization.md)
-
 当前状态：
 - `M0` 可行性验证已完成：bundle 内二进制定位、进程执行、stdout/stderr、退出码、取消链路均已落地
 - `M1` probe flow 已完成：真实 URL 可返回格式，错误映射与 parser 单测已补齐

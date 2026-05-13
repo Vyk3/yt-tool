@@ -24,6 +24,7 @@
   - `Unsupported URL`
   - 解析失败 / 无媒体格式
 - 在不读取用户浏览器会话的前提下，支持低隐私风险的 impersonation
+- 支持用户手动指定 Cookies 文件路径（Advanced Options → Cookies file path），不自动读取浏览器会话
 
 ## Site-Specific Investments
 
@@ -43,7 +44,7 @@
 
 以下方案不应作为 `yt-tool` 默认产品路线：
 
-- 自动读取浏览器 Cookie
+- 自动读取浏览器 Cookie 或会话（手动文件路径已支持，见 Default Capabilities）
 - 默认依赖用户登录态
 - 浏览器自动化抓取真实媒体地址
 - 代理 / 出口绕行 / 网络规避
@@ -68,7 +69,7 @@
 2. 支持并验证低风险 impersonation
 3. 完善错误分类与用户提示
 4. 仅对高价值站点考虑专用 extractor
-5. 不将 Cookie、浏览器自动化或 DRM 处理纳入默认支持范围
+5. 不将自动 Cookie 读取、浏览器自动化或 DRM 处理纳入默认支持范围
 
 ## One-Line Rule
 
