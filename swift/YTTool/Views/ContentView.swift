@@ -68,6 +68,7 @@ struct ContentView: View {
                 selectedAudio: $state.selectedAudioFormat,
                 selectedSubtitle: $state.selectedSubtitle
             )
+            estimatedSizeSummary
             DownloadProgressView(
                 downloadState: state.downloadState,
                 canDownload: state.canDownload,
@@ -79,6 +80,32 @@ struct ContentView: View {
             )
             .padding(.top, 4)
         }
+    }
+
+    @ViewBuilder
+    private var estimatedSizeSummary: some View {
+        let total = state.estimatedDownloadSizeBytes(
+            video: state.selectedVideoFormat,
+            audio: state.selectedAudioFormat
+        )
+        if let total {
+            let parts = [
+                state.selectedVideoFormat?.fileSizeBytes.map { "video \(formatBytes($0))" },
+                state.selectedAudioFormat?.fileSizeBytes.map { "audio \(formatBytes($0))" },
+            ].compactMap { $0 }
+            let detail = parts.count > 1 ? "  (\(parts.joined(separator: " + ")))" : ""
+            Text("Estimated: \(formatBytes(total))\(detail)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let gb = Double(bytes) / 1_073_741_824
+        if gb >= 1 { return String(format: "%.1f GB", gb) }
+        let mb = Double(bytes) / 1_048_576
+        if mb >= 1 { return String(format: "%.1f MB", mb) }
+        return String(format: "%.0f KB", mb * 1024)
     }
 
     private var queueModeContent: some View {
