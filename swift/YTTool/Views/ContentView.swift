@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var state: AppState
+    @State private var showingHistory = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -36,6 +37,9 @@ struct ContentView: View {
         }
         .padding(24)
         .onAppear { state.requestNotificationPermission() }
+        .sheet(isPresented: $showingHistory) {
+            HistoryView(store: state.historyStore)
+        }
     }
 
     private var singleModeContent: some View {
@@ -165,14 +169,24 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("YTTool")
-                .font(.largeTitle.weight(.semibold))
-            Text(state.appMode == .single
-                ? "Enter a video URL and press Probe to inspect available formats."
-                : "Paste URLs (one per line) and add them to the download queue.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("YTTool")
+                    .font(.largeTitle.weight(.semibold))
+                Text(state.appMode == .single
+                    ? "Enter a video URL and press Probe to inspect available formats."
+                    : "Paste URLs (one per line) and add them to the download queue.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                showingHistory = true
+            } label: {
+                Label("History", systemImage: "clock.arrow.circlepath")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
         }
     }
 

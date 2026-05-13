@@ -89,6 +89,7 @@ final class AppState: ObservableObject {
     @Published var appMode: AppMode = .single
     @Published var queueInputURLs: String = ""
     let downloadQueue = DownloadQueue()
+    let historyStore = DownloadHistoryStore()
 
     // MARK: - Update
 
@@ -330,6 +331,12 @@ final class AppState: ObservableObject {
             appendLog(scope: .download, level: .error, message: joinedErrorMessage(mapped))
             return
         }
+        let capturedTitle = info?.title
+        // nil for whole-playlist downloads by design (estimatedDownloadSizeBytes returns nil when isWholePlaylistDownload).
+        let capturedEstimatedBytes = estimatedDownloadSizeBytes(
+            video: selectedVideoFormat,
+            audio: selectedAudioFormat
+        )
         let effectiveTranscode = effectiveAudioTranscodeFormat(
             videoId: videoId,
             playlistMode: playlistMode,
@@ -418,6 +425,12 @@ final class AppState: ObservableObject {
                         downloadState = .succeeded(outputURL: outputDir)
                         appendLog(scope: .download, level: .success, message: "Completed playlist per-item downloads")
                         self.sendCompletionNotification(outputURL: outputDir)
+                        self.historyStore.append(DownloadHistoryEntry(
+                            id: UUID(), url: url, title: capturedTitle,
+                            outputPath: outputDir.path(percentEncoded: false),
+                            dateCompleted: Date(), succeeded: true,
+                            estimatedSizeBytes: capturedEstimatedBytes
+                        ))
                     }
                 } else {
                     for try await event in service.download(
@@ -452,6 +465,12 @@ final class AppState: ObservableObject {
                                     message: "Completed: \(result.outputURL.path(percentEncoded: false))"
                                 )
                                 self.sendCompletionNotification(outputURL: result.outputURL)
+                                self.historyStore.append(DownloadHistoryEntry(
+                                    id: UUID(), url: url, title: capturedTitle,
+                                    outputPath: result.outputURL.path(percentEncoded: false),
+                                    dateCompleted: Date(), succeeded: true,
+                                    estimatedSizeBytes: capturedEstimatedBytes
+                                ))
                             }
                         }
                     }
@@ -470,6 +489,11 @@ final class AppState: ObservableObject {
                     let mappedError = mapDownloadError(error)
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
+                    self.historyStore.append(DownloadHistoryEntry(
+                        id: UUID(), url: url, title: capturedTitle,
+                        outputPath: nil, dateCompleted: Date(), succeeded: false,
+                        estimatedSizeBytes: capturedEstimatedBytes
+                    ))
                 }
             } catch {
                 await MainActor.run {
@@ -481,6 +505,11 @@ final class AppState: ObservableObject {
                     ))
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
+                    self.historyStore.append(DownloadHistoryEntry(
+                        id: UUID(), url: url, title: capturedTitle,
+                        outputPath: nil, dateCompleted: Date(), succeeded: false,
+                        estimatedSizeBytes: capturedEstimatedBytes
+                    ))
                 }
             }
         }
