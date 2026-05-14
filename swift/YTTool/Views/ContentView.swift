@@ -187,10 +187,9 @@ struct ContentView: View {
             switch result {
             case let .success(urls):
                 if let url = urls.first {
-                    if url.startAccessingSecurityScopedResource() {
-                        defer { url.stopAccessingSecurityScopedResource() }
-                        state.importURLsFromFile(at: url)
-                    }
+                    let accessed = url.startAccessingSecurityScopedResource()
+                    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                    state.importURLsFromFile(at: url)
                 }
             case let .failure(error):
                 state.appendLog(
