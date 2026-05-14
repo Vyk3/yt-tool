@@ -574,10 +574,16 @@ final class AppState: ObservableObject {
                 .filter { !$0.isEmpty }
         )
 
-        let incoming = newText
+        let allLines = newText
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+
+        let incoming = allLines.filter { line in
+            let lower = line.lowercased()
+            return lower.hasPrefix("http://") || lower.hasPrefix("https://")
+        }
+        let filteredCount = allLines.count - incoming.count
 
         var seen = existingLines
         var unique: [String] = []
@@ -595,7 +601,8 @@ final class AppState: ObservableObject {
 
         return URLImportResult(
             importedCount: unique.count,
-            skippedCount: incoming.count - unique.count
+            skippedCount: incoming.count - unique.count,
+            filteredCount: filteredCount
         )
     }
 
@@ -605,10 +612,8 @@ final class AppState: ObservableObject {
             return
         }
         let result = importURLs(from: content)
-        appendLog(
-            scope: .download, level: .info,
-            message: "Imported \(result.importedCount) URL(s) from file, skipped \(result.skippedCount) duplicate(s)"
-        )
+        let level: AppLogLevel = result.importedCount == 0 ? .warning : .info
+        appendLog(scope: .download, level: level, message: importLogMessage("file", result))
     }
 
     func importURLsFromClipboard(content: String?) {
@@ -617,10 +622,15 @@ final class AppState: ObservableObject {
             return
         }
         let result = importURLs(from: content)
-        appendLog(
-            scope: .download, level: .info,
-            message: "Pasted \(result.importedCount) URL(s) from clipboard, skipped \(result.skippedCount) duplicate(s)"
-        )
+        let level: AppLogLevel = result.importedCount == 0 ? .warning : .info
+        appendLog(scope: .download, level: level, message: importLogMessage("clipboard", result))
+    }
+
+    private func importLogMessage(_ source: String, _ result: URLImportResult) -> String {
+        var parts = ["Imported \(result.importedCount) URL(s) from \(source)"]
+        if result.skippedCount > 0 { parts.append("skipped \(result.skippedCount) duplicate(s)") }
+        if result.filteredCount > 0 { parts.append("filtered \(result.filteredCount) non-URL line(s)") }
+        return parts.joined(separator: ", ")
     }
 
     func startQueue() {
@@ -1072,6 +1082,7 @@ final class AppState: ObservableObject {
     struct URLImportResult {
         let importedCount: Int
         let skippedCount: Int
+        let filteredCount: Int
     }
 
     struct PerItemFormatSelection {

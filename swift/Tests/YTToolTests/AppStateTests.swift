@@ -436,6 +436,40 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(lines, ["https://a.com", "https://b.com"])
     }
 
+    func testImportURLsFiltersNonURLLines() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "My Favorite Videos\nhttps://a.com\nsome random text\nhttps://b.com")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.filteredCount, 2)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsAcceptsHTTPWithoutS() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "http://legacy.example.com\nhttps://modern.example.com")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.filteredCount, 0)
+    }
+
+    func testImportURLsFiltersCaseInsensitive() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "HTTPS://A.COM\nHttp://B.COM")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.filteredCount, 0)
+    }
+
+    func testImportURLsAllNonURLContent() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "just some text\nanother line\n123")
+        XCTAssertEqual(result.importedCount, 0)
+        XCTAssertEqual(result.filteredCount, 3)
+        XCTAssertEqual(state.queueInputURLs, "")
+    }
+
     private func freshDefaults() -> UserDefaults {
         let suiteName = "YTToolTests.\(#function).\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
