@@ -532,10 +532,7 @@ final class AppState: ObservableObject {
             return
         }
 
-        let urls = queueInputURLs
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let urls = parseLines(queueInputURLs)
 
         guard !urls.isEmpty else { return }
 
@@ -567,17 +564,8 @@ final class AppState: ObservableObject {
 
     @discardableResult
     func importURLs(from newText: String) -> URLImportResult {
-        let existingLines = Set(
-            queueInputURLs
-                .components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-        )
-
-        let allLines = newText
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let existingLines = Set(parseLines(queueInputURLs))
+        let allLines = parseLines(newText)
 
         let incoming = allLines.filter { line in
             let lower = line.lowercased()
@@ -624,6 +612,12 @@ final class AppState: ObservableObject {
         let result = importURLs(from: content)
         let level: AppLogLevel = result.importedCount == 0 ? .warning : .info
         appendLog(scope: .download, level: level, message: importLogMessage("clipboard", result))
+    }
+
+    private func parseLines(_ text: String) -> [String] {
+        text.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     private func importLogMessage(_ source: String, _ result: URLImportResult) -> String {
