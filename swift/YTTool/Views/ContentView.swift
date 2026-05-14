@@ -1,8 +1,11 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @ObservedObject var state: AppState
     @State private var showingHistory = false
+    @State private var showingFileImporter = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -159,11 +162,49 @@ struct ContentView: View {
 
                 Spacer()
 
+                Button {
+                    showingFileImporter = true
+                } label: {
+                    Label("Import", systemImage: "doc.text")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+
+                Button {
+                    state.importURLsFromClipboard(
+                        content: NSPasteboard.general.string(forType: .string)
+                    )
+                } label: {
+                    Label("Paste", systemImage: "doc.on.clipboard")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+
                 Button("Add to Queue", action: state.addToQueue)
                     .disabled(
                         state.queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                             || state.selectedOutputDirectory == nil
                     )
+            }
+        }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    if url.startAccessingSecurityScopedResource() {
+                        defer { url.stopAccessingSecurityScopedResource() }
+                        state.importURLsFromFile(at: url)
+                    }
+                }
+            case .failure(let error):
+                state.appendLog(
+                    scope: .download, level: .error,
+                    message: "File import failed: \(error.localizedDescription)"
+                )
             }
         }
     }

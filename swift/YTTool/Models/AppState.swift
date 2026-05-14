@@ -565,6 +565,64 @@ final class AppState: ObservableObject {
         appendLog(scope: .download, level: .info, message: "Added \(urls.count) URL(s) to queue")
     }
 
+    @discardableResult
+    func importURLs(from newText: String) -> URLImportResult {
+        let existingLines = Set(
+            queueInputURLs
+                .components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+
+        let incoming = newText
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        var seen = existingLines
+        var unique: [String] = []
+        for url in incoming {
+            if seen.insert(url).inserted {
+                unique.append(url)
+            }
+        }
+
+        if !unique.isEmpty {
+            let base = queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines)
+            let separator = base.isEmpty ? "" : "\n"
+            queueInputURLs = base + separator + unique.joined(separator: "\n")
+        }
+
+        return URLImportResult(
+            importedCount: unique.count,
+            skippedCount: incoming.count - unique.count
+        )
+    }
+
+    func importURLsFromFile(at url: URL) {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            appendLog(scope: .download, level: .error, message: "Could not read file: \(url.lastPathComponent)")
+            return
+        }
+        let result = importURLs(from: content)
+        appendLog(
+            scope: .download, level: .info,
+            message: "Imported \(result.importedCount) URL(s) from file, skipped \(result.skippedCount) duplicate(s)"
+        )
+    }
+
+    func importURLsFromClipboard(content: String?) {
+        guard let content, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            appendLog(scope: .download, level: .warning, message: "Clipboard is empty or contains no text")
+            return
+        }
+        let result = importURLs(from: content)
+        appendLog(
+            scope: .download, level: .info,
+            message: "Pasted \(result.importedCount) URL(s) from clipboard, skipped \(result.skippedCount) duplicate(s)"
+        )
+    }
+
     func startQueue() {
         downloadQueue.startProcessing(
             locator: BundledToolLocator(),
@@ -1009,6 +1067,11 @@ final class AppState: ObservableObject {
         }
         let normalized = raw.hasPrefix("*") ? raw : "*\(raw)"
         return ["--download-sections", normalized]
+    }
+
+    struct URLImportResult {
+        let importedCount: Int
+        let skippedCount: Int
     }
 
     struct PerItemFormatSelection {
