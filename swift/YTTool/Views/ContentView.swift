@@ -193,14 +193,14 @@ struct ContentView: View {
             allowsMultipleSelection: false
         ) { result in
             switch result {
-            case .success(let urls):
+            case let .success(urls):
                 if let url = urls.first {
                     if url.startAccessingSecurityScopedResource() {
                         defer { url.stopAccessingSecurityScopedResource() }
                         state.importURLsFromFile(at: url)
                     }
                 }
-            case .failure(let error):
+            case let .failure(error):
                 state.appendLog(
                     scope: .download, level: .error,
                     message: "File import failed: \(error.localizedDescription)"

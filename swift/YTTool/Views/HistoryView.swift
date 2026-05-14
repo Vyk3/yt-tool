@@ -73,7 +73,8 @@ struct HistoryView: View {
             Spacer()
 
             if entry.succeeded, let path = entry.outputPath,
-               FileManager.default.fileExists(atPath: path) {
+               FileManager.default.fileExists(atPath: path)
+            {
                 Button("Reveal") {
                     NSWorkspace.shared.activateFileViewerSelecting(
                         [URL(fileURLWithPath: path)]

@@ -208,7 +208,7 @@ struct YtDlpUpdateService {
     private func resolvePython() -> URL {
         if let bundlePython = Bundle.main.resourceURL?
             .appendingPathComponent("Python/bin/python3.12"),
-           FileManager.default.isExecutableFile(atPath: bundlePython.path)
+            FileManager.default.isExecutableFile(atPath: bundlePython.path)
         {
             return bundlePython
         }

@@ -30,7 +30,7 @@ final class DownloadHistoryStore: ObservableObject {
         save()
     }
 
-    // File IO is synchronous on MainActor; runs once at startup with a small file, acceptable.
+    /// File IO is synchronous on MainActor; runs once at startup with a small file, acceptable.
     private func load() {
         guard let url = fileURL,
               let data = try? Data(contentsOf: url)
@@ -43,8 +43,8 @@ final class DownloadHistoryStore: ObservableObject {
         }
     }
 
-    // File IO is synchronous on MainActor; write frequency is low (once per completed
-    // download) so this is acceptable. Move to Task.detached if entries grow large.
+    /// File IO is synchronous on MainActor; write frequency is low (once per completed
+    /// download) so this is acceptable. Move to Task.detached if entries grow large.
     private func save() {
         guard let url = fileURL else { return }
         let dir = url.deletingLastPathComponent()
