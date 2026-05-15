@@ -13,6 +13,11 @@ let package = Package(
         .executableTarget(
             name: "YTTool",
             path: "YTTool",
+            exclude: [
+                "Views/AppUpdateController.swift",
+                "Info.plist",
+                "YTTool.entitlements",
+            ],
             resources: [
                 .copy("Resources"),
             ]

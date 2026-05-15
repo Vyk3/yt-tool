@@ -16,7 +16,7 @@
 
 `yt-tool` 应优先投入以下能力：
 
-- 使用能力完整的官方 standalone `yt-dlp`
+- 使用能力完整的官方 `yt-dlp` zipapp
 - 保持 `ffmpeg / ffprobe` 与 `yt-dlp` 的一致打包与验证
 - 明确区分错误类型：
   - DNS / 网络失败

@@ -176,6 +176,11 @@ fi
 # ── Step 5: Codesign ─────────────────────────────────────────────────────────
 step "5/8  Ad-hoc codesign"
 
+ENTITLEMENTS="$XCPROJECT/../YTTool/YTTool.entitlements"
+if [[ ! -f "$ENTITLEMENTS" ]]; then
+    die "Entitlements file not found: $ENTITLEMENTS"
+fi
+
 BINARIES_IN_APP="$DIST_APP/Contents/Resources/Binaries"
 if [[ ! -d "$BINARIES_IN_APP" ]]; then
     die "Binaries dir not found in app bundle: $BINARIES_IN_APP\nCheck that the Binaries folder is in the Xcode Resources build phase."
@@ -184,7 +189,7 @@ fi
 echo "  Signing vendored binaries..."
 for bin_path in "$BINARIES_IN_APP"/*; do
     [[ -f "$bin_path" ]] || continue
-    codesign --force --sign - "$bin_path"
+    codesign --force --sign - --entitlements "$ENTITLEMENTS" "$bin_path"
     echo "    $(basename "$bin_path"): signed"
 done
 
@@ -192,7 +197,7 @@ if [[ -d "$PYTHON_IN_APP" ]]; then
     echo "  Signing embedded Python runtime (all Mach-O files)..."
     PYTHON_SIGNED=0
     while IFS= read -r macho_file; do
-        codesign --force --sign - "$macho_file"
+        codesign --force --sign - --entitlements "$ENTITLEMENTS" "$macho_file"
         echo "    $(echo "$macho_file" | sed "s|$PYTHON_IN_APP/||"): signed"
         (( PYTHON_SIGNED+=1 ))
     done < <(find "$PYTHON_IN_APP" -type f -exec file {} + | grep -i 'mach-o' | cut -d: -f1)
@@ -200,7 +205,7 @@ if [[ -d "$PYTHON_IN_APP" ]]; then
 fi
 
 echo "  Signing app bundle..."
-codesign --force --deep --sign - "$DIST_APP"
+codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$DIST_APP"
 echo "  App bundle: signed"
 
 # ── Step 6: Package ───────────────────────────────────────────────────────────
