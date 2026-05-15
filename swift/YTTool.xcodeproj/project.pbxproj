@@ -43,6 +43,7 @@
 		A00000000000000000000055 /* DownloadHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004B /* DownloadHistoryStore.swift */; };
 		A00000000000000000000056 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004C /* HistoryView.swift */; };
 		A00000000000000000000091 /* FormatBytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000090 /* FormatBytes.swift */; };
+		A000000000000000000000C1 /* AppUpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000C0 /* AppUpdateController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -82,6 +83,7 @@
 		A0000000000000000000004B /* DownloadHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadHistoryStore.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000004C /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/HistoryView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000090 /* FormatBytes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Support/FormatBytes.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000C0 /* AppUpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/AppUpdateController.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -90,6 +92,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A000000000000000000000A1 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,6 +150,7 @@
 				A0000000000000000000003D /* QueueItemRow.swift */,
 				A00000000000000000000049 /* UpdateView.swift */,
 				A0000000000000000000004C /* HistoryView.swift */,
+				A000000000000000000000C0 /* AppUpdateController.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -219,6 +223,9 @@
 			dependencies = (
 			);
 			name = YTTool;
+			packageProductDependencies = (
+				A000000000000000000000A0 /* Sparkle */,
+			);
 			productName = YTTool;
 			productReference = A00000000000000000000020 /* YTTool.app */;
 			productType = "com.apple.product-type.application";
@@ -250,6 +257,9 @@
 			productRefGroup = A00000000000000000000042 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				A000000000000000000000B0 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			targets = (
 				A00000000000000000000050 /* YTTool */,
 			);
@@ -307,6 +317,7 @@
 				A00000000000000000000055 /* DownloadHistoryStore.swift in Sources */,
 				A00000000000000000000056 /* HistoryView.swift in Sources */,
 				A00000000000000000000091 /* FormatBytes.swift in Sources */,
+				A000000000000000000000C1 /* AppUpdateController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,7 +330,10 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = YTTool/YTTool.entitlements;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = YTTool/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = local.koa.yttool.swift;
@@ -337,10 +351,13 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = YTTool/YTTool.entitlements;
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = YTTool/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = local.koa.yttool.swift;
@@ -374,6 +391,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A000000000000000000000B0 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A000000000000000000000A0 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A000000000000000000000B0 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A00000000000000000000051 /* Project object */;
 }

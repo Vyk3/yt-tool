@@ -24,7 +24,7 @@ struct UpdateView: View {
                 .frame(maxWidth: 120)
             }
 
-            Toggle("Check for updates on launch", isOn: $state.autoCheckForUpdates)
+            Toggle("Check for yt-dlp updates on launch", isOn: $state.autoCheckForUpdates)
 
             updateStatusView
         }

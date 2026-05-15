@@ -33,5 +33,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
+            ENABLE_HARDENED_RUNTIME=YES \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             build

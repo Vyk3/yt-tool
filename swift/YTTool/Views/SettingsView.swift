@@ -2,6 +2,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var state: AppState
+    #if canImport(Sparkle)
+        @ObservedObject var appUpdateController: AppUpdateController
+    #endif
 
     private let repoURL = URL(string: "https://github.com/Vyk3/yt-tool")!
     private let releaseURL = URL(string: "https://github.com/Vyk3/yt-tool/releases")!
@@ -21,12 +24,29 @@ struct SettingsView: View {
 
             Divider()
 
+            #if canImport(Sparkle)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("App Updates")
+                        .font(.headline)
+
+                    Toggle("Check for app updates automatically", isOn: $state.autoCheckForAppUpdates)
+                        .onChange(of: state.autoCheckForAppUpdates) { newValue in
+                            appUpdateController.setAutoCheck(newValue)
+                        }
+
+                    Button("Check for App Updates", action: appUpdateController.checkForUpdates)
+                        .disabled(!appUpdateController.canCheckForUpdates)
+                }
+
+                Divider()
+            #endif
+
             UpdateView(state: state)
 
             Spacer(minLength: 0)
         }
         .padding(20)
-        .frame(minWidth: 460, minHeight: 320)
+        .frame(minWidth: 460, minHeight: 380)
     }
 
     private var appVersion: String {

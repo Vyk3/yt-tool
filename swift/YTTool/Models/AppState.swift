@@ -24,6 +24,7 @@ final class AppState: ObservableObject {
         static let downloaderPreference = "downloaderPreference"
         static let updateChannel = "updateChannel"
         static let autoCheckForUpdates = "autoCheckForUpdates"
+        static let autoCheckForAppUpdates = "autoCheckForAppUpdates"
     }
 
     private static let maxLogEntries = 250
@@ -103,6 +104,10 @@ final class AppState: ObservableObject {
         didSet { defaults.set(autoCheckForUpdates, forKey: StorageKey.autoCheckForUpdates) }
     }
 
+    @Published var autoCheckForAppUpdates: Bool = true {
+        didSet { defaults.set(autoCheckForAppUpdates, forKey: StorageKey.autoCheckForAppUpdates) }
+    }
+
     var ytDlpSource: String {
         FileManager.default.fileExists(atPath: BundledToolLocator.userLocalURL(for: .ytDlp).path)
             ? "user-installed" : "bundled"
@@ -165,6 +170,9 @@ final class AppState: ObservableObject {
         }
         if defaults.object(forKey: StorageKey.autoCheckForUpdates) != nil {
             autoCheckForUpdates = defaults.bool(forKey: StorageKey.autoCheckForUpdates)
+        }
+        if defaults.object(forKey: StorageKey.autoCheckForAppUpdates) != nil {
+            autoCheckForAppUpdates = defaults.bool(forKey: StorageKey.autoCheckForAppUpdates)
         }
 
         refreshFFmpegWarning()
