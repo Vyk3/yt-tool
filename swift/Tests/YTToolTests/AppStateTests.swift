@@ -351,6 +351,125 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.ffmpegWarningMessage?.contains("ffprobe is missing") == true)
     }
 
+    // MARK: - Import URLs
+
+    func testImportURLsAppendsToEmpty() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "https://a.com\nhttps://b.com\nhttps://c.com")
+        XCTAssertEqual(result.importedCount, 3)
+        XCTAssertEqual(result.skippedCount, 0)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com\nhttps://c.com")
+    }
+
+    func testImportURLsDedupsAgainstExisting() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = "https://a.com\nhttps://b.com"
+        let result = state.importURLs(from: "https://b.com\nhttps://c.com")
+        XCTAssertEqual(result.importedCount, 1)
+        XCTAssertEqual(result.skippedCount, 1)
+        XCTAssertTrue(state.queueInputURLs.contains("https://c.com"))
+        XCTAssertEqual(
+            state.queueInputURLs.components(separatedBy: "\n").filter { $0 == "https://b.com" }.count,
+            1
+        )
+    }
+
+    func testImportURLsDedupsWithinBatch() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "https://a.com\nhttps://a.com\nhttps://b.com")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.skippedCount, 1)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsTrimsWhitespace() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "  https://a.com  \n  https://b.com  ")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsSkipsBlankLines() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "https://a.com\n\n\nhttps://b.com\n")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.skippedCount, 0)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsEmptyInput() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = "https://existing.com"
+        let result = state.importURLs(from: "")
+        XCTAssertEqual(result.importedCount, 0)
+        XCTAssertEqual(result.skippedCount, 0)
+        XCTAssertEqual(state.queueInputURLs, "https://existing.com")
+    }
+
+    func testImportURLsAllDuplicates() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = "https://a.com\nhttps://b.com"
+        let result = state.importURLs(from: "https://a.com\nhttps://b.com")
+        XCTAssertEqual(result.importedCount, 0)
+        XCTAssertEqual(result.skippedCount, 2)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsPreservesExisting() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = "https://a.com"
+        let result = state.importURLs(from: "https://b.com")
+        XCTAssertEqual(result.importedCount, 1)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsNoDoubleNewline() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = "https://a.com\n"
+        let result = state.importURLs(from: "https://b.com")
+        XCTAssertEqual(result.importedCount, 1)
+        let lines = state.queueInputURLs.components(separatedBy: "\n").filter { !$0.isEmpty }
+        XCTAssertEqual(lines, ["https://a.com", "https://b.com"])
+    }
+
+    func testImportURLsFiltersNonURLLines() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "My Favorite Videos\nhttps://a.com\nsome random text\nhttps://b.com")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.filteredCount, 2)
+        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+    }
+
+    func testImportURLsAcceptsHTTPWithoutS() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "http://legacy.example.com\nhttps://modern.example.com")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.filteredCount, 0)
+    }
+
+    func testImportURLsFiltersCaseInsensitive() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "HTTPS://A.COM\nHttp://B.COM")
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.filteredCount, 0)
+    }
+
+    func testImportURLsAllNonURLContent() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "just some text\nanother line\n123")
+        XCTAssertEqual(result.importedCount, 0)
+        XCTAssertEqual(result.filteredCount, 3)
+        XCTAssertEqual(state.queueInputURLs, "")
+    }
+
     private func freshDefaults() -> UserDefaults {
         let suiteName = "YTToolTests.\(#function).\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

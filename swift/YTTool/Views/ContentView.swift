@@ -1,8 +1,11 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @ObservedObject var state: AppState
     @State private var showingHistory = false
+    @State private var showingFileImporter = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -104,14 +107,6 @@ struct ContentView: View {
         }
     }
 
-    private func formatBytes(_ bytes: Int64) -> String {
-        let gb = Double(bytes) / 1_073_741_824
-        if gb >= 1 { return String(format: "%.1f GB", gb) }
-        let mb = Double(bytes) / 1_048_576
-        if mb >= 1 { return String(format: "%.1f MB", mb) }
-        return String(format: "%.0f KB", mb * 1024)
-    }
-
     private var queueModeContent: some View {
         Group {
             queueURLInput
@@ -159,11 +154,48 @@ struct ContentView: View {
 
                 Spacer()
 
+                Button {
+                    showingFileImporter = true
+                } label: {
+                    Label("Import", systemImage: "doc.text")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+
+                Button {
+                    state.importURLsFromClipboard(
+                        content: NSPasteboard.general.string(forType: .string)
+                    )
+                } label: {
+                    Label("Paste", systemImage: "doc.on.clipboard")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+
                 Button("Add to Queue", action: state.addToQueue)
                     .disabled(
                         state.queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                             || state.selectedOutputDirectory == nil
                     )
+            }
+        }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case let .success(urls):
+                if let url = urls.first {
+                    let accessed = url.startAccessingSecurityScopedResource()
+                    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                    state.importURLsFromFile(at: url)
+                }
+            case let .failure(error):
+                state.appendLog(
+                    scope: .download, level: .error,
+                    message: "File import failed: \(error.localizedDescription)"
+                )
             }
         }
     }

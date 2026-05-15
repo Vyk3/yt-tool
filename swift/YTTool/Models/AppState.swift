@@ -532,10 +532,7 @@ final class AppState: ObservableObject {
             return
         }
 
-        let urls = queueInputURLs
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let urls = parseLines(queueInputURLs)
 
         guard !urls.isEmpty else { return }
 
@@ -563,6 +560,71 @@ final class AppState: ObservableObject {
         downloadQueue.addURLs(urls, config: config)
         queueInputURLs = ""
         appendLog(scope: .download, level: .info, message: "Added \(urls.count) URL(s) to queue")
+    }
+
+    @discardableResult
+    func importURLs(from newText: String) -> URLImportResult {
+        let existingLines = Set(parseLines(queueInputURLs))
+        let allLines = parseLines(newText)
+
+        let incoming = allLines.filter { line in
+            let lower = line.lowercased()
+            return lower.hasPrefix("http://") || lower.hasPrefix("https://")
+        }
+        let filteredCount = allLines.count - incoming.count
+
+        var seen = existingLines
+        var unique: [String] = []
+        for url in incoming {
+            if seen.insert(url).inserted {
+                unique.append(url)
+            }
+        }
+
+        if !unique.isEmpty {
+            let base = queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines)
+            let separator = base.isEmpty ? "" : "\n"
+            queueInputURLs = base + separator + unique.joined(separator: "\n")
+        }
+
+        return URLImportResult(
+            importedCount: unique.count,
+            skippedCount: incoming.count - unique.count,
+            filteredCount: filteredCount
+        )
+    }
+
+    func importURLsFromFile(at url: URL) {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            appendLog(scope: .download, level: .error, message: "Could not read file: \(url.lastPathComponent)")
+            return
+        }
+        let result = importURLs(from: content)
+        let level: AppLogLevel = result.importedCount == 0 ? .warning : .info
+        appendLog(scope: .download, level: level, message: importLogMessage("file", result))
+    }
+
+    func importURLsFromClipboard(content: String?) {
+        guard let content, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            appendLog(scope: .download, level: .warning, message: "Clipboard is empty or contains no text")
+            return
+        }
+        let result = importURLs(from: content)
+        let level: AppLogLevel = result.importedCount == 0 ? .warning : .info
+        appendLog(scope: .download, level: level, message: importLogMessage("clipboard", result))
+    }
+
+    private func parseLines(_ text: String) -> [String] {
+        text.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func importLogMessage(_ source: String, _ result: URLImportResult) -> String {
+        var parts = ["Imported \(result.importedCount) URL(s) from \(source)"]
+        if result.skippedCount > 0 { parts.append("skipped \(result.skippedCount) duplicate(s)") }
+        if result.filteredCount > 0 { parts.append("filtered \(result.filteredCount) non-URL line(s)") }
+        return parts.joined(separator: ", ")
     }
 
     func startQueue() {
@@ -1009,6 +1071,12 @@ final class AppState: ObservableObject {
         }
         let normalized = raw.hasPrefix("*") ? raw : "*\(raw)"
         return ["--download-sections", normalized]
+    }
+
+    struct URLImportResult {
+        let importedCount: Int
+        let skippedCount: Int
+        let filteredCount: Int
     }
 
     struct PerItemFormatSelection {

@@ -29,7 +29,7 @@ This is a common Gatekeeper prompt for unsigned apps. To allow it:
 
 ## For Developers
 
-See [`swift/README.md`](swift/README.md) for full details.
+See [`swift/DEVLOG.md`](swift/DEVLOG.md) for full details.
 
 ### Quick Start
 
@@ -61,6 +61,6 @@ Output: `swift/dist/YTTool.app`, `swift/dist/YTTool.zip`, `swift/dist/YTTool.dmg
 
 ## Related Documentation
 
-- Full Swift documentation: [`swift/README.md`](swift/README.md)
+- Swift development log: [`swift/DEVLOG.md`](swift/DEVLOG.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
-- Known limitations: [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)
+- Known limitations: [KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md)

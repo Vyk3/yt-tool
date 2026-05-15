@@ -42,6 +42,7 @@
 		A00000000000000000000054 /* DownloadHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004A /* DownloadHistoryEntry.swift */; };
 		A00000000000000000000055 /* DownloadHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004B /* DownloadHistoryStore.swift */; };
 		A00000000000000000000056 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004C /* HistoryView.swift */; };
+		A00000000000000000000091 /* FormatBytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000090 /* FormatBytes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -80,6 +81,7 @@
 		A0000000000000000000004A /* DownloadHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadHistoryEntry.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000004B /* DownloadHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadHistoryStore.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000004C /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/HistoryView.swift; sourceTree = SOURCE_ROOT; };
+		A00000000000000000000090 /* FormatBytes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Support/FormatBytes.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -188,6 +190,7 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000C /* AppError.swift */,
+				A00000000000000000000090 /* FormatBytes.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -303,6 +306,7 @@
 				A00000000000000000000054 /* DownloadHistoryEntry.swift in Sources */,
 				A00000000000000000000055 /* DownloadHistoryStore.swift in Sources */,
 				A00000000000000000000056 /* HistoryView.swift in Sources */,
+				A00000000000000000000091 /* FormatBytes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
