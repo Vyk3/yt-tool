@@ -1,8 +1,13 @@
+import Combine
 import Sparkle
 
 @MainActor
 final class AppUpdateController: ObservableObject {
     private let controller: SPUStandardUpdaterController
+    private var cancellable: AnyCancellable?
+    private var hasStarted = false
+
+    @Published var canCheckForUpdates = false
 
     init() {
         controller = SPUStandardUpdaterController(
@@ -10,13 +15,14 @@ final class AppUpdateController: ObservableObject {
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
-    }
-
-    var canCheckForUpdates: Bool {
-        controller.updater.canCheckForUpdates
+        cancellable = controller.updater.publisher(for: \.canCheckForUpdates)
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.canCheckForUpdates, on: self)
     }
 
     func start(autoCheck: Bool) {
+        guard !hasStarted else { return }
+        hasStarted = true
         controller.updater.automaticallyChecksForUpdates = autoCheck
         controller.startUpdater()
     }
