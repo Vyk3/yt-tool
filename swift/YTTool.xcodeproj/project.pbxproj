@@ -44,6 +44,7 @@
 		A00000000000000000000056 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004C /* HistoryView.swift */; };
 		A00000000000000000000091 /* FormatBytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000090 /* FormatBytes.swift */; };
 		A000000000000000000000C1 /* AppUpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000C0 /* AppUpdateController.swift */; };
+		A000000000000000000000A1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000A0 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
