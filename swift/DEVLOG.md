@@ -16,7 +16,7 @@
 - 播放列表能力已扩展：播放列表 URL 支持 `Only first item`、`Whole playlist: best video`、`Whole playlist: best audio` 三种模式；整列表视频模式支持 `Best compatibility` / `Prefer higher quality` 两种质量策略；整列表音频模式支持 `More compatible` / `Higher quality` 两种策略；整列表还支持字幕策略（`No subtitles` / `Manual subtitles` / `Auto subtitles`）、片段策略（`Full item` / `Fixed time range`）以及逐条格式映射（`Per-item mapping`）
 
 当前验证结果：
-- `swift test --disable-sandbox --package-path swift`：66 个测试通过
+- `swift test --disable-sandbox --package-path swift`：131 个测试通过
 - `xcodebuild -project swift/YTTool.xcodeproj -scheme YTTool -configuration Debug -derivedDataPath "$PWD/tmp/xcode-derived-data" build`：通过
 - 手工验收：真实 URL probe 成功；下载完成通知可在通知中心看到；`Sprint 4` 验收文档已同步到当前 UI 文案
 - 运行时取消验证：已分别验证 `yt-dlp` 下载阶段取消，以及 `ffmpeg` 合并阶段取消，Cancel 对 `yt-dlp -> ffmpeg` 进程树生效
@@ -25,8 +25,8 @@
 - 缺失工具手工验收：最新 Debug build 中临时移走 app bundle 的 `ffprobe` 后，下载区会显示 `FFmpeg unavailable`，点击可见缺失项说明
 - 磁盘空间手工验收：在仅 `19.3 MB` 可用空间的临时卷上选择 `38.9 MB` 格式后，点击 `Download` 直接进入 `Insufficient disk space.` 失败态，并显示估算大小与可用空间
 - 播放列表手工验收：播放列表 URL 会显示模式选择器，默认 `Only first item`；切换到 `Whole playlist` 模式后，`Probe first item` 收起，格式区改为自动下载说明，`Download` 入口按模式放开；`Whole playlist: best video` 下会出现 `Video quality`，`Whole playlist: best audio` 下会出现 `Audio quality`；整列表模式下还会显示 `Playlist subtitles`、`Playlist segments`、`Playlist formats`，并支持逐条格式映射（示例：`1=137+140;2=136+140`）
-- 打包口径：dev / release 统一以官方 `yt-dlp_macos` standalone 为目标交付物；Homebrew `yt-dlp` 仅作为本机参考，不再作为 app 内 `yt-dlp` 来源
-- URL 支持边界：standalone 二进制已确认提供可用的 impersonation targets，但站点是否可下载仍取决于 `yt-dlp` extractor/站点兼容性；这一步不承诺 `missav` 一类站点可用
+- 打包口径：dev / release 统一以官方 `yt-dlp` zipapp 为目标交付物；Homebrew `yt-dlp` 仅作为本机参考，不再作为 app 内 `yt-dlp` 来源
+- URL 支持边界：`yt-dlp` zipapp 已确认提供可用的 impersonation targets，但站点是否可下载仍取决于 `yt-dlp` extractor/站点兼容性；这一步不承诺 `missav` 一类站点可用
 
 当前剩余重点：
 - 与 Python GUI 的功能缺口（按优先级）：逐条格式选择的交互完善（当前以 `Per-item mapping` 文本语法作为首版入口）
