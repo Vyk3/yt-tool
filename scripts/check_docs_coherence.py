@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 
@@ -101,6 +103,135 @@ def extract_test_count(line: str) -> int | None:
     return None
 
 
+# --- Path reference checks ---
+
+MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
+CODE_PATH_PATTERN = re.compile(
+    r"(?:^|\s)(?:bash|python3?|cat|source|open|cd)\s+([^\s|;&>]+)"
+)
+
+
+def check_path_references(path: Path, content: str) -> list[Issue]:
+    """Check that file paths referenced in docs actually exist."""
+    issues: list[Issue] = []
+    for line_number, raw_line in enumerate(content.splitlines(), start=1):
+        # Markdown links
+        for _text, target in MARKDOWN_LINK_PATTERN.findall(raw_line):
+            if target.startswith(("http://", "https://", "#", "mailto:")):
+                continue
+            # Strip anchor fragments
+            target_path = target.split("#")[0]
+            if not target_path:
+                continue
+            resolved = (path.parent / target_path).resolve()
+            if not resolved.exists():
+                issues.append(
+                    Issue(
+                        path=path,
+                        line_number=line_number,
+                        reason=f"broken link: `{target_path}` does not exist",
+                        line=raw_line,
+                    )
+                )
+
+        # Command-line path references in code blocks or inline
+        for match in CODE_PATH_PATTERN.finditer(raw_line):
+            ref = match.group(1).strip("`\"'")
+            # Skip variables, flags, URLs
+            if ref.startswith(("-", "$", "http", "~")):
+                continue
+            # Only check paths that look like relative file references
+            if "/" in ref and not ref.startswith("/"):
+                resolved = (REPO_ROOT / ref).resolve()
+                if not resolved.exists() and not any(
+                    c in ref for c in ("*", "{", "}", "<", ">")
+                ):
+                    issues.append(
+                        Issue(
+                            path=path,
+                            line_number=line_number,
+                            reason=f"broken path reference: `{ref}` not found in repo",
+                            line=raw_line,
+                        )
+                    )
+    return issues
+
+
+# --- Changelog completeness check ---
+
+CHANGELOG_DATE_PATTERN = re.compile(r"##\s*\[.*?\]\s*(?:—|–|-)\s*(\d{4}-\d{2}-\d{2})")
+PR_MERGE_PATTERN = re.compile(r"^[0-9a-f]+\s+.*\(#(\d+)\)$")
+
+
+def check_changelog_completeness() -> list[Issue]:
+    """Check if merged PRs since last changelog date are documented."""
+    changelog_path = REPO_ROOT / "CHANGELOG.md"
+    if not changelog_path.exists():
+        return []
+
+    content = changelog_path.read_text(encoding="utf-8")
+
+    # Find the most recent dated entry (skip [Unreleased])
+    last_date = None
+    for match in CHANGELOG_DATE_PATTERN.finditer(content):
+        last_date = match.group(1)
+        break  # first match is the most recent
+
+    if not last_date:
+        return []
+
+    # Get PRs merged strictly after that date (next day onward)
+    try:
+        # Parse date and add one day to get "strictly after"
+        entry_date = datetime.strptime(last_date, "%Y-%m-%d")
+        after_date = entry_date.strftime("%Y-%m-%d")
+        result = subprocess.run(
+            ["git", "log", f"--after={after_date} 23:59:59", "--oneline", "--first-parent", "main"],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return []
+    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+        return []
+
+    # Only flag user-visible changes (feat/fix), skip docs/chore/refactor
+    skip_prefixes = ("docs:", "chore:", "refactor:", "style:", "ci:", "test:")
+    merged_prs: list[str] = []
+    for line in result.stdout.strip().splitlines():
+        pr_match = PR_MERGE_PATTERN.match(line)
+        if pr_match:
+            # Extract commit message (after the hash + space)
+            msg = line.split(" ", 1)[1] if " " in line else ""
+            if not any(msg.lower().startswith(p) for p in skip_prefixes):
+                merged_prs.append(f"#{pr_match.group(1)}")
+
+    if not merged_prs:
+        return []
+
+    # Check which PRs are already mentioned in changelog
+    undocumented = [pr for pr in merged_prs if pr not in content]
+
+    if not undocumented:
+        return []
+
+    # Find the line of the last dated entry for reporting
+    for line_number, raw_line in enumerate(content.splitlines(), start=1):
+        if last_date in raw_line:
+            return [
+                Issue(
+                    path=changelog_path,
+                    line_number=line_number,
+                    reason=f"PRs merged after {last_date} not in changelog: {', '.join(undocumented)}",
+                    line=raw_line,
+                )
+            ]
+
+    return []
+
+
 def scan_file(path: Path, zipapp_asset_name: str, actual_test_count: int) -> list[Issue]:
     issues: list[Issue] = []
     content = path.read_text(encoding="utf-8")
@@ -154,7 +285,12 @@ def main(argv: list[str]) -> int:
         if path in seen_paths or not path.is_file():
             continue
         seen_paths.add(path)
+        content = path.read_text(encoding="utf-8")
         issues.extend(scan_file(path, zipapp_asset_name, actual_test_count))
+        issues.extend(check_path_references(path, content))
+
+    # Changelog completeness (runs once, not per-file)
+    issues.extend(check_changelog_completeness())
 
     if not issues:
         print(
