@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **应用自更新**：集成 Sparkle 2.x，Ed25519 签名，appcast.xml 托管于 GitHub Pages。Settings 中可独立控制 app 更新检查开关。(#57)
+- **���载历史**：持久化记录所有下载，支持 History Sheet 查看和搜索。(#55)
+- **批量 URL ���入**：队列模式下支持从文件或剪贴板批量导入 URL。(#56)
+- **预估合并大小**：格式选择后显示视频 + 音频合并后的预估文件大小。(#54)
+
+### Changed
+- CI 加固：增加 warnings-as-errors 编译检查。(#56)
+
+---
+
 ## [0.1.2] — 2026-05-12
 
 ### Changed

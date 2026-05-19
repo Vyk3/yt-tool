@@ -4,6 +4,16 @@ English | [简体中文](README.md)
 
 `yt-tool` is a macOS native download tool based on `yt-dlp`, with a SwiftUI GUI. Supports video, audio, subtitle, and playlist downloads.
 
+## Features
+
+- **Download Queue**: Batch-enqueue multiple URLs, sequential downloads with drag-to-reorder, cancel, and retry
+- **Batch Import**: Import multiple URLs from file or clipboard at once
+- **aria2c Acceleration**: Automatically enables multi-connection download when aria2c is detected; falls back to built-in downloader otherwise
+- **Download History**: Persistent download records with search
+- **Size Estimation**: Shows estimated merged file size after format selection
+- **yt-dlp Self-Update**: Check and install new yt-dlp versions (Stable / Nightly) from within the app
+- **App Self-Update**: Sparkle 2.x integration with Ed25519 signing for automatic update detection
+
 ## License
 
 - Project code is licensed under the `MIT` License. See [LICENSE](LICENSE).
