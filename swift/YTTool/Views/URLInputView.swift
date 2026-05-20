@@ -3,15 +3,7 @@ import UniformTypeIdentifiers
 
 struct URLInputView: View {
     @Binding var inputURL: String
-    @Binding var playlistMode: PlaylistMode
-    @Binding var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy
-    @Binding var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy
-    @Binding var playlistSubtitleMode: PlaylistSubtitleMode
-    @Binding var playlistSubtitleLanguage: String
-    @Binding var playlistSegmentMode: PlaylistSegmentMode
-    @Binding var playlistSegmentRange: String
-    @Binding var playlistFormatMode: PlaylistFormatMode
-    @Binding var playlistPerItemFormatMap: String
+    @Binding var playlistConfig: PlaylistConfig
     let probeState: ProbeState
     let selectedDirectory: URL?
     let showsPlaylistModePicker: Bool
@@ -57,7 +49,7 @@ struct URLInputView: View {
                         Text("Playlist mode")
                             .font(.subheadline.weight(.semibold))
 
-                        Picker("Playlist mode", selection: $playlistMode) {
+                        Picker("Playlist mode", selection: $playlistConfig.mode) {
                             ForEach(PlaylistMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
@@ -75,7 +67,7 @@ struct URLInputView: View {
                             label: "Video quality",
                             helpText: "Choose whether whole-playlist video downloads favor compatibility or higher quality."
                         ) {
-                            Picker("Video quality", selection: $playlistVideoQualityStrategy) {
+                            Picker("Video quality", selection: $playlistConfig.videoQualityStrategy) {
                                 ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
                                     Text(strategy.title).tag(strategy)
                                 }
@@ -90,7 +82,7 @@ struct URLInputView: View {
                             label: "Audio quality",
                             helpText: "Choose whether whole-playlist audio downloads favor compatibility or higher quality."
                         ) {
-                            Picker("Audio quality", selection: $playlistAudioQualityStrategy) {
+                            Picker("Audio quality", selection: $playlistConfig.audioQualityStrategy) {
                                 ForEach(PlaylistAudioQualityStrategy.allCases) { strategy in
                                     Text(strategy.title).tag(strategy)
                                 }
@@ -100,12 +92,12 @@ struct URLInputView: View {
                         }
                     }
 
-                    if playlistMode.downloadsWholePlaylist {
+                    if playlistConfig.mode.downloadsWholePlaylist {
                         secondaryQualityPicker(
                             label: "Playlist formats",
                             helpText: "Use a single strategy for all items, or map specific items to specific format selectors."
                         ) {
-                            Picker("Playlist formats", selection: $playlistFormatMode) {
+                            Picker("Playlist formats", selection: $playlistConfig.formatMode) {
                                 ForEach(PlaylistFormatMode.allCases) { mode in
                                     Text(mode.title).tag(mode)
                                 }
@@ -114,11 +106,11 @@ struct URLInputView: View {
                             .frame(maxWidth: 280, alignment: .leading)
                         }
 
-                        if playlistFormatMode == .perItemMapping {
+                        if playlistConfig.formatMode == .perItemMapping {
                             secondaryTextField(
                                 label: "Per-item map",
                                 placeholder: "1=137+140;2=136+140",
-                                text: $playlistPerItemFormatMap,
+                                text: $playlistConfig.perItemFormatMap,
                                 helpText: "Syntax: itemIndex=formatSelector;itemIndex=formatSelector."
                             )
                         }
@@ -127,7 +119,7 @@ struct URLInputView: View {
                             label: "Playlist subtitles",
                             helpText: "Apply the same subtitle strategy to each item in the playlist."
                         ) {
-                            Picker("Playlist subtitles", selection: $playlistSubtitleMode) {
+                            Picker("Playlist subtitles", selection: $playlistConfig.subtitleMode) {
                                 ForEach(PlaylistSubtitleMode.allCases) { mode in
                                     Text(mode.title).tag(mode)
                                 }
@@ -136,11 +128,11 @@ struct URLInputView: View {
                             .frame(maxWidth: 280, alignment: .leading)
                         }
 
-                        if playlistSubtitleMode != .none {
+                        if playlistConfig.subtitleMode != .none {
                             secondaryTextField(
                                 label: "Subtitle language",
                                 placeholder: "en or zh-Hans",
-                                text: $playlistSubtitleLanguage,
+                                text: $playlistConfig.subtitleLanguage,
                                 helpText: "Used as --sub-langs for whole-playlist downloads."
                             )
                         }
@@ -149,7 +141,7 @@ struct URLInputView: View {
                             label: "Playlist segments",
                             helpText: "Choose whether each item downloads fully or with a fixed time range."
                         ) {
-                            Picker("Playlist segments", selection: $playlistSegmentMode) {
+                            Picker("Playlist segments", selection: $playlistConfig.segmentMode) {
                                 ForEach(PlaylistSegmentMode.allCases) { mode in
                                     Text(mode.title).tag(mode)
                                 }
@@ -158,11 +150,11 @@ struct URLInputView: View {
                             .frame(maxWidth: 280, alignment: .leading)
                         }
 
-                        if playlistSegmentMode == .fixedRange {
+                        if playlistConfig.segmentMode == .fixedRange {
                             secondaryTextField(
                                 label: "Time range",
                                 placeholder: "00:30-01:00",
-                                text: $playlistSegmentRange,
+                                text: $playlistConfig.segmentRange,
                                 helpText: "Passed as --download-sections *<range>."
                             )
                         }
@@ -212,7 +204,7 @@ struct URLInputView: View {
     }
 
     private var canShowProbeButton: Bool {
-        !showsPlaylistModePicker || playlistMode == .onlyFirstItem
+        !showsPlaylistModePicker || playlistConfig.mode == .onlyFirstItem
     }
 
     private var probeButtonTitle: String {
@@ -220,7 +212,7 @@ struct URLInputView: View {
     }
 
     private var playlistModeHint: String {
-        switch playlistMode {
+        switch playlistConfig.mode {
         case .onlyFirstItem:
             "Probe inspects only the first item, then downloads it like a single video."
         case .wholePlaylistBestVideo, .wholePlaylistBestAudio:

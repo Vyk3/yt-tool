@@ -83,7 +83,7 @@ final class AppStateTests: XCTestCase {
         let state = AppState(defaults: freshDefaults())
 
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistConfig.mode = .wholePlaylistBestVideo
         state.selectedOutputDirectory = FileManager.default.temporaryDirectory
 
         XCTAssertTrue(state.canDownload)
@@ -132,16 +132,16 @@ final class AppStateTests: XCTestCase {
         let state = AppState(defaults: freshDefaults())
 
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistConfig.mode = .wholePlaylistBestAudio
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U"
 
-        XCTAssertEqual(state.playlistMode, .onlyFirstItem)
+        XCTAssertEqual(state.playlistConfig.mode, .onlyFirstItem)
     }
 
     func testWholePlaylistModeSkipsSizeEstimate() {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistConfig.mode = .wholePlaylistBestVideo
 
         let video = VideoFormat(
             id: "137",
@@ -162,10 +162,10 @@ final class AppStateTests: XCTestCase {
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
         XCTAssertFalse(state.showsPlaylistVideoQualityStrategy)
 
-        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistConfig.mode = .wholePlaylistBestVideo
         XCTAssertTrue(state.showsPlaylistVideoQualityStrategy)
 
-        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistConfig.mode = .wholePlaylistBestAudio
         XCTAssertFalse(state.showsPlaylistVideoQualityStrategy)
     }
 
@@ -173,12 +173,12 @@ final class AppStateTests: XCTestCase {
         let state = AppState(defaults: freshDefaults())
 
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
-        state.playlistVideoQualityStrategy = .preferHigherQuality
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.videoQualityStrategy = .preferHigherQuality
 
-        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistConfig.mode = .wholePlaylistBestAudio
 
-        XCTAssertEqual(state.playlistVideoQualityStrategy, .bestCompatibility)
+        XCTAssertEqual(state.playlistConfig.videoQualityStrategy, .bestCompatibility)
     }
 
     func testShowsPlaylistAudioQualityStrategyOnlyForWholePlaylistAudio() {
@@ -187,10 +187,10 @@ final class AppStateTests: XCTestCase {
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
         XCTAssertFalse(state.showsPlaylistAudioQualityStrategy)
 
-        state.playlistMode = .wholePlaylistBestAudio
+        state.playlistConfig.mode = .wholePlaylistBestAudio
         XCTAssertTrue(state.showsPlaylistAudioQualityStrategy)
 
-        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistConfig.mode = .wholePlaylistBestVideo
         XCTAssertFalse(state.showsPlaylistAudioQualityStrategy)
     }
 
@@ -198,20 +198,20 @@ final class AppStateTests: XCTestCase {
         let state = AppState(defaults: freshDefaults())
 
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestAudio
-        state.playlistAudioQualityStrategy = .higherQuality
+        state.playlistConfig.mode = .wholePlaylistBestAudio
+        state.playlistConfig.audioQualityStrategy = .higherQuality
 
-        state.playlistMode = .wholePlaylistBestVideo
+        state.playlistConfig.mode = .wholePlaylistBestVideo
 
-        XCTAssertEqual(state.playlistAudioQualityStrategy, .moreCompatible)
+        XCTAssertEqual(state.playlistConfig.audioQualityStrategy, .moreCompatible)
     }
 
     func testWholePlaylistManualSubtitleTrackUsesLanguage() throws {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
-        state.playlistSubtitleMode = .manual
-        state.playlistSubtitleLanguage = "en"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.subtitleMode = .manual
+        state.playlistConfig.subtitleLanguage = "en"
 
         let track = try state.wholePlaylistSubtitleTrackOrThrow()
 
@@ -223,9 +223,9 @@ final class AppStateTests: XCTestCase {
     func testWholePlaylistAutoSubtitleTrackUsesLanguage() throws {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestAudio
-        state.playlistSubtitleMode = .auto
-        state.playlistSubtitleLanguage = "zh-Hans"
+        state.playlistConfig.mode = .wholePlaylistBestAudio
+        state.playlistConfig.subtitleMode = .auto
+        state.playlistConfig.subtitleLanguage = "zh-Hans"
 
         let track = try state.wholePlaylistSubtitleTrackOrThrow()
 
@@ -237,9 +237,9 @@ final class AppStateTests: XCTestCase {
     func testWholePlaylistSubtitleTrackRequiresLanguageWhenEnabled() {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestAudio
-        state.playlistSubtitleMode = .manual
-        state.playlistSubtitleLanguage = "  "
+        state.playlistConfig.mode = .wholePlaylistBestAudio
+        state.playlistConfig.subtitleMode = .manual
+        state.playlistConfig.subtitleLanguage = "  "
 
         XCTAssertThrowsError(try state.wholePlaylistSubtitleTrackOrThrow())
     }
@@ -247,9 +247,9 @@ final class AppStateTests: XCTestCase {
     func testWholePlaylistFixedSegmentAddsDownloadSectionsArgument() throws {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
-        state.playlistSegmentMode = .fixedRange
-        state.playlistSegmentRange = "00:30-01:00"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.segmentMode = .fixedRange
+        state.playlistConfig.segmentRange = "00:30-01:00"
 
         let args = try state.wholePlaylistArgumentsOrThrow()
 
@@ -259,9 +259,9 @@ final class AppStateTests: XCTestCase {
     func testWholePlaylistFixedSegmentPreservesExplicitWildcardRange() throws {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
-        state.playlistSegmentMode = .fixedRange
-        state.playlistSegmentRange = "*00:30-01:00"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.segmentMode = .fixedRange
+        state.playlistConfig.segmentRange = "*00:30-01:00"
 
         let args = try state.wholePlaylistArgumentsOrThrow()
 
@@ -271,9 +271,9 @@ final class AppStateTests: XCTestCase {
     func testPerItemFormatMappingParsesEntries() throws {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
-        state.playlistFormatMode = .perItemMapping
-        state.playlistPerItemFormatMap = "1=137+140;2=136+140"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.formatMode = .perItemMapping
+        state.playlistConfig.perItemFormatMap = "1=137+140;2=136+140"
 
         let parsed = try state.parsePerItemFormatSelectionsOrThrow()
 
@@ -284,9 +284,9 @@ final class AppStateTests: XCTestCase {
     func testPerItemFormatMappingRejectsMalformedEntry() {
         let state = AppState(defaults: freshDefaults())
         state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
-        state.playlistMode = .wholePlaylistBestVideo
-        state.playlistFormatMode = .perItemMapping
-        state.playlistPerItemFormatMap = "bad-entry"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.formatMode = .perItemMapping
+        state.playlistConfig.perItemFormatMap = "bad-entry"
 
         XCTAssertThrowsError(try state.parsePerItemFormatSelectionsOrThrow())
     }

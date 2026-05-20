@@ -1,20 +1,45 @@
 import Darwin
 import Foundation
 
+/// Thread-safe text buffer with a configurable byte capacity.
+///
+/// When the accumulated content exceeds `capacity`, the oldest chunks
+/// are evicted so that only the most recent output survives.  This
+/// prevents unbounded memory growth during long-running downloads.
 final class LockedTextBuffer: @unchecked Sendable {
-    private var value = ""
+    private var chunks: [String] = []
+    private var headIndex = 0
+    private var totalBytes = 0
+    private let capacity: Int
     private let lock = NSLock()
+
+    /// - Parameter capacity: Maximum retained bytes (UTF-8).  Defaults to 8 MB.
+    init(capacity: Int = 8 * 1_048_576) {
+        self.capacity = capacity
+    }
 
     func append(_ chunk: String) {
         lock.lock()
         defer { lock.unlock() }
-        value += chunk
+        let chunkBytes = chunk.utf8.count
+        totalBytes += chunkBytes
+        chunks.append(chunk)
+        while totalBytes > capacity, headIndex < chunks.count {
+            totalBytes -= chunks[headIndex].utf8.count
+            chunks[headIndex] = ""  // release string memory
+            headIndex += 1
+        }
+        // Compact the array when more than half is dead entries.
+        if headIndex > 64, headIndex > chunks.count / 2 {
+            chunks.removeFirst(headIndex)
+            headIndex = 0
+        }
     }
 
     func snapshot() -> String {
         lock.lock()
         defer { lock.unlock() }
-        return value
+        return chunks[headIndex...].joined()
     }
 }
 
