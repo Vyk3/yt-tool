@@ -34,42 +34,33 @@ final class AppState: ObservableObject {
 
     @Published var inputURL: String = "" {
         didSet {
-            if !isPlaylistInputURL {
-                playlistMode = .onlyFirstItem
-                playlistVideoQualityStrategy = .bestCompatibility
-                playlistAudioQualityStrategy = .moreCompatible
-            }
+            guard inputURL != oldValue, !isPlaylistInputURL else { return }
+            if playlistConfig != PlaylistConfig() { playlistConfig = PlaylistConfig() }
         }
     }
 
     @Published var probeState: ProbeState = .idle
-    @Published var playlistMode: PlaylistMode = .onlyFirstItem {
+    @Published var playlistConfig = PlaylistConfig() {
         didSet {
-            if playlistMode != .wholePlaylistBestVideo {
-                playlistVideoQualityStrategy = .bestCompatibility
+            guard playlistConfig.mode != oldValue.mode else { return }
+            var updated = playlistConfig
+            if updated.mode != .wholePlaylistBestVideo {
+                updated.videoQualityStrategy = .bestCompatibility
             }
-            if playlistMode != .wholePlaylistBestAudio {
-                playlistAudioQualityStrategy = .moreCompatible
+            if updated.mode != .wholePlaylistBestAudio {
+                updated.audioQualityStrategy = .moreCompatible
             }
-            if playlistMode == .onlyFirstItem {
-                playlistSubtitleMode = .none
-                playlistSubtitleLanguage = ""
-                playlistSegmentMode = .fullItem
-                playlistSegmentRange = ""
-                playlistFormatMode = .unifiedStrategy
-                playlistPerItemFormatMap = ""
+            if updated.mode == .onlyFirstItem {
+                updated.subtitleMode = .none
+                updated.subtitleLanguage = ""
+                updated.segmentMode = .fullItem
+                updated.segmentRange = ""
+                updated.formatMode = .unifiedStrategy
+                updated.perItemFormatMap = ""
             }
+            if updated != playlistConfig { playlistConfig = updated }
         }
     }
-
-    @Published var playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility
-    @Published var playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible
-    @Published var playlistSubtitleMode: PlaylistSubtitleMode = .none
-    @Published var playlistSubtitleLanguage: String = ""
-    @Published var playlistSegmentMode: PlaylistSegmentMode = .fullItem
-    @Published var playlistSegmentRange: String = ""
-    @Published var playlistFormatMode: PlaylistFormatMode = .unifiedStrategy
-    @Published var playlistPerItemFormatMap: String = ""
 
     // MARK: - Format selection
 
@@ -186,7 +177,7 @@ final class AppState: ObservableObject {
 
     func probe() {
         guard !isWholePlaylistDownload else { return }
-        let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = trimmedInputURL
         guard !url.isEmpty else { return }
 
         probeTask?.cancel()
@@ -249,7 +240,7 @@ final class AppState: ObservableObject {
     var canDownload: Bool {
         guard validatedSelectedOutputDirectory != nil, !isDownloading else { return false }
         if isWholePlaylistDownload {
-            return !inputURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return !trimmedInputURL.isEmpty
         }
         guard case .success = probeState else { return false }
         if hasNoSelectableFormatsAfterProbe {
@@ -265,6 +256,10 @@ final class AppState: ObservableObject {
         return false
     }
 
+    var trimmedInputURL: String {
+        inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var isPlaylistInputURL: Bool {
         Self.isPlaylistURL(inputURL)
     }
@@ -275,19 +270,19 @@ final class AppState: ObservableObject {
     }
 
     var isWholePlaylistDownload: Bool {
-        isPlaylistInputURL && playlistMode.downloadsWholePlaylist
+        isPlaylistInputURL && playlistConfig.mode.downloadsWholePlaylist
     }
 
     var showsPlaylistVideoQualityStrategy: Bool {
-        isPlaylistInputURL && playlistMode == .wholePlaylistBestVideo
+        isPlaylistInputURL && playlistConfig.mode == .wholePlaylistBestVideo
     }
 
     var showsPlaylistAudioQualityStrategy: Bool {
-        isPlaylistInputURL && playlistMode == .wholePlaylistBestAudio
+        isPlaylistInputURL && playlistConfig.mode == .wholePlaylistBestAudio
     }
 
     func download() {
-        let url = inputURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = trimmedInputURL
         guard !url.isEmpty else { return }
         guard let outputDir = validatedSelectedOutputDirectory else {
             let error = AppError(
@@ -347,13 +342,16 @@ final class AppState: ObservableObject {
         )
         let effectiveTranscode = effectiveAudioTranscodeFormat(
             videoId: videoId,
-            playlistMode: playlistMode,
+            playlistMode: playlistConfig.mode,
             selectedFormat: audioTranscodeFormat
         )
         let resolvedAria2cPath: String? = if downloaderPreference == .aria2c {
             Aria2cLocator().findAria2c()?.path
         } else {
             nil
+        }
+        if downloaderPreference == .aria2c {
+            aria2cAvailable = resolvedAria2cPath != nil
         }
         if downloaderPreference == .aria2c, resolvedAria2cPath == nil {
             appendLog(scope: .download, level: .warning, message: "aria2c not found in PATH; falling back to built-in downloader")
@@ -367,9 +365,9 @@ final class AppState: ObservableObject {
             audioTranscodeFormat: effectiveTranscode,
             cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
             extraArguments: passthroughArgs,
-            playlistMode: playlistMode,
-            playlistVideoQualityStrategy: playlistVideoQualityStrategy,
-            playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+            playlistMode: playlistConfig.mode,
+            playlistVideoQualityStrategy: playlistConfig.videoQualityStrategy,
+            playlistAudioQualityStrategy: playlistConfig.audioQualityStrategy,
             outputDir: outputDir
         )
         appendLog(
@@ -389,7 +387,7 @@ final class AppState: ObservableObject {
 
         downloadTask = Task {
             do {
-                if isWholePlaylistDownload, playlistFormatMode == .perItemMapping {
+                if isWholePlaylistDownload, playlistConfig.formatMode == .perItemMapping {
                     let perItemSelections = try parsePerItemFormatSelectionsOrThrow()
                     for item in perItemSelections {
                         guard isCurrentDownloadAttempt(attemptID) else { return }
@@ -411,8 +409,8 @@ final class AppState: ObservableObject {
                             subtitleTrack: subtitleTrack,
                             outputDirectory: outputDir,
                             playlistMode: .onlyFirstItem,
-                            playlistVideoQualityStrategy: playlistVideoQualityStrategy,
-                            playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+                            playlistVideoQualityStrategy: playlistConfig.videoQualityStrategy,
+                            playlistAudioQualityStrategy: playlistConfig.audioQualityStrategy,
                             aria2cPath: resolvedAria2cPath,
                             onLog: makeServiceLogger(scope: .download)
                         ) {
@@ -450,9 +448,9 @@ final class AppState: ObservableObject {
                         extraArguments: passthroughArgs,
                         subtitleTrack: subtitleTrack,
                         outputDirectory: outputDir,
-                        playlistMode: playlistMode,
-                        playlistVideoQualityStrategy: playlistVideoQualityStrategy,
-                        playlistAudioQualityStrategy: playlistAudioQualityStrategy,
+                        playlistMode: playlistConfig.mode,
+                        playlistVideoQualityStrategy: playlistConfig.videoQualityStrategy,
+                        playlistAudioQualityStrategy: playlistConfig.audioQualityStrategy,
                         aria2cPath: resolvedAria2cPath,
                         onLog: makeServiceLogger(scope: .download)
                     ) {
@@ -844,14 +842,8 @@ final class AppState: ObservableObject {
 
     private func makeServiceLogger(scope: AppLogScope) -> @Sendable (ServiceLogKind, String) -> Void {
         { [weak self] kind, message in
-            let level: AppLogLevel = switch kind {
-            case .command, .lifecycle, .stdout:
-                .info
-            case .stderr:
-                .warning
-            }
             Task { @MainActor in
-                self?.appendLog(scope: scope, level: level, message: message)
+                self?.appendLog(scope: scope, level: kind.appLogLevel, message: message)
             }
         }
     }
@@ -946,29 +938,13 @@ final class AppState: ObservableObject {
         playlistAudioQualityStrategy: PlaylistAudioQualityStrategy,
         outputDir: URL
     ) -> String {
-        let format: String = switch playlistMode {
-        case .onlyFirstItem:
-            switch (videoId, audioId) {
-            case let (v?, a?): "\(v)+\(a)"
-            case let (v?, nil): v
-            case let (nil, a?): a
-            case (nil, nil): "best"
-            }
-        case .wholePlaylistBestVideo:
-            switch playlistVideoQualityStrategy {
-            case .bestCompatibility:
-                "bestvideo+bestaudio/best"
-            case .preferHigherQuality:
-                "bv*+ba/b"
-            }
-        case .wholePlaylistBestAudio:
-            switch playlistAudioQualityStrategy {
-            case .moreCompatible:
-                "ba/bestaudio/best"
-            case .higherQuality:
-                "bestaudio/best"
-            }
-        }
+        let format = buildFormatSelector(
+            videoId: videoId,
+            audioId: audioId,
+            playlistMode: playlistMode,
+            playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+            playlistAudioQualityStrategy: playlistAudioQualityStrategy
+        )
         let playlistFlag = playlistMode.downloadsWholePlaylist ? "" : " --no-playlist"
         var subtitleFlags = ""
         if let subtitleTrack {
@@ -983,15 +959,7 @@ final class AppState: ObservableObject {
     }
 
     private func formatDiskBytes(_ bytes: Int64) -> String {
-        let gb = Double(bytes) / 1_073_741_824
-        if gb >= 1 {
-            return String(format: "%.1f GB", gb)
-        }
-        let mb = Double(bytes) / 1_048_576
-        if mb >= 1 {
-            return String(format: "%.1f MB", mb)
-        }
-        return "\(bytes) bytes"
+        formatBytes(bytes)
     }
 
     private var validatedSelectedOutputDirectory: URL? {
@@ -1050,9 +1018,9 @@ final class AppState: ObservableObject {
 
     func wholePlaylistSubtitleTrackOrThrow() throws -> SubtitleTrack? {
         guard isWholePlaylistDownload else { return nil }
-        guard playlistSubtitleMode != .none else { return nil }
+        guard playlistConfig.subtitleMode != .none else { return nil }
 
-        let lang = playlistSubtitleLanguage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lang = playlistConfig.subtitleLanguage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !lang.isEmpty else {
             throw AppError(
                 message: "Playlist subtitle language is required.",
@@ -1062,15 +1030,15 @@ final class AppState: ObservableObject {
         return SubtitleTrack(
             lang: lang,
             label: lang,
-            isAuto: playlistSubtitleMode == .auto
+            isAuto: playlistConfig.subtitleMode == .auto
         )
     }
 
     func wholePlaylistArgumentsOrThrow() throws -> [String] {
         guard isWholePlaylistDownload else { return [] }
-        guard playlistSegmentMode == .fixedRange else { return [] }
+        guard playlistConfig.segmentMode == .fixedRange else { return [] }
 
-        let raw = playlistSegmentRange.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = playlistConfig.segmentRange.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else {
             throw AppError(
                 message: "Playlist segment range is required.",
@@ -1093,9 +1061,9 @@ final class AppState: ObservableObject {
     }
 
     func parsePerItemFormatSelectionsOrThrow() throws -> [PerItemFormatSelection] {
-        guard isWholePlaylistDownload, playlistFormatMode == .perItemMapping else { return [] }
+        guard isWholePlaylistDownload, playlistConfig.formatMode == .perItemMapping else { return [] }
 
-        let raw = playlistPerItemFormatMap.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = playlistConfig.perItemFormatMap.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else {
             throw AppError(
                 message: "Per-item format mapping is required.",

@@ -15,6 +15,45 @@ enum DownloadEvent {
     case completed(DownloadResult)
 }
 
+/// Builds a yt-dlp format selector string from the given parameters.
+///
+/// Shared between `YtDlpDownloadService` (actual download) and `AppState` (command preview).
+func buildFormatSelector(
+    videoId: String?,
+    audioId: String?,
+    playlistMode: PlaylistMode,
+    playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
+    playlistAudioQualityStrategy: PlaylistAudioQualityStrategy
+) -> String {
+    switch playlistMode {
+    case .onlyFirstItem:
+        switch (videoId, audioId) {
+        case let (v?, a?):
+            "\(v)+\(a)"
+        case let (v?, nil):
+            v
+        case let (nil, a?):
+            a
+        case (nil, nil):
+            "bestvideo+bestaudio/best"
+        }
+    case .wholePlaylistBestVideo:
+        switch playlistVideoQualityStrategy {
+        case .bestCompatibility:
+            "bestvideo+bestaudio/best"
+        case .preferHigherQuality:
+            "bv*+ba/b"
+        }
+    case .wholePlaylistBestAudio:
+        switch playlistAudioQualityStrategy {
+        case .moreCompatible:
+            "ba/bestaudio/best"
+        case .higherQuality:
+            "bestaudio/best"
+        }
+    }
+}
+
 struct YtDlpDownloadService {
     var locator: BundledToolLocator
     var runner: ProcessRunner
@@ -59,7 +98,7 @@ struct YtDlpDownloadService {
                     // machines where ffmpeg is not installed in PATH.
                     let ffmpeg = try locator.locate(.ffmpeg)
 
-                    let formatSelector = formatSelectorOverride ?? buildFormatSelector(
+                    let formatSelector = formatSelectorOverride ?? YTTool.buildFormatSelector(
                         videoId: videoFormatId,
                         audioId: audioFormatId,
                         playlistMode: playlistMode,
@@ -167,41 +206,4 @@ struct YtDlpDownloadService {
         try? await runner.cancel()
     }
 
-    // MARK: - Helpers
-
-    private func buildFormatSelector(
-        videoId: String?,
-        audioId: String?,
-        playlistMode: PlaylistMode,
-        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
-        playlistAudioQualityStrategy: PlaylistAudioQualityStrategy
-    ) -> String {
-        switch playlistMode {
-        case .onlyFirstItem:
-            switch (videoId, audioId) {
-            case let (v?, a?):
-                "\(v)+\(a)"
-            case let (v?, nil):
-                v
-            case let (nil, a?):
-                a
-            case (nil, nil):
-                "bestvideo+bestaudio/best"
-            }
-        case .wholePlaylistBestVideo:
-            switch playlistVideoQualityStrategy {
-            case .bestCompatibility:
-                "bestvideo+bestaudio/best"
-            case .preferHigherQuality:
-                "bv*+ba/b"
-            }
-        case .wholePlaylistBestAudio:
-            switch playlistAudioQualityStrategy {
-            case .moreCompatible:
-                "ba/bestaudio/best"
-            case .higherQuality:
-                "bestaudio/best"
-            }
-        }
-    }
 }

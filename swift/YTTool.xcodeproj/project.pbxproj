@@ -44,6 +44,7 @@
 		A00000000000000000000056 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004C /* HistoryView.swift */; };
 		A00000000000000000000091 /* FormatBytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000090 /* FormatBytes.swift */; };
 		A000000000000000000000C1 /* AppUpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000C0 /* AppUpdateController.swift */; };
+		A000000000000000000000D1 /* PlaylistConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000D0 /* PlaylistConfig.swift */; };
 		A000000000000000000000A1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000A0 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -85,6 +86,7 @@
 		A0000000000000000000004C /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/HistoryView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000090 /* FormatBytes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Support/FormatBytes.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000C0 /* AppUpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/AppUpdateController.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000D0 /* PlaylistConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/PlaylistConfig.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -171,6 +173,7 @@
 				A0000000000000000000003E /* UpdateState.swift */,
 				A0000000000000000000004A /* DownloadHistoryEntry.swift */,
 				A0000000000000000000004B /* DownloadHistoryStore.swift */,
+				A000000000000000000000D0 /* PlaylistConfig.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -319,6 +322,7 @@
 				A00000000000000000000056 /* HistoryView.swift in Sources */,
 				A00000000000000000000091 /* FormatBytes.swift in Sources */,
 				A000000000000000000000C1 /* AppUpdateController.swift in Sources */,
+				A000000000000000000000D1 /* PlaylistConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

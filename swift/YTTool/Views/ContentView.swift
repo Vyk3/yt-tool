@@ -49,15 +49,7 @@ struct ContentView: View {
         Group {
             URLInputView(
                 inputURL: $state.inputURL,
-                playlistMode: $state.playlistMode,
-                playlistVideoQualityStrategy: $state.playlistVideoQualityStrategy,
-                playlistAudioQualityStrategy: $state.playlistAudioQualityStrategy,
-                playlistSubtitleMode: $state.playlistSubtitleMode,
-                playlistSubtitleLanguage: $state.playlistSubtitleLanguage,
-                playlistSegmentMode: $state.playlistSegmentMode,
-                playlistSegmentRange: $state.playlistSegmentRange,
-                playlistFormatMode: $state.playlistFormatMode,
-                playlistPerItemFormatMap: $state.playlistPerItemFormatMap,
+                playlistConfig: $state.playlistConfig,
                 probeState: state.probeState,
                 selectedDirectory: state.selectedOutputDirectory,
                 showsPlaylistModePicker: state.isPlaylistInputURL,
@@ -69,7 +61,7 @@ struct ContentView: View {
             )
             FormatPickerView(
                 probeState: state.probeState,
-                playlistMode: state.playlistMode,
+                playlistMode: state.playlistConfig.mode,
                 isPlaylistURL: state.isPlaylistInputURL,
                 selectedVideo: $state.selectedVideoFormat,
                 selectedAudio: $state.selectedAudioFormat,

@@ -5,6 +5,13 @@ enum ServiceLogKind {
     case stdout
     case stderr
     case lifecycle
+
+    var appLogLevel: AppLogLevel {
+        switch self {
+        case .command, .lifecycle, .stdout: .info
+        case .stderr: .warning
+        }
+    }
 }
 
 struct YtDlpProbeService {
