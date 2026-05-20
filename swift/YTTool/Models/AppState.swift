@@ -345,10 +345,13 @@ final class AppState: ObservableObject {
             playlistMode: playlistConfig.mode,
             selectedFormat: audioTranscodeFormat
         )
-        let resolvedAria2cPath: String? = if downloaderPreference == .aria2c, aria2cAvailable {
+        let resolvedAria2cPath: String? = if downloaderPreference == .aria2c {
             Aria2cLocator().findAria2c()?.path
         } else {
             nil
+        }
+        if downloaderPreference == .aria2c {
+            aria2cAvailable = resolvedAria2cPath != nil
         }
         if downloaderPreference == .aria2c, resolvedAria2cPath == nil {
             appendLog(scope: .download, level: .warning, message: "aria2c not found in PATH; falling back to built-in downloader")
