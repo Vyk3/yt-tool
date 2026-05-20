@@ -22,6 +22,30 @@ private enum AudioCol {
     static let note: CGFloat = 66
 }
 
+// MARK: - Selectable row style
+
+private struct SelectableRowStyle: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .font(.callout.monospaced())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.25)
+                    : Color.primary.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
+            )
+    }
+}
+
 // MARK: - View
 
 struct FormatPickerView: View {
@@ -128,20 +152,7 @@ struct FormatPickerView: View {
             Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size, alignment: .leading)
             Text(fmt.note).lineLimit(1).frame(width: VideoCol.note, alignment: .leading)
         }
-        .font(.callout.monospaced())
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            isSelected
-                ? Color.accentColor.opacity(0.25)
-                : Color.primary.opacity(0.06),
-            in: RoundedRectangle(cornerRadius: 10)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
-        )
+        .modifier(SelectableRowStyle(isSelected: isSelected))
     }
 
     // MARK: - Audio column
@@ -192,20 +203,7 @@ struct FormatPickerView: View {
             Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size, alignment: .leading)
             Text(fmt.note).lineLimit(1).frame(width: AudioCol.note, alignment: .leading)
         }
-        .font(.callout.monospaced())
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            isSelected
-                ? Color.accentColor.opacity(0.25)
-                : Color.primary.opacity(0.06),
-            in: RoundedRectangle(cornerRadius: 10)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
-        )
+        .modifier(SelectableRowStyle(isSelected: isSelected))
     }
 
     // MARK: - Subtitle column
@@ -250,21 +248,8 @@ struct FormatPickerView: View {
 
     private func subtitleRow(_ track: SubtitleTrack, isSelected: Bool) -> some View {
         Text(track.displayName)
-            .font(.callout.monospaced())
             .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                isSelected
-                    ? Color.accentColor.opacity(0.25)
-                    : Color.primary.opacity(0.06),
-                in: RoundedRectangle(cornerRadius: 10)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
-            )
+            .modifier(SelectableRowStyle(isSelected: isSelected))
     }
 
     // MARK: - Placeholder

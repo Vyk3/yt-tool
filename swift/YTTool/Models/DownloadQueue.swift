@@ -60,6 +60,7 @@ final class DownloadQueue: ObservableObject {
         if let onLog {
             self.onLog = onLog
         }
+        didResolveAria2c = false
         isProcessing = true
         processingTask = Task {
             while !Task.isCancelled {
@@ -80,13 +81,25 @@ final class DownloadQueue: ObservableObject {
 
     // MARK: - Private
 
+    /// Cached once per `startProcessing` invocation so we don't spawn `/usr/bin/which` per item.
+    private var cachedAria2cPath: String?
+    private var didResolveAria2c = false
+
+    private func resolvedAria2cPath() -> String? {
+        if !didResolveAria2c {
+            cachedAria2cPath = Aria2cLocator().findAria2c()?.path
+            didResolveAria2c = true
+        }
+        return cachedAria2cPath
+    }
+
     private func processItem(_ item: QueueItem, locator: BundledToolLocator) async {
         item.status = .active
         item.runner = ProcessRunner()
         let service = YtDlpDownloadService(locator: locator, runner: item.runner!)
 
         let aria2cPath: String? = if item.config.downloaderPreference == .aria2c {
-            Aria2cLocator().findAria2c()?.path
+            resolvedAria2cPath()
         } else {
             nil
         }
@@ -110,12 +123,8 @@ final class DownloadQueue: ObservableObject {
                 outputDirectory: item.config.outputDirectory,
                 aria2cPath: aria2cPath,
                 onLog: { [weak self] kind, message in
-                    let level: AppLogLevel = switch kind {
-                    case .command, .lifecycle, .stdout: .info
-                    case .stderr: .warning
-                    }
                     Task { @MainActor in
-                        self?.onLog?(.download, level, message)
+                        self?.onLog?(.download, kind.appLogLevel, message)
                     }
                 }
             ) {

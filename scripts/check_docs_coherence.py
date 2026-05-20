@@ -6,7 +6,6 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 
@@ -161,6 +160,7 @@ def check_path_references(path: Path, content: str) -> list[Issue]:
 
 CHANGELOG_DATE_PATTERN = re.compile(r"##\s*\[.*?\]\s*(?:—|–|-)\s*(\d{4}-\d{2}-\d{2})")
 PR_MERGE_PATTERN = re.compile(r"^[0-9a-f]+\s+.*\(#(\d+)\)$")
+CHANGELOG_SKIP_PREFIXES = ("docs:", "chore:", "refactor:", "style:", "ci:", "test:")
 
 
 def check_changelog_completeness() -> list[Issue]:
@@ -180,13 +180,10 @@ def check_changelog_completeness() -> list[Issue]:
     if not last_date:
         return []
 
-    # Get PRs merged strictly after that date (next day onward)
+    # Get PRs merged strictly after that date (23:59:59 makes --after exclusive)
     try:
-        # Parse date and add one day to get "strictly after"
-        entry_date = datetime.strptime(last_date, "%Y-%m-%d")
-        after_date = entry_date.strftime("%Y-%m-%d")
         result = subprocess.run(
-            ["git", "log", f"--after={after_date} 23:59:59", "--oneline", "--first-parent", "main"],
+            ["git", "log", f"--after={last_date} 23:59:59", "--oneline", "--first-parent", "main"],
             capture_output=True,
             text=True,
             cwd=REPO_ROOT,
@@ -194,18 +191,15 @@ def check_changelog_completeness() -> list[Issue]:
         )
         if result.returncode != 0:
             return []
-    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+    except (subprocess.TimeoutExpired, FileNotFoundError):
         return []
 
-    # Only flag user-visible changes (feat/fix), skip docs/chore/refactor
-    skip_prefixes = ("docs:", "chore:", "refactor:", "style:", "ci:", "test:")
     merged_prs: list[str] = []
     for line in result.stdout.strip().splitlines():
         pr_match = PR_MERGE_PATTERN.match(line)
         if pr_match:
-            # Extract commit message (after the hash + space)
             msg = line.split(" ", 1)[1] if " " in line else ""
-            if not any(msg.lower().startswith(p) for p in skip_prefixes):
+            if not any(msg.lower().startswith(p) for p in CHANGELOG_SKIP_PREFIXES):
                 merged_prs.append(f"#{pr_match.group(1)}")
 
     if not merged_prs:
@@ -232,9 +226,8 @@ def check_changelog_completeness() -> list[Issue]:
     return []
 
 
-def scan_file(path: Path, zipapp_asset_name: str, actual_test_count: int) -> list[Issue]:
+def scan_file(path: Path, content: str, zipapp_asset_name: str, actual_test_count: int) -> list[Issue]:
     issues: list[Issue] = []
-    content = path.read_text(encoding="utf-8")
     for line_number, raw_line in enumerate(content.splitlines(), start=1):
         line = raw_line.strip()
         if not line:
@@ -286,7 +279,7 @@ def main(argv: list[str]) -> int:
             continue
         seen_paths.add(path)
         content = path.read_text(encoding="utf-8")
-        issues.extend(scan_file(path, zipapp_asset_name, actual_test_count))
+        issues.extend(scan_file(path, content, zipapp_asset_name, actual_test_count))
         issues.extend(check_path_references(path, content))
 
     # Changelog completeness (runs once, not per-file)
