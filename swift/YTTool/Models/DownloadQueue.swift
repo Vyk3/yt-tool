@@ -186,7 +186,8 @@ final class DownloadQueue: ObservableObject {
     private static func isPurePlaylistURL(_ url: String) -> Bool {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isYouTubeURL(trimmed),
-              let components = URLComponents(string: trimmed) else {
+              let components = URLComponents(string: trimmed)
+        else {
             return false
         }
         guard components.path == "/playlist" else { return false }

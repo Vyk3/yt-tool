@@ -2,10 +2,7 @@ import SwiftUI
 
 struct AdvancedOptionsView: View {
     @Binding var audioTranscodeFormat: AudioTranscodeFormat
-    @Binding var cookiesFilePath: String
-    @Binding var extraYtDlpArguments: String
-    @Binding var downloaderPreference: DownloaderPreference
-    let aria2cAvailable: Bool
+    @ObservedObject var state: AppState
     @State private var expanded = false
 
     var body: some View {
@@ -24,56 +21,38 @@ struct AdvancedOptionsView: View {
                     .frame(maxWidth: 220, alignment: .leading)
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text("Download engine")
-                            .font(.callout.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        Picker("Download engine", selection: $downloaderPreference) {
-                            ForEach(DownloaderPreference.allCases) { pref in
-                                Text(pref.label).tag(pref)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: 220, alignment: .leading)
-                        // Keep enabled when set to .aria2c so user can switch back if aria2c was removed
-                        .disabled(!aria2cAvailable && downloaderPreference == .native)
-                    }
-                    if !aria2cAvailable {
-                        Text("aria2c not found. Install via: brew install aria2")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Cookies file path")
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    TextField("/path/to/cookies.txt", text: $cookiesFilePath)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1)
-                    Text("Optional. The path must exist and be readable.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Extra yt-dlp arguments")
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    TextField("--download-sections \"*00:30-01:00\"", text: $extraYtDlpArguments)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1)
-                    Text("Optional. Passed through after validation.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                settingsSummary
             }
             .padding(.top, 8)
         } label: {
             Text("Advanced options (optional)")
                 .font(.headline)
+        }
+    }
+
+    @ViewBuilder
+    private var settingsSummary: some View {
+        let hasCookies = !state.cookiesFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasExtraArgs = !state.extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let engineLabel = state.downloaderPreference.label
+
+        VStack(alignment: .leading, spacing: 4) {
+            Divider()
+            HStack(spacing: 16) {
+                Label(engineLabel, systemImage: "gear")
+                if hasCookies {
+                    Label("Cookies set", systemImage: "checkmark.circle")
+                }
+                if hasExtraArgs {
+                    Label("Extra args set", systemImage: "checkmark.circle")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Text("Change in Settings tab")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
     }
 }

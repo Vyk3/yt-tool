@@ -205,5 +205,4 @@ struct YtDlpDownloadService {
     func cancel() async {
         try? await runner.cancel()
     }
-
 }

@@ -45,6 +45,12 @@
 		A00000000000000000000091 /* FormatBytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000090 /* FormatBytes.swift */; };
 		A000000000000000000000C1 /* AppUpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000C0 /* AppUpdateController.swift */; };
 		A000000000000000000000D1 /* PlaylistConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000D0 /* PlaylistConfig.swift */; };
+		A000000000000000000000E1 /* ChannelSubscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000E0 /* ChannelSubscription.swift */; };
+		A000000000000000000000E3 /* ChannelSubscriptionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000E2 /* ChannelSubscriptionStore.swift */; };
+		A000000000000000000000E5 /* SubscriptionPollingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000E4 /* SubscriptionPollingManager.swift */; };
+		A000000000000000000000E7 /* YouTubeFeedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000E6 /* YouTubeFeedService.swift */; };
+		A000000000000000000000E9 /* SubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000E8 /* SubscriptionsView.swift */; };
+		A000000000000000000000EB /* SettingsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000EA /* SettingsTabView.swift */; };
 		A000000000000000000000A1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000A0 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -87,6 +93,12 @@
 		A00000000000000000000090 /* FormatBytes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Support/FormatBytes.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000C0 /* AppUpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/AppUpdateController.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000D0 /* PlaylistConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/PlaylistConfig.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000E0 /* ChannelSubscription.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/ChannelSubscription.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000E2 /* ChannelSubscriptionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/ChannelSubscriptionStore.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000E4 /* SubscriptionPollingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/SubscriptionPollingManager.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000E6 /* YouTubeFeedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YouTubeFeedService.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000E8 /* SubscriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/SubscriptionsView.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000EA /* SettingsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/SettingsTabView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -154,6 +166,8 @@
 				A00000000000000000000049 /* UpdateView.swift */,
 				A0000000000000000000004C /* HistoryView.swift */,
 				A000000000000000000000C0 /* AppUpdateController.swift */,
+				A000000000000000000000E8 /* SubscriptionsView.swift */,
+				A000000000000000000000EA /* SettingsTabView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -174,6 +188,8 @@
 				A0000000000000000000004A /* DownloadHistoryEntry.swift */,
 				A0000000000000000000004B /* DownloadHistoryStore.swift */,
 				A000000000000000000000D0 /* PlaylistConfig.swift */,
+				A000000000000000000000E0 /* ChannelSubscription.swift */,
+				A000000000000000000000E2 /* ChannelSubscriptionStore.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -190,6 +206,8 @@
 				A00000000000000000000034 /* YtDlpArguments.swift */,
 				A00000000000000000000039 /* Aria2cLocator.swift */,
 				A0000000000000000000003F /* YtDlpUpdateService.swift */,
+				A000000000000000000000E4 /* SubscriptionPollingManager.swift */,
+				A000000000000000000000E6 /* YouTubeFeedService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -323,6 +341,12 @@
 				A00000000000000000000091 /* FormatBytes.swift in Sources */,
 				A000000000000000000000C1 /* AppUpdateController.swift in Sources */,
 				A000000000000000000000D1 /* PlaylistConfig.swift in Sources */,
+				A000000000000000000000E1 /* ChannelSubscription.swift in Sources */,
+				A000000000000000000000E3 /* ChannelSubscriptionStore.swift in Sources */,
+				A000000000000000000000E5 /* SubscriptionPollingManager.swift in Sources */,
+				A000000000000000000000E7 /* YouTubeFeedService.swift in Sources */,
+				A000000000000000000000E9 /* SubscriptionsView.swift in Sources */,
+				A000000000000000000000EB /* SettingsTabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,14 +358,14 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				CODE_SIGN_ENTITLEMENTS = YTTool/YTTool.entitlements;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = YTTool/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = local.koa.yttool.swift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -359,14 +383,14 @@
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_ENTITLEMENTS = YTTool/YTTool.entitlements;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = YTTool/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = local.koa.yttool.swift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
