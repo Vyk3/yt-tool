@@ -8,6 +8,26 @@
 
 ---
 
+## [0.1.4] — 2026-05-29
+
+### Added
+- **失败 / 取消状态操作按钮**：下载失败和取消面板新增 Retry（保留已选格式重试）与 New Download（完全重置）两个按钮。(#62)
+- **队列播放列表支持**：自动识别 YouTube 纯播放列表 URL（`/playlist?list=`），跳过 `--no-playlist` 以下载整个列表；Watch URL 带 `list=` 参数不受影响。(#62)
+
+### Changed
+- `resetDownload()` 升级为完整重置：清除 URL、probe 状态、已选格式和下载状态，与 `retryDownload()`（仅重置下载状态）明确分工。(#62)
+  > Why：原 `resetDownload` 仅重置下载状态，用户需要手动清空 URL 才能开始全新下载
+- 提取 `recordDownloadResult()` 统一下载完成路径，合并单次下载和队列下载中 5 处重复的历史记录 + 通知逻辑。(#62)
+  > Why：重复代码导致修改一处容易遗漏其余路径
+- `DownloadQueue` 回调从 Optional 改为非 Optional（默认空闭包），`retryItem` 通过内部 `resumeProcessing()` 恢复处理循环，不覆盖已注册的回调。(#62)
+  > Why：原实现中 `retryItem` 调用 `startProcessing` 会覆盖回调为 no-op，导致重试后的完成事件丢失
+
+### Fixed
+- 修复 `extract_release_notes.py` 提取最后一个版本时 off-by-one 导致内容截断的问题。(#62)
+  > Why：当目标版本是 CHANGELOG 中最后一个版本时，循环结束未设置 `end`，导致 `section` 为空
+
+---
+
 ## [0.1.3] — 2026-05-28
 
 ### Added
