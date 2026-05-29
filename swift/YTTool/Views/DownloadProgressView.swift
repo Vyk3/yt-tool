@@ -10,6 +10,7 @@ struct DownloadProgressView: View {
     let onDownload: () -> Void
     let onCancel: () -> Void
     let onReset: () -> Void
+    let onRetry: () -> Void
     @State private var isShowingFFmpegWarning = false
 
     var body: some View {
@@ -130,12 +131,7 @@ struct DownloadProgressView: View {
             failurePanel(error)
 
         case .cancelled:
-            stagePanel(
-                title: "Cancelled",
-                subtitle: "The active process tree was terminated.",
-                body: "You can adjust the format or output folder, then start a new download.",
-                tint: .orange
-            )
+            cancelledPanel
         }
     }
 
@@ -195,6 +191,39 @@ struct DownloadProgressView: View {
                !suggestion.isEmpty
             {
                 detailBlock(label: "Try this", value: suggestion)
+            }
+
+            HStack {
+                Spacer()
+                Button("Retry") { onRetry() }
+                    .buttonStyle(.bordered)
+                Button("New Download") { onReset() }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var cancelledPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            stageHeader(
+                title: "Cancelled",
+                subtitle: "The active process tree was terminated.",
+                tint: .orange
+            )
+
+            Text("You can adjust the format or output folder, then start a new download.")
+                .font(.callout.monospaced())
+                .textSelection(.enabled)
+
+            HStack {
+                Spacer()
+                Button("Retry") { onRetry() }
+                    .buttonStyle(.bordered)
+                Button("New Download") { onReset() }
+                    .buttonStyle(.bordered)
             }
         }
         .padding(12)

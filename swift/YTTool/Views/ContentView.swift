@@ -76,7 +76,8 @@ struct ContentView: View {
                 ffmpegWarningMessage: state.ffmpegWarningMessage,
                 onDownload: state.download,
                 onCancel: state.cancelDownload,
-                onReset: state.resetDownload
+                onReset: state.resetDownload,
+                onRetry: state.retryDownload
             )
             .padding(.top, 4)
         }

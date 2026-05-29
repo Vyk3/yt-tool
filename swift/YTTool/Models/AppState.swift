@@ -431,13 +431,11 @@ final class AppState: ObservableObject {
                         downloadTask = nil
                         downloadState = .succeeded(outputURL: outputDir)
                         appendLog(scope: .download, level: .success, message: "Completed playlist per-item downloads")
-                        self.sendCompletionNotification(outputURL: outputDir)
-                        self.historyStore.append(DownloadHistoryEntry(
-                            id: UUID(), url: url, title: capturedTitle,
-                            outputPath: outputDir.path(percentEncoded: false),
-                            dateCompleted: Date(), succeeded: true,
+                        self.recordDownloadResult(
+                            url: url, title: capturedTitle,
+                            outputURL: outputDir, succeeded: true,
                             estimatedSizeBytes: capturedEstimatedBytes
-                        ))
+                        )
                     }
                 } else {
                     for try await event in service.download(
@@ -471,13 +469,11 @@ final class AppState: ObservableObject {
                                     level: .success,
                                     message: "Completed: \(result.outputURL.path(percentEncoded: false))"
                                 )
-                                self.sendCompletionNotification(outputURL: result.outputURL)
-                                self.historyStore.append(DownloadHistoryEntry(
-                                    id: UUID(), url: url, title: capturedTitle,
-                                    outputPath: result.outputURL.path(percentEncoded: false),
-                                    dateCompleted: Date(), succeeded: true,
+                                self.recordDownloadResult(
+                                    url: url, title: capturedTitle,
+                                    outputURL: result.outputURL, succeeded: true,
                                     estimatedSizeBytes: capturedEstimatedBytes
-                                ))
+                                )
                             }
                         }
                     }
@@ -496,11 +492,12 @@ final class AppState: ObservableObject {
                     let mappedError = mapDownloadError(error)
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
-                    self.historyStore.append(DownloadHistoryEntry(
-                        id: UUID(), url: url, title: capturedTitle,
-                        outputPath: nil, dateCompleted: Date(), succeeded: false,
-                        estimatedSizeBytes: capturedEstimatedBytes
-                    ))
+                    self.recordDownloadResult(
+                        url: url, title: capturedTitle,
+                        outputURL: nil, succeeded: false,
+                        estimatedSizeBytes: capturedEstimatedBytes,
+                        sendNotification: false
+                    )
                 }
             } catch {
                 await MainActor.run {
@@ -512,11 +509,12 @@ final class AppState: ObservableObject {
                     ))
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
-                    self.historyStore.append(DownloadHistoryEntry(
-                        id: UUID(), url: url, title: capturedTitle,
-                        outputPath: nil, dateCompleted: Date(), succeeded: false,
-                        estimatedSizeBytes: capturedEstimatedBytes
-                    ))
+                    self.recordDownloadResult(
+                        url: url, title: capturedTitle,
+                        outputURL: nil, succeeded: false,
+                        estimatedSizeBytes: capturedEstimatedBytes,
+                        sendNotification: false
+                    )
                 }
             }
         }
@@ -532,6 +530,15 @@ final class AppState: ObservableObject {
     }
 
     func resetDownload() {
+        inputURL = ""
+        probeState = .idle
+        selectedVideoFormat = nil
+        selectedAudioFormat = nil
+        selectedSubtitle = nil
+        downloadState = .idle
+    }
+
+    func retryDownload() {
         downloadState = .idle
     }
 
@@ -646,15 +653,14 @@ final class AppState: ObservableObject {
                 self?.appendLog(scope: scope, level: level, message: message)
             },
             onItemCompleted: { [weak self] item in
-                self?.historyStore.append(DownloadHistoryEntry(
-                    id: UUID(),
+                self?.recordDownloadResult(
                     url: item.url,
                     title: item.title,
-                    outputPath: item.outputURL?.path(percentEncoded: false),
-                    dateCompleted: Date(),
+                    outputURL: item.outputURL,
                     succeeded: item.status == .completed,
-                    estimatedSizeBytes: nil
-                ))
+                    estimatedSizeBytes: nil,
+                    sendNotification: false
+                )
             }
         )
     }
@@ -841,6 +847,28 @@ final class AppState: ObservableObject {
         let sizes = [video?.fileSizeBytes, audio?.fileSizeBytes].compactMap { $0 }
         guard !sizes.isEmpty else { return nil }
         return sizes.reduce(0, +)
+    }
+
+    private func recordDownloadResult(
+        url: String,
+        title: String?,
+        outputURL: URL?,
+        succeeded: Bool,
+        estimatedSizeBytes: Int64?,
+        sendNotification: Bool = true
+    ) {
+        if sendNotification, succeeded, let outputURL {
+            sendCompletionNotification(outputURL: outputURL)
+        }
+        historyStore.append(DownloadHistoryEntry(
+            id: UUID(),
+            url: url,
+            title: title,
+            outputPath: outputURL?.path(percentEncoded: false),
+            dateCompleted: Date(),
+            succeeded: succeeded,
+            estimatedSizeBytes: estimatedSizeBytes
+        ))
     }
 
     private func sendCompletionNotification(outputURL: URL?) {
