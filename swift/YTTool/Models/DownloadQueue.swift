@@ -178,13 +178,20 @@ final class DownloadQueue: ObservableObject {
         url.count > 60 ? String(url.prefix(57)) + "..." : url
     }
 
-    /// Returns `true` only for pure playlist URLs (path == "/playlist").
+    /// Returns `true` only for YouTube pure playlist URLs
+    /// (`youtube.com/playlist?list=PLxxx`).
     /// Watch URLs with a `list=` param (e.g. `/watch?v=xxx&list=yyy`) return `false`
     /// so `--no-playlist` keeps extracting just the single video.
+    /// Non-YouTube URLs and malformed playlist URLs without `list=` also return `false`.
     private static func isPurePlaylistURL(_ url: String) -> Bool {
-        guard let components = URLComponents(string: url.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isYouTubeURL(trimmed),
+              let components = URLComponents(string: trimmed) else {
             return false
         }
-        return components.path == "/playlist"
+        guard components.path == "/playlist" else { return false }
+        return components.queryItems?.contains {
+            $0.name == "list" && !($0.value ?? "").isEmpty
+        } == true
     }
 }
