@@ -5,18 +5,18 @@ import XCTest
 final class ChannelSubscriptionStoreTests: XCTestCase {
     private var tempURL: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("YTToolTests-\(UUID().uuidString)")
             .appendingPathComponent("channel_subscriptions.json")
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         // Clean up temp directory.
         let dir = tempURL.deletingLastPathComponent()
         try? FileManager.default.removeItem(at: dir)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func makeStore() -> ChannelSubscriptionStore {
