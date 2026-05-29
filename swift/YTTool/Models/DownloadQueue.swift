@@ -45,7 +45,7 @@ final class DownloadQueue: ObservableObject {
         item.title = nil
         item.runner = nil
         if !isProcessing {
-            startProcessing(locator: BundledToolLocator())
+            resumeProcessing(locator: BundledToolLocator())
         }
     }
 
@@ -61,6 +61,14 @@ final class DownloadQueue: ObservableObject {
         guard !isProcessing else { return }
         self.onLog = onLog
         self.onItemCompleted = onItemCompleted
+        resumeProcessing(locator: locator)
+    }
+
+    /// Start the processing loop without overwriting stored callbacks.
+    /// Used by `retryItem` to resume processing with the callbacks
+    /// already installed by the initial `startProcessing` call.
+    private func resumeProcessing(locator: BundledToolLocator) {
+        guard !isProcessing else { return }
         didResolveAria2c = false
         isProcessing = true
         processingTask = Task {
