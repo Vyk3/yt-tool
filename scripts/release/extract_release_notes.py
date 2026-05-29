@@ -30,11 +30,13 @@ def extract_notes(changelog: str, version: str) -> str | None:
     capture = False
     start = -1
 
+    end = len(lines)
     for i, line in enumerate(lines):
         m = VERSION_HEADER_RE.match(line)
         if m:
             if capture:
                 # Hit the next version header -> stop
+                end = i
                 break
             if m.group(1) == version:
                 capture = True
@@ -42,13 +44,14 @@ def extract_notes(changelog: str, version: str) -> str | None:
                 continue
         # Section divider between versions
         if capture and line.strip() == "---":
+            end = i
             break
 
     if start == -1:
         return None
 
     # Collect lines from after the header to the stop point
-    section = lines[start + 1 : i]
+    section = lines[start + 1 : end]
 
     # Strip leading/trailing blank lines
     text = "".join(section).strip()
