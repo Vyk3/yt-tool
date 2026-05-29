@@ -9,7 +9,7 @@ final class SubscriptionPollingManager: ObservableObject {
 
     private let store: ChannelSubscriptionStore
     private let feedService = YouTubeFeedService()
-    private var timer: Timer?
+    private nonisolated(unsafe) var timer: Timer?
 
     /// Default poll interval in seconds (30 minutes).
     static let defaultPollInterval: TimeInterval = 30 * 60
@@ -25,6 +25,10 @@ final class SubscriptionPollingManager: ObservableObject {
     init(store: ChannelSubscriptionStore, pollInterval: TimeInterval = SubscriptionPollingManager.defaultPollInterval) {
         self.store = store
         self.pollInterval = pollInterval
+    }
+
+    deinit {
+        timer?.invalidate()
     }
 
     // MARK: - Polling control
@@ -71,12 +75,26 @@ final class SubscriptionPollingManager: ObservableObject {
         let enabled = store.subscriptions.filter(\.isEnabled)
         guard !enabled.isEmpty else { return }
 
-        for subscription in enabled {
-            do {
-                let videos = try await feedService.fetchFeed(channelID: subscription.channelID)
+        let service = feedService
+        let results = await withTaskGroup(of: (ChannelSubscription, [FeedVideo]?).self) { group in
+            for subscription in enabled {
+                group.addTask {
+                    let videos = try? await service.fetchFeed(channelID: subscription.channelID)
+                    return (subscription, videos)
+                }
+            }
+            var collected: [(ChannelSubscription, [FeedVideo])] = []
+            for await (sub, videos) in group {
+                if let videos {
+                    collected.append((sub, videos))
+                }
+            }
+            return collected
+        }
+
+        store.performBatchUpdate {
+            for (subscription, videos) in results {
                 processNewVideos(videos, for: subscription)
-            } catch {
-                // Feed fetch failed for this channel — skip, will retry next cycle.
             }
         }
     }

@@ -27,7 +27,7 @@ struct ContentView: View {
                 case .single:
                     singleModeContent
 
-                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat)
+                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat, state: state)
 
                     LogPanelView(entries: state.logs)
                         .padding(.top, 8)
@@ -35,7 +35,7 @@ struct ContentView: View {
                 case .queue:
                     queueModeContent
 
-                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat)
+                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat, state: state)
 
                     LogPanelView(entries: state.logs)
                         .padding(.top, 8)
@@ -45,6 +45,9 @@ struct ContentView: View {
                         store: state.subscriptionStore,
                         pollingManager: state.pollingManager
                     )
+
+                    LogPanelView(entries: state.logs)
+                        .padding(.top, 8)
 
                 case .settings:
                     #if canImport(Sparkle)
@@ -230,9 +233,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("YTTool")
                     .font(.largeTitle.weight(.semibold))
-                Text(state.appMode == .single
-                    ? "Enter a video URL and press Probe to inspect available formats."
-                    : "Paste URLs (one per line) and add them to the download queue.")
+                Text(headerSubtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -244,6 +245,19 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    private var headerSubtitle: String {
+        switch state.appMode {
+        case .single:
+            "Enter a video URL and press Probe to inspect available formats."
+        case .queue:
+            "Paste URLs (one per line) and add them to the download queue."
+        case .subscriptions:
+            "Subscribe to channels and get notified when new videos are uploaded."
+        case .settings:
+            "Configure download options, subscriptions, and updates."
         }
     }
 

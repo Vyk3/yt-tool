@@ -170,10 +170,12 @@ private struct NewVideoRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            Link(destination: URL(string: video.url)!) {
-                Image(systemName: "play.circle")
+            if let videoURL = URL(string: video.url) {
+                Link(destination: videoURL) {
+                    Image(systemName: "play.circle")
+                }
+                .buttonStyle(.borderless)
             }
-            .buttonStyle(.borderless)
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark.circle.fill")

@@ -24,21 +24,23 @@ final class ChannelSubscriptionStore: ObservableObject {
 
     // MARK: - Public
 
+    private var isBatching = false
+
     func add(_ subscription: ChannelSubscription) {
         guard !subscriptions.contains(where: { $0.channelID == subscription.channelID }) else { return }
         subscriptions.append(subscription)
-        save()
+        saveIfNeeded()
     }
 
     func remove(id: UUID) {
         subscriptions.removeAll { $0.id == id }
-        save()
+        saveIfNeeded()
     }
 
     func toggleEnabled(id: UUID) {
         guard let index = subscriptions.firstIndex(where: { $0.id == id }) else { return }
         subscriptions[index].isEnabled.toggle()
-        save()
+        saveIfNeeded()
     }
 
     func updateLastChecked(id: UUID, date: Date, lastVideoID: String?) {
@@ -47,7 +49,7 @@ final class ChannelSubscriptionStore: ObservableObject {
         if let lastVideoID {
             subscriptions[index].lastVideoID = lastVideoID
         }
-        save()
+        saveIfNeeded()
     }
 
     func updateChannelName(id: UUID, name: String) {
@@ -55,6 +57,19 @@ final class ChannelSubscriptionStore: ObservableObject {
               subscriptions[index].channelName != name
         else { return }
         subscriptions[index].channelName = name
+        saveIfNeeded()
+    }
+
+    /// Performs multiple mutations with a single disk write at the end.
+    func performBatchUpdate(_ block: () -> Void) {
+        isBatching = true
+        block()
+        isBatching = false
+        save()
+    }
+
+    private func saveIfNeeded() {
+        guard !isBatching else { return }
         save()
     }
 

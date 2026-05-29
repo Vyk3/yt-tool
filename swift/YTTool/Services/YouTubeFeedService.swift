@@ -31,19 +31,28 @@ struct YouTubeFeedService {
             url,
         ]
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
+        let stdoutPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = FileHandle.nullDevice
 
-        try process.run()
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0 else {
-            throw FeedError.channelIDResolutionFailed
+        let output: String = try await withCheckedThrowingContinuation { continuation in
+            process.terminationHandler = { proc in
+                let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                guard proc.terminationStatus == 0 else {
+                    continuation.resume(throwing: FeedError.channelIDResolutionFailed)
+                    return
+                }
+                let text = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                continuation.resume(returning: text)
+            }
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: FeedError.channelIDResolutionFailed)
+            }
         }
 
-        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let lines = output.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 
         guard lines.count >= 2, !lines[0].isEmpty else {
