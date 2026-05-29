@@ -6,7 +6,9 @@ enum QueueQualityStrategy: String, CaseIterable, Identifiable {
     case max720p
     case audioOnly
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var title: String {
         switch self {

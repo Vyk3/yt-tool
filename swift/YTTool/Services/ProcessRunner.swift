@@ -26,7 +26,7 @@ final class LockedTextBuffer: @unchecked Sendable {
         chunks.append(chunk)
         while totalBytes > capacity, headIndex < chunks.count {
             totalBytes -= chunks[headIndex].utf8.count
-            chunks[headIndex] = ""  // release string memory
+            chunks[headIndex] = "" // release string memory
             headIndex += 1
         }
         // Compact the array when more than half is dead entries.
