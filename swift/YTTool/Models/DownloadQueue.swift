@@ -7,6 +7,7 @@ final class DownloadQueue: ObservableObject {
 
     private var processingTask: Task<Void, Never>?
     private var onLog: ((AppLogScope, AppLogLevel, String) -> Void)?
+    private var onItemCompleted: ((QueueItem) -> Void)?
 
     func addURLs(_ urls: [String], config: QueueItemConfig) {
         let newItems = urls
@@ -54,11 +55,15 @@ final class DownloadQueue: ObservableObject {
 
     func startProcessing(
         locator: BundledToolLocator = BundledToolLocator(),
-        onLog: ((AppLogScope, AppLogLevel, String) -> Void)? = nil
+        onLog: ((AppLogScope, AppLogLevel, String) -> Void)? = nil,
+        onItemCompleted: ((QueueItem) -> Void)? = nil
     ) {
         guard !isProcessing else { return }
         if let onLog {
             self.onLog = onLog
+        }
+        if let onItemCompleted {
+            self.onItemCompleted = onItemCompleted
         }
         didResolveAria2c = false
         isProcessing = true
@@ -117,6 +122,7 @@ final class DownloadQueue: ObservableObject {
                 url: item.url,
                 videoFormatId: nil,
                 audioFormatId: nil,
+                formatSelectorOverride: item.config.qualityStrategy.formatSelector,
                 audioTranscodeFormat: effectiveTranscode,
                 cookiesFilePath: item.config.cookiesFilePath,
                 extraArguments: item.config.extraArguments,
@@ -138,6 +144,7 @@ final class DownloadQueue: ObservableObject {
             }
             item.status = .completed
             onLog?(.download, .success, "[\(item.title ?? truncatedURL(item.url))] Completed")
+            onItemCompleted?(item)
         } catch is CancellationError {
             if item.status != .cancelled {
                 item.status = .cancelled
@@ -154,6 +161,7 @@ final class DownloadQueue: ObservableObject {
                 recoverySuggestion: error.localizedDescription
             )
             onLog?(.download, .error, "[\(truncatedURL(item.url))] Failed: \(error.localizedDescription)")
+            onItemCompleted?(item)
         }
     }
 

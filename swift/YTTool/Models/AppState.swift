@@ -80,6 +80,7 @@ final class AppState: ObservableObject {
 
     @Published var appMode: AppMode = .single
     @Published var queueInputURLs: String = ""
+    @Published var queueQualityStrategy: QueueQualityStrategy = .bestQuality
     let downloadQueue = DownloadQueue()
     let historyStore = DownloadHistoryStore()
 
@@ -530,6 +531,10 @@ final class AppState: ObservableObject {
         appendLog(scope: .download, level: .warning, message: "Cancel requested")
     }
 
+    func resetDownload() {
+        downloadState = .idle
+    }
+
     // MARK: - Queue
 
     func addToQueue() {
@@ -560,7 +565,8 @@ final class AppState: ObservableObject {
             cookiesFilePath: normalizedCookies,
             extraArguments: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
-            downloaderPreference: downloaderPreference
+            downloaderPreference: downloaderPreference,
+            qualityStrategy: queueQualityStrategy
         )
 
         downloadQueue.addURLs(urls, config: config)
@@ -638,6 +644,17 @@ final class AppState: ObservableObject {
             locator: BundledToolLocator(),
             onLog: { [weak self] scope, level, message in
                 self?.appendLog(scope: scope, level: level, message: message)
+            },
+            onItemCompleted: { [weak self] item in
+                self?.historyStore.append(DownloadHistoryEntry(
+                    id: UUID(),
+                    url: item.url,
+                    title: item.title,
+                    outputPath: item.outputURL?.path(percentEncoded: false),
+                    dateCompleted: Date(),
+                    succeeded: item.status == .completed,
+                    estimatedSizeBytes: nil
+                ))
             }
         )
     }

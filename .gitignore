@@ -37,7 +37,7 @@
 # Cross-agent local workflow layer
 /AGENTS.md
 /CLAUDE.md
-/agents/
+/agents
 /rules/
 /skills/
 
@@ -53,7 +53,8 @@
 /scripts/fast_path.sh
 /scripts/fmt.sh
 /scripts/gen_allowlist.py
-/scripts/release/
+/scripts/release/*
+!/scripts/release/extract_release_notes.py
 
 # Xcode per-user settings
 xcuserdata/

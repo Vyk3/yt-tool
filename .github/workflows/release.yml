@@ -50,13 +50,24 @@ jobs:
           name: yt-tool-macOS
           path: dist/
 
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          TAG="${{ github.ref_name }}"
+          python3 scripts/release/extract_release_notes.py "$TAG" --out release_notes.md || {
+            echo "⚠️  Version not found in CHANGELOG, using fallback"
+            echo "Release $TAG" > release_notes.md
+          }
+
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.ref_name }}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "$TAG" --notes "Release $TAG" --verify-tag
+            gh release create "$TAG" --title "$TAG" --notes-file release_notes.md --verify-tag
+          else
+            gh release edit "$TAG" --notes-file release_notes.md
           fi
 
       - name: Upload release assets

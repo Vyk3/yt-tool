@@ -60,6 +60,19 @@ DIST_ZIP="$OUTPUT_DIR/YTTool.zip"
 DIST_DMG="$OUTPUT_DIR/YTTool.dmg"
 XCODE_LOG="$BUILD_ROOT/xcodebuild-archive.log"
 
+# ── Version from git tag ─────────────────────────────────────────────────────
+# If HEAD is tagged with a semver tag (v1.2.3), inject it as MARKETING_VERSION.
+# Falls back to the version in the Xcode project if no tag is present.
+GIT_TAG="$(git -C "$PROJECT_DIR" describe --tags --exact-match HEAD 2>/dev/null || true)"
+if [[ "$GIT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    APP_VERSION="${GIT_TAG#v}"
+    VERSION_OVERRIDE="MARKETING_VERSION=$APP_VERSION"
+    echo "Version from git tag: $APP_VERSION"
+else
+    VERSION_OVERRIDE=""
+    echo "No semver tag on HEAD — using Xcode project version"
+fi
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 step() { echo ""; echo "==> $*"; }
 die()  { echo "ERROR: $*" >&2; exit 1; }
@@ -139,6 +152,7 @@ xcodebuild archive \
     CODE_SIGNING_ALLOWED=NO \
     DEVELOPMENT_TEAM="" \
     ARCHS=arm64 \
+    ${VERSION_OVERRIDE:+"$VERSION_OVERRIDE"} \
     > "$XCODE_LOG" 2>&1 \
     || { grep -E "^(error:|warning:|Build FAILED)" "$XCODE_LOG" | head -20 >&2
          echo "Full log: $XCODE_LOG" >&2
