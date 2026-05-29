@@ -74,7 +74,7 @@ struct YouTubeFeedService {
 
     // MARK: - XML parsing
 
-    private func parseFeed(data: Data) -> [FeedVideo] {
+    func parseFeed(data: Data) -> [FeedVideo] {
         let parser = FeedXMLParser(data: data)
         return parser.parse()
     }
@@ -118,7 +118,7 @@ enum FeedError: LocalizedError {
 ///   </entry>
 /// </feed>
 /// ```
-private final class FeedXMLParser: NSObject, XMLParserDelegate {
+final class FeedXMLParser: NSObject, XMLParserDelegate {
     private let data: Data
     private var videos: [FeedVideo] = []
 

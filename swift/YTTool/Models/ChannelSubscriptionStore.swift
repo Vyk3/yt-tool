@@ -6,15 +6,19 @@ final class ChannelSubscriptionStore: ObservableObject {
 
     @Published private(set) var subscriptions: [ChannelSubscription] = []
 
+    private let customStorageURL: URL?
+
     private var fileURL: URL? {
-        FileManager.default
+        if let customStorageURL { return customStorageURL }
+        return FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("YTTool", isDirectory: true)
             .appendingPathComponent(Self.fileName)
     }
 
-    init() {
+    init(storageURL: URL? = nil) {
+        customStorageURL = storageURL
         load()
     }
 
