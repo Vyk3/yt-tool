@@ -13,7 +13,8 @@ final class DownloadQueueTests: XCTestCase {
             cookiesFilePath: nil,
             extraArguments: [],
             audioTranscodeFormat: audioTranscodeFormat,
-            downloaderPreference: downloaderPreference
+            downloaderPreference: downloaderPreference,
+            qualityStrategy: .bestQuality
         )
     }
 
@@ -123,7 +124,8 @@ final class DownloadQueueTests: XCTestCase {
             cookiesFilePath: "/tmp/cookies.txt",
             extraArguments: ["--playlist-items", "1"],
             audioTranscodeFormat: .mp3,
-            downloaderPreference: .aria2c
+            downloaderPreference: .aria2c,
+            qualityStrategy: .max1080p
         )
         let item = QueueItem(url: "https://example.com", config: config)
         XCTAssertEqual(item.config.outputDirectory, dir)

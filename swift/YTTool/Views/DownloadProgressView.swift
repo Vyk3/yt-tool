@@ -9,6 +9,7 @@ struct DownloadProgressView: View {
     let ffmpegWarningMessage: String?
     let onDownload: () -> Void
     let onCancel: () -> Void
+    let onReset: () -> Void
     @State private var isShowingFFmpegWarning = false
 
     var body: some View {
@@ -164,6 +165,13 @@ struct DownloadProgressView: View {
                 Button(isDirectory ? "Copy Folder Path" : "Copy File Path") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(outputURL.path(percentEncoded: false), forType: .string)
+                }
+                .buttonStyle(.bordered)
+
+                Spacer()
+
+                Button("New Download") {
+                    onReset()
                 }
                 .buttonStyle(.bordered)
             }

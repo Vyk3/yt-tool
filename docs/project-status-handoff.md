@@ -121,6 +121,6 @@ swift/YTTool/
 | swift/DEVLOG.md | OK | |
 | CLAUDE.md | OK | |
 | rules/README.md | OK | |
-| agents/README.md | OK | |
+| agents/README.md | OK | Security Reviewer 已新增，内容已更新 |
 | .github/*.md | OK | |
 | skills/workflow/SKILL.md | OK | |

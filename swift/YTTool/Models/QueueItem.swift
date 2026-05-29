@@ -1,11 +1,39 @@
 import Foundation
 
+enum QueueQualityStrategy: String, CaseIterable, Identifiable {
+    case bestQuality
+    case max1080p
+    case max720p
+    case audioOnly
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .bestQuality: "Best quality"
+        case .max1080p: "1080p max"
+        case .max720p: "720p max"
+        case .audioOnly: "Audio only"
+        }
+    }
+
+    var formatSelector: String {
+        switch self {
+        case .bestQuality: "bestvideo+bestaudio/best"
+        case .max1080p: "bestvideo[height<=1080]+bestaudio/best"
+        case .max720p: "bestvideo[height<=720]+bestaudio/best"
+        case .audioOnly: "bestaudio/best"
+        }
+    }
+}
+
 struct QueueItemConfig: Equatable {
     let outputDirectory: URL
     let cookiesFilePath: String?
     let extraArguments: [String]
     let audioTranscodeFormat: AudioTranscodeFormat
     let downloaderPreference: DownloaderPreference
+    let qualityStrategy: QueueQualityStrategy
 }
 
 enum QueueItemStatus: Equatable {

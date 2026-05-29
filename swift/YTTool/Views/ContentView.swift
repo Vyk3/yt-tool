@@ -8,37 +8,37 @@ struct ContentView: View {
     @State private var showingFileImporter = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            header
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                header
 
-            Picker("Mode", selection: $state.appMode) {
-                ForEach(AppMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
+                Picker("Mode", selection: $state.appMode) {
+                    ForEach(AppMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 200)
+
+                if state.appMode == .single {
+                    singleModeContent
+                } else {
+                    queueModeContent
+                }
+
+                AdvancedOptionsView(
+                    audioTranscodeFormat: $state.audioTranscodeFormat,
+                    cookiesFilePath: $state.cookiesFilePath,
+                    extraYtDlpArguments: $state.extraYtDlpArguments,
+                    downloaderPreference: $state.downloaderPreference,
+                    aria2cAvailable: state.aria2cAvailable
+                )
+
+                LogPanelView(entries: state.logs)
+                    .padding(.top, 8)
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 200)
-
-            if state.appMode == .single {
-                singleModeContent
-            } else {
-                queueModeContent
-            }
-
-            AdvancedOptionsView(
-                audioTranscodeFormat: $state.audioTranscodeFormat,
-                cookiesFilePath: $state.cookiesFilePath,
-                extraYtDlpArguments: $state.extraYtDlpArguments,
-                downloaderPreference: $state.downloaderPreference,
-                aria2cAvailable: state.aria2cAvailable
-            )
-
-            LogPanelView(entries: state.logs)
-                .padding(.top, 8)
-
-            Spacer(minLength: 0)
+            .padding(24)
         }
-        .padding(24)
         .onAppear { state.requestNotificationPermission() }
         .sheet(isPresented: $showingHistory) {
             HistoryView(store: state.historyStore)
@@ -75,7 +75,8 @@ struct ContentView: View {
                 isDownloading: state.isDownloading,
                 ffmpegWarningMessage: state.ffmpegWarningMessage,
                 onDownload: state.download,
-                onCancel: state.cancelDownload
+                onCancel: state.cancelDownload,
+                onReset: state.resetDownload
             )
             .padding(.top, 4)
         }
@@ -143,6 +144,13 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
                     .help("Clear selected folder")
                 }
+
+                Picker("Quality", selection: $state.queueQualityStrategy) {
+                    ForEach(QueueQualityStrategy.allCases) { strategy in
+                        Text(strategy.title).tag(strategy)
+                    }
+                }
+                .frame(maxWidth: 160)
 
                 Spacer()
 
