@@ -14,17 +14,22 @@ final class SubscriptionPollingManager: ObservableObject {
     /// Default poll interval in seconds (30 minutes).
     static let defaultPollInterval: TimeInterval = 30 * 60
 
+    private static let pollIntervalKey = "subscriptionPollInterval"
+
     var pollInterval: TimeInterval {
         didSet {
-            guard pollInterval != oldValue, isPolling else { return }
+            guard pollInterval != oldValue else { return }
+            UserDefaults.standard.set(pollInterval, forKey: Self.pollIntervalKey)
+            guard isPolling else { return }
             stopPolling()
             startPolling()
         }
     }
 
-    init(store: ChannelSubscriptionStore, pollInterval: TimeInterval = SubscriptionPollingManager.defaultPollInterval) {
+    init(store: ChannelSubscriptionStore, pollInterval: TimeInterval? = nil) {
         self.store = store
-        self.pollInterval = pollInterval
+        let stored = UserDefaults.standard.double(forKey: Self.pollIntervalKey)
+        self.pollInterval = pollInterval ?? (stored > 0 ? stored : Self.defaultPollInterval)
     }
 
     deinit {
