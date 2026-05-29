@@ -20,8 +20,8 @@ enum QueueQualityStrategy: String, CaseIterable, Identifiable {
     var formatSelector: String {
         switch self {
         case .bestQuality: "bestvideo+bestaudio/best"
-        case .max1080p: "bestvideo[height<=1080]+bestaudio/best"
-        case .max720p: "bestvideo[height<=720]+bestaudio/best"
+        case .max1080p: "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+        case .max720p: "bestvideo[height<=720]+bestaudio/best[height<=720]"
         case .audioOnly: "bestaudio/best"
         }
     }
