@@ -9,12 +9,19 @@ struct YTToolApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(state: state)
-                .frame(minWidth: 900, minHeight: 620)
             #if canImport(Sparkle)
-                .onAppear {
-                    appUpdateController.start(autoCheck: state.autoCheckForAppUpdates)
-                }
+                ContentView(state: state, appUpdateController: appUpdateController)
+                    .frame(minWidth: 900, minHeight: 620)
+                    .onAppear {
+                        appUpdateController.start(autoCheck: state.autoCheckForAppUpdates)
+                        state.pollingManager.startPolling()
+                    }
+            #else
+                ContentView(state: state)
+                    .frame(minWidth: 900, minHeight: 620)
+                    .onAppear {
+                        state.pollingManager.startPolling()
+                    }
             #endif
         }
         .windowResizability(.automatic)

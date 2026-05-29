@@ -4,6 +4,8 @@ import UserNotifications
 enum AppMode: String, CaseIterable, Identifiable {
     case single
     case queue
+    case subscriptions
+    case settings
 
     var id: String {
         rawValue
@@ -13,6 +15,8 @@ enum AppMode: String, CaseIterable, Identifiable {
         switch self {
         case .single: "Single"
         case .queue: "Queue"
+        case .subscriptions: "Subscriptions"
+        case .settings: "Settings"
         }
     }
 }
@@ -83,6 +87,11 @@ final class AppState: ObservableObject {
     @Published var queueQualityStrategy: QueueQualityStrategy = .bestQuality
     let downloadQueue = DownloadQueue()
     let historyStore = DownloadHistoryStore()
+
+    // MARK: - Subscriptions
+
+    let subscriptionStore = ChannelSubscriptionStore()
+    private(set) lazy var pollingManager = SubscriptionPollingManager(store: subscriptionStore)
 
     // MARK: - Update
 

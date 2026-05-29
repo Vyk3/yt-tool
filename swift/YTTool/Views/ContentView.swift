@@ -4,6 +4,9 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @ObservedObject var state: AppState
+    #if canImport(Sparkle)
+        @ObservedObject var appUpdateController: AppUpdateController
+    #endif
     @State private var showingHistory = false
     @State private var showingFileImporter = false
 
@@ -20,22 +23,43 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 200)
 
-                if state.appMode == .single {
+                switch state.appMode {
+                case .single:
                     singleModeContent
-                } else {
+
+                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat)
+
+                    LogPanelView(entries: state.logs)
+                        .padding(.top, 8)
+
+                case .queue:
                     queueModeContent
+
+                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat)
+
+                    LogPanelView(entries: state.logs)
+                        .padding(.top, 8)
+
+                case .subscriptions:
+                    SubscriptionsView(
+                        store: state.subscriptionStore,
+                        pollingManager: state.pollingManager
+                    )
+
+                case .settings:
+                    #if canImport(Sparkle)
+                        SettingsTabView(
+                            state: state,
+                            pollingManager: state.pollingManager,
+                            appUpdateController: appUpdateController
+                        )
+                    #else
+                        SettingsTabView(
+                            state: state,
+                            pollingManager: state.pollingManager
+                        )
+                    #endif
                 }
-
-                AdvancedOptionsView(
-                    audioTranscodeFormat: $state.audioTranscodeFormat,
-                    cookiesFilePath: $state.cookiesFilePath,
-                    extraYtDlpArguments: $state.extraYtDlpArguments,
-                    downloaderPreference: $state.downloaderPreference,
-                    aria2cAvailable: state.aria2cAvailable
-                )
-
-                LogPanelView(entries: state.logs)
-                    .padding(.top, 8)
             }
             .padding(24)
         }
