@@ -6,8 +6,8 @@ final class DownloadQueue: ObservableObject {
     @Published var isProcessing = false
 
     private var processingTask: Task<Void, Never>?
-    private var onLog: ((AppLogScope, AppLogLevel, String) -> Void)?
-    private var onItemCompleted: ((QueueItem) -> Void)?
+    private var onLog: (AppLogScope, AppLogLevel, String) -> Void = { _, _, _ in }
+    private var onItemCompleted: (QueueItem) -> Void = { _ in }
 
     func addURLs(_ urls: [String], config: QueueItemConfig) {
         let newItems = urls
@@ -55,16 +55,12 @@ final class DownloadQueue: ObservableObject {
 
     func startProcessing(
         locator: BundledToolLocator = BundledToolLocator(),
-        onLog: ((AppLogScope, AppLogLevel, String) -> Void)? = nil,
-        onItemCompleted: ((QueueItem) -> Void)? = nil
+        onLog: @escaping (AppLogScope, AppLogLevel, String) -> Void = { _, _, _ in },
+        onItemCompleted: @escaping (QueueItem) -> Void = { _ in }
     ) {
         guard !isProcessing else { return }
-        if let onLog {
-            self.onLog = onLog
-        }
-        if let onItemCompleted {
-            self.onItemCompleted = onItemCompleted
-        }
+        self.onLog = onLog
+        self.onItemCompleted = onItemCompleted
         didResolveAria2c = false
         isProcessing = true
         processingTask = Task {
@@ -109,13 +105,17 @@ final class DownloadQueue: ObservableObject {
             nil
         }
         if item.config.downloaderPreference == .aria2c, aria2cPath == nil {
-            onLog?(.download, .warning, "[\(truncatedURL(item.url))] aria2c not found; falling back to built-in downloader")
+            onLog(.download, .warning, "[\(truncatedURL(item.url))] aria2c not found; falling back to built-in downloader")
         }
 
         let effectiveTranscode: AudioTranscodeFormat? =
             item.config.audioTranscodeFormat == .original ? nil : item.config.audioTranscodeFormat
 
-        onLog?(.download, .info, "[\(truncatedURL(item.url))] Starting download")
+        let isPlaylist = Self.isPurePlaylistURL(item.url)
+        if isPlaylist {
+            onLog(.download, .info, "[\(truncatedURL(item.url))] Playlist URL detected; downloading all items")
+        }
+        onLog(.download, .info, "[\(truncatedURL(item.url))] Starting download")
 
         do {
             for try await event in service.download(
@@ -123,6 +123,7 @@ final class DownloadQueue: ObservableObject {
                 videoFormatId: nil,
                 audioFormatId: nil,
                 formatSelectorOverride: item.config.qualityStrategy.formatSelector,
+                includeNoPlaylistOverride: isPlaylist ? false : nil,
                 audioTranscodeFormat: effectiveTranscode,
                 cookiesFilePath: item.config.cookiesFilePath,
                 extraArguments: item.config.extraArguments,
@@ -130,7 +131,7 @@ final class DownloadQueue: ObservableObject {
                 aria2cPath: aria2cPath,
                 onLog: { [weak self] kind, message in
                     Task { @MainActor in
-                        self?.onLog?(.download, kind.appLogLevel, message)
+                        self?.onLog(.download, kind.appLogLevel, message)
                     }
                 }
             ) {
@@ -143,16 +144,16 @@ final class DownloadQueue: ObservableObject {
                 }
             }
             item.status = .completed
-            onLog?(.download, .success, "[\(item.title ?? truncatedURL(item.url))] Completed")
-            onItemCompleted?(item)
+            onLog(.download, .success, "[\(item.title ?? truncatedURL(item.url))] Completed")
+            onItemCompleted(item)
         } catch is CancellationError {
             if item.status != .cancelled {
                 item.status = .cancelled
             }
-            onLog?(.download, .warning, "[\(truncatedURL(item.url))] Cancelled")
+            onLog(.download, .warning, "[\(truncatedURL(item.url))] Cancelled")
         } catch {
             guard item.status != .cancelled else {
-                onLog?(.download, .warning, "[\(truncatedURL(item.url))] Cancelled")
+                onLog(.download, .warning, "[\(truncatedURL(item.url))] Cancelled")
                 return
             }
             item.status = .failed
@@ -160,12 +161,22 @@ final class DownloadQueue: ObservableObject {
                 message: "Download failed.",
                 recoverySuggestion: error.localizedDescription
             )
-            onLog?(.download, .error, "[\(truncatedURL(item.url))] Failed: \(error.localizedDescription)")
-            onItemCompleted?(item)
+            onLog(.download, .error, "[\(truncatedURL(item.url))] Failed: \(error.localizedDescription)")
+            onItemCompleted(item)
         }
     }
 
     private func truncatedURL(_ url: String) -> String {
         url.count > 60 ? String(url.prefix(57)) + "..." : url
+    }
+
+    /// Returns `true` only for pure playlist URLs (path == "/playlist").
+    /// Watch URLs with a `list=` param (e.g. `/watch?v=xxx&list=yyy`) return `false`
+    /// so `--no-playlist` keeps extracting just the single video.
+    private static func isPurePlaylistURL(_ url: String) -> Bool {
+        guard let components = URLComponents(string: url.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return false
+        }
+        return components.path == "/playlist"
     }
 }
