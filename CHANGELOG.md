@@ -8,6 +8,30 @@
 
 ---
 
+## [0.1.5] — 2026-05-30
+
+### Added
+- **频道订阅监控**：通过 URL 或 Channel ID 订阅 YouTube 频道，定时轮询 RSS feed 检测新视频并发送 macOS 通知。(#65)
+- **统一 Settings 标签页**：新增 `SettingsTabView` 作为设置 UI 唯一入口，Settings 窗口和应用内 Settings 模式共用同一组件，消除原 `SettingsView` 中 About/Updates 的重复代码。(#65)
+- **订阅相关单元测试**：新增 `FeedXMLParserTests`（9 项）和 `ChannelSubscriptionStoreTests`（13 项），覆盖 XML 解析、CRUD、持久化往返和异常文件处理。(#65)
+
+### Changed
+- `SubscriptionPollingManager` 使用 `TaskGroup` 并发拉取所有已订阅频道的 RSS feed，替代逐个串行请求。(#65)
+  > Why：串行轮询在频道数量增多时延迟线性增长
+- `ChannelSubscriptionStore` 新增 `performBatchUpdate` 批量写入模式，多频道更新时合并为单次磁盘写入。(#65)
+  > Why：每次 `updateLastChecked` / `updateChannelName` 都触发一次写盘，N 个频道产生 2N 次 I/O
+- `YouTubeFeedService.resolveChannelID` 使用 `withCheckedThrowingContinuation` + `terminationHandler` 替代阻塞式 `waitUntilExit()`。(#65)
+  > Why：`waitUntilExit()` 阻塞 Swift 协作线程池，且 stdout pipe 超过 ~64KB 时导致死锁
+- `AdvancedOptionsView` 显示当前引擎、Cookies 和额外参数状态摘要，引导用户在 Settings 标签页修改。(#65)
+- 轮询间隔持久化到 UserDefaults，应用重启后保留用户选择的检查频率。(#65)
+
+### Fixed
+- 修复 `SubscriptionsView` 中 `URL(string:)!` 强制解包导致无效 URL 时的崩溃。(#65)
+- 修复 `SubscriptionPollingManager` timer 未在 `deinit` 中 invalidate 导致的泄漏。(#65)
+- 修复 Swift 6 strict concurrency 下 `@MainActor` 类的 `nonisolated deinit` 访问 timer 属性的编译错误。(#65)
+
+---
+
 ## [0.1.4] — 2026-05-29
 
 ### Added
