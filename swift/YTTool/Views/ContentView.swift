@@ -15,13 +15,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
 
-                Picker("Mode", selection: $state.appMode) {
-                    ForEach(AppMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 200)
+                modePicker
 
                 switch state.appMode {
                 case .single:
@@ -56,11 +50,13 @@ struct ContentView: View {
                             pollingManager: state.pollingManager,
                             appUpdateController: appUpdateController
                         )
+                        .frame(maxWidth: .infinity, alignment: .center)
                     #else
                         SettingsTabView(
                             state: state,
                             pollingManager: state.pollingManager
                         )
+                        .frame(maxWidth: .infinity, alignment: .center)
                     #endif
                 }
             }
@@ -70,6 +66,21 @@ struct ContentView: View {
         .sheet(isPresented: $showingHistory) {
             HistoryView(store: state.historyStore)
         }
+    }
+
+    private var modePicker: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Picker("Mode", selection: $state.appMode) {
+                ForEach(AppMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 520)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var singleModeContent: some View {

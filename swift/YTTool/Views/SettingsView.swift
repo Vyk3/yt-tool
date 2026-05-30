@@ -14,14 +14,18 @@ struct SettingsView: View {
                     pollingManager: state.pollingManager,
                     appUpdateController: appUpdateController
                 )
+                .padding(.vertical, 24)
+                .frame(maxWidth: .infinity, alignment: .center)
             #else
                 SettingsTabView(
                     state: state,
                     pollingManager: state.pollingManager
                 )
+                .padding(.vertical, 24)
+                .frame(maxWidth: .infinity, alignment: .center)
             #endif
         }
-        .padding(20)
-        .frame(minWidth: 460, minHeight: 380)
+        .padding(.horizontal, 24)
+        .frame(minWidth: 640, minHeight: 620)
     }
 }
