@@ -6,6 +6,32 @@
 
 ## [Unreleased]
 
+### Added
+- **完整双语本地化**：新增 `Localization.swift`，所有 UI 字符串支持中文和英文切换。(#67)
+- **Settings 三列布局**：重写 `SettingsTabView` 为紧凑三列布局（分区 | 标题 | 控件），列宽随语言自适应。(#67)
+- **开发构建脚本**：新增 `dev_launch.sh`，自动编译并启动 app bundle。(#67)
+- **FeedVideo 持久化测试**：新增 `FeedVideoPersistenceTests` 覆盖订阅视频数据往返。(#67)
+
+### Changed
+- **ProcessRunner UTF-8 安全解码**：引入 `UTF8LineBuffer`，在 `readabilityHandler` 层缓冲不完整的 multi-byte UTF-8 序列，仅在字节完整时才解码为 String。(#68)
+  > Why：原 `String(decoding:as:)` 对 pipe 读取边界上被拆分的 CJK / emoji 字符替换为 U+FFFD（替换字符），下游 `run()` 的 Data 累积无法修复已损坏的数据
+- **ProcessRunner trailing bytes 简化**：`terminationHandler` 中 `readDataToEndOfFile()` 的数据现作为正常 `.stdout`/`.stderr` 事件 yield，而非通过 `ProcessResult` 额外字段传递。移除 `trailingStdout`/`trailingStderr` 字段、自定义 `==` 和 `run()` 中的合并逻辑，净减约 20 行。(#68)
+  > Why：原设计将 `run()` 内部关注点泄漏到 `ProcessResult` 公共接口，且 `stream()` 的直接消费者看不到 trailing bytes
+- **订阅 URL 输入持久化**：`newChannelURL` 从 `SubscriptionsView` 的 `@State` 迁移为 `AppState` 的 `@Published`，通过 `@Binding` 传递，切换标签页后输入内容不再丢失。(#68)
+  > Why：SwiftUI `@State` 在 `switch` 条件渲染中会随视图销毁重建而重置
+- **probe 可靠性**：`ProbeParser.formats` 改为 optional，新增详细 `DecodingError` 报告。(#67)
+- **格式表格水平滚动**：技术详情模式下格式表格增加 `ScrollView` 水平滚动。(#67)
+- **标签页内容宽度约束**：队列（700pt）和订阅（600pt）标签页增加 `maxWidth` 约束，低内容量时信息密度更佳。(#67)
+
+### Fixed
+- **相对时间戳语言匹配**：`Text(date, style: .relative)` 增加 `.environment(\.locale, language.locale)`，订阅页面的相对时间显示随 app 语言切换，不再跟随系统 locale。(#68)
+- **队列列表溢出**：`QueueView` 限制 `minHeight` 不超过 `maxHeight`（300pt），6 个以上项目时不再撑破容器。(#67)
+- **本地化遗漏**：订阅页删除确认弹窗的 "Cancel" 改用 `Loc.cancelButton()`；历史页取消按钮改用 `Loc.cancelButton()` 替换 `Loc.done()`。(#67)
+- **通知正文重复**：`AppState` 通知 body 使用 `Loc.notificationBody()` 替换错误复用的 `Loc.notificationTitle()`。(#67)
+- **标签页切换状态丢失**：移除 `ContentView` 中的 `.id(state.appMode)`，该修饰符导致切换标签页时子视图 `@State` 被销毁重建。(#67)
+- **dev_launch.sh 陈旧构建**：通过 `PIPESTATUS[0]` 捕获 xcodebuild 退出码，编译失败时不再静默启动上一次成功构建的 `.app`。(#67)
+- **死代码清理**：移除零引用的 `UpdateView.swift` 和 `AdvancedOptionsView.swift`。(#67)
+
 ---
 
 ## [0.1.5] — 2026-05-30
@@ -210,7 +236,9 @@ Swift 重写完整功能覆盖：(#34, #35, #36, #37)
 ---
 
 <!-- 版本对比链接 -->
-[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/Vyk3/yt-tool/compare/v0.1.4...v0.1.5
+[0.1.4]: https://github.com/Vyk3/yt-tool/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/Vyk3/yt-tool/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Vyk3/yt-tool/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Vyk3/yt-tool/compare/v0.1.0...v0.1.1
