@@ -35,6 +35,9 @@ APP_PATH="$DERIVED_DATA/Build/Products/Debug/YTTool.app"
 if [[ $SKIP_BUILD -eq 0 ]]; then
     echo "==> Building (Debug, arm64)..."
     mkdir -p "$(dirname "$DERIVED_DATA")"
+    # Run xcodebuild and filter output; capture its real exit code via
+    # PIPESTATUS so a failed build is never masked by grep || true.
+    set +o pipefail
     xcodebuild build \
         -project "$XCPROJECT" \
         -scheme "$SCHEME" \
@@ -43,7 +46,13 @@ if [[ $SKIP_BUILD -eq 0 ]]; then
         -arch arm64 \
         ONLY_ACTIVE_ARCH=YES \
         2>&1 | grep -E "^(Build |error:|warning:|\*\*)" || true
+    xc_exit=${PIPESTATUS[0]}
+    set -o pipefail
 
+    if [[ $xc_exit -ne 0 ]]; then
+        echo "ERROR: xcodebuild failed with exit code $xc_exit" >&2
+        exit 1
+    fi
     if [[ ! -d "$APP_PATH" ]]; then
         echo "ERROR: Build did not produce $APP_PATH" >&2
         exit 1
