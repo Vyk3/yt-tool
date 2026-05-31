@@ -1,6 +1,93 @@
 import Darwin
 import Foundation
 
+/// Buffers raw bytes and decodes complete UTF-8 sequences only,
+/// carrying incomplete trailing bytes across pipe reads.
+///
+/// When a multi-byte character (e.g. CJK, emoji) is split across two
+/// `availableData` calls, naively decoding each chunk replaces the
+/// split bytes with U+FFFD.  This class accumulates the incomplete
+/// tail and prepends it to the next read so the full character is
+/// decoded correctly.
+final class UTF8LineBuffer: @unchecked Sendable {
+    private var remainder = Data()
+    private let lock = NSLock()
+
+    /// Decode as much valid UTF-8 as possible from `data`, carrying
+    /// any incomplete trailing sequence for the next call.
+    /// Returns the decoded string (may be empty if only a partial
+    /// sequence was received).
+    func decode(_ data: Data) -> String {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var combined = remainder + data
+        remainder = Data()
+
+        // Find how many trailing bytes form an incomplete UTF-8 sequence.
+        let incomplete = incompleteTrailingBytes(combined)
+        if incomplete > 0 {
+            remainder = combined.suffix(incomplete)
+            combined = combined.dropLast(incomplete)
+        }
+
+        guard !combined.isEmpty else { return "" }
+        return String(decoding: combined, as: UTF8.self)
+    }
+
+    /// Flush any buffered remainder, decoding whatever is left
+    /// (possibly with replacement characters for truly broken data).
+    func flush() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !remainder.isEmpty else { return "" }
+        let result = String(decoding: remainder, as: UTF8.self)
+        remainder = Data()
+        return result
+    }
+
+    /// Returns the number of trailing bytes that form an incomplete
+    /// multi-byte UTF-8 sequence, or 0 if the data ends cleanly.
+    private func incompleteTrailingBytes(_ data: Data) -> Int {
+        guard !data.isEmpty else { return 0 }
+
+        // Walk backwards (up to 3 bytes — max continuation run for a
+        // 4-byte sequence) looking for a leading byte whose expected
+        // sequence length exceeds the bytes available after it.
+        let count = data.count
+        let start = data.startIndex
+        let scanLimit = min(count, 4)
+
+        for i in 1...scanLimit {
+            let byteIndex = start + count - i
+            let byte = data[byteIndex]
+
+            if byte & 0x80 == 0 {
+                // ASCII — everything before this is complete.
+                return 0
+            }
+
+            if byte & 0xC0 == 0xC0 {
+                // This is a leading byte.  Determine expected length.
+                let expected: Int
+                if byte & 0xE0 == 0xC0 { expected = 2 }
+                else if byte & 0xF0 == 0xE0 { expected = 3 }
+                else if byte & 0xF8 == 0xF0 { expected = 4 }
+                else { return 0 } // Invalid leading byte — let decoder handle it.
+
+                let available = i
+                return available < expected ? available : 0
+            }
+
+            // 0x80..0xBF — continuation byte, keep scanning backwards.
+        }
+
+        // All scanned bytes are continuation bytes with no leader found
+        // within 4 bytes — malformed; let decoder handle it.
+        return 0
+    }
+}
+
 /// Thread-safe text buffer with a configurable byte capacity.
 ///
 /// When the accumulated content exceeds `capacity`, the oldest chunks
@@ -49,23 +136,10 @@ struct ProcessResult: Equatable {
     var stderr: String
     var exitCode: Int32
 
-    /// Raw trailing bytes from readDataToEndOfFile() that were NOT emitted
-    /// as .stdout/.stderr stream events.  Only populated in the .finished
-    /// event so that run() can merge them with its own accumulation.
-    var trailingStdout: Data?
-    var trailingStderr: Data?
-
     var combinedOutput: String {
         [stdout, stderr]
             .filter { !$0.isEmpty }
             .joined(separator: stdout.isEmpty || stderr.isEmpty ? "" : "\n")
-    }
-
-    static func == (lhs: ProcessResult, rhs: ProcessResult) -> Bool {
-        lhs.command == rhs.command
-            && lhs.stdout == rhs.stdout
-            && lhs.stderr == rhs.stderr
-            && lhs.exitCode == rhs.exitCode
     }
 }
 
@@ -93,38 +167,26 @@ final class ProcessRunner: @unchecked Sendable {
     private let lock = NSLock()
 
     func run(_ configuration: ProcessConfiguration) async throws -> ProcessResult {
-        // Accumulate raw Data instead of String chunks so that:
-        //  1. Multi-byte UTF-8 characters split across pipe reads are not
-        //     corrupted with U+FFFD (the split bytes are rejoined before
-        //     the single String conversion at the end).
-        //  2. Trailing bytes from readDataToEndOfFile() in the .finished
-        //     result are always included — previously they were lost when
-        //     stdoutChunks was non-empty.
-        var stdoutData = Data()
-        var stderrData = Data()
+        // Accumulate chunks from stream events.  UTF-8 correctness is
+        // handled by UTF8LineBuffer inside stream(), so chunks here are
+        // already valid strings.  We still accumulate our own copy to
+        // avoid the 16 MB cap of LockedTextBuffer on large probe output.
+        var stdoutChunks: [String] = []
+        var stderrChunks: [String] = []
 
         for try await event in stream(configuration) {
             switch event {
             case let .stdout(chunk):
-                stdoutData.append(contentsOf: chunk.utf8)
+                stdoutChunks.append(chunk)
             case let .stderr(chunk):
-                stderrData.append(contentsOf: chunk.utf8)
+                stderrChunks.append(chunk)
             case let .finished(result):
                 // Prefer our unlimited accumulation over the capacity-limited
-                // LockedTextBuffer snapshot (large probe payloads >16 MB are
-                // silently truncated by the buffer's eviction policy).
-                // Append any trailing bytes from readDataToEndOfFile() that
-                // were not emitted as .stdout/.stderr events.
-                if let trailingStdout = result.trailingStdout {
-                    stdoutData.append(trailingStdout)
-                }
-                if let trailingStderr = result.trailingStderr {
-                    stderrData.append(trailingStderr)
-                }
+                // LockedTextBuffer snapshot in result.stdout/stderr.
                 return ProcessResult(
                     command: result.command,
-                    stdout: stdoutData.isEmpty ? result.stdout : String(decoding: stdoutData, as: UTF8.self),
-                    stderr: stderrData.isEmpty ? result.stderr : String(decoding: stderrData, as: UTF8.self),
+                    stdout: stdoutChunks.isEmpty ? result.stdout : stdoutChunks.joined(),
+                    stderr: stderrChunks.isEmpty ? result.stderr : stderrChunks.joined(),
                     exitCode: result.exitCode
                 )
             case .started:
@@ -134,8 +196,8 @@ final class ProcessRunner: @unchecked Sendable {
 
         return ProcessResult(
             command: configuration.commandLine,
-            stdout: String(decoding: stdoutData, as: UTF8.self),
-            stderr: String(decoding: stderrData, as: UTF8.self),
+            stdout: stdoutChunks.joined(),
+            stderr: stderrChunks.joined(),
             exitCode: 0
         )
     }
@@ -147,6 +209,8 @@ final class ProcessRunner: @unchecked Sendable {
             let stderrPipe = Pipe()
             let stdoutBuffer = LockedTextBuffer()
             let stderrBuffer = LockedTextBuffer()
+            let stdoutDecoder = UTF8LineBuffer()
+            let stderrDecoder = UTF8LineBuffer()
 
             process.executableURL = configuration.executableURL
             process.arguments = configuration.arguments
@@ -162,9 +226,8 @@ final class ProcessRunner: @unchecked Sendable {
             stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                // Use String(decoding:as:) to avoid dropping entire chunks when a
-                // multi-byte UTF-8 character is split across pipe read boundaries.
-                let chunk = String(decoding: data, as: UTF8.self)
+                let chunk = stdoutDecoder.decode(data)
+                guard !chunk.isEmpty else { return }
                 stdoutBuffer.append(chunk)
                 continuation.yield(.stdout(chunk))
             }
@@ -172,7 +235,8 @@ final class ProcessRunner: @unchecked Sendable {
             stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                let chunk = String(decoding: data, as: UTF8.self)
+                let chunk = stderrDecoder.decode(data)
+                guard !chunk.isEmpty else { return }
                 stderrBuffer.append(chunk)
                 continuation.yield(.stderr(chunk))
             }
@@ -181,16 +245,31 @@ final class ProcessRunner: @unchecked Sendable {
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
 
+                // Drain any remaining pipe data.
                 let trailingStdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
                 let trailingStderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
+                // Decode trailing pipe data + flush any incomplete UTF-8
+                // remainder, and yield as normal stream events so ALL
+                // callers (both run() and direct stream() consumers) see
+                // the complete output.
+                let trailingStdout = stdoutDecoder.decode(trailingStdoutData) + stdoutDecoder.flush()
+                if !trailingStdout.isEmpty {
+                    stdoutBuffer.append(trailingStdout)
+                    continuation.yield(.stdout(trailingStdout))
+                }
+
+                let trailingStderr = stderrDecoder.decode(trailingStderrData) + stderrDecoder.flush()
+                if !trailingStderr.isEmpty {
+                    stderrBuffer.append(trailingStderr)
+                    continuation.yield(.stderr(trailingStderr))
+                }
+
                 let result = ProcessResult(
                     command: configuration.commandLine,
-                    stdout: stdoutBuffer.snapshot() + String(decoding: trailingStdoutData, as: UTF8.self),
-                    stderr: stderrBuffer.snapshot() + String(decoding: trailingStderrData, as: UTF8.self),
-                    exitCode: finishedProcess.terminationStatus,
-                    trailingStdout: trailingStdoutData.isEmpty ? nil : trailingStdoutData,
-                    trailingStderr: trailingStderrData.isEmpty ? nil : trailingStderrData
+                    stdout: stdoutBuffer.snapshot(),
+                    stderr: stderrBuffer.snapshot(),
+                    exitCode: finishedProcess.terminationStatus
                 )
 
                 clearActiveProcess()
