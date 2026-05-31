@@ -13,7 +13,11 @@ final class DownloadQueue: ObservableObject {
         let newItems = urls
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .map { QueueItem(url: $0, config: config) }
+            .map { url -> QueueItem in
+                let item = QueueItem(url: url, config: config)
+                item.thumbnailURL = thumbnailURL(for: url)
+                return item
+            }
         items.append(contentsOf: newItems)
     }
 

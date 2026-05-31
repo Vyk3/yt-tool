@@ -278,6 +278,11 @@ private struct NewVideoRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            ThumbnailView(
+                url: video.thumbnailURL,
+                targetSize: CGSize(width: 48, height: 27)
+            )
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(video.title)
                     .font(.callout.weight(.medium))

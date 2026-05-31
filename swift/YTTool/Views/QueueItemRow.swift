@@ -12,6 +12,11 @@ struct QueueItemRow: View {
             statusIcon
                 .frame(width: 16)
 
+            ThumbnailView(
+                url: item.thumbnailURL,
+                targetSize: CGSize(width: 48, height: 27)
+            )
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title ?? item.url)
                     .lineLimit(1)

@@ -122,6 +122,7 @@ struct MediaInfo: Codable, Equatable {
     var title: String
     var duration: TimeInterval?
     var webpageURL: String
+    var thumbnailURL: String?
     var videoFormats: [VideoFormat]
     var audioFormats: [AudioFormat]
     var subtitleTracks: [SubtitleTrack]

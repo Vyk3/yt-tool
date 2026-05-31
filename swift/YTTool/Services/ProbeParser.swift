@@ -11,6 +11,7 @@ struct ProbeParser {
                 title: sanitizedTitle(payload.title),
                 duration: payload.duration,
                 webpageURL: payload.webpageURL ?? "",
+                thumbnailURL: payload.thumbnail,
                 videoFormats: formats.compactMap(Self.makeVideoFormat).sorted(by: videoSort),
                 audioFormats: formats.compactMap(Self.makeAudioFormat).sorted(by: audioSort),
                 subtitleTracks: Self.makeSubtitleTracks(from: payload.subtitles, isAuto: false),
@@ -128,6 +129,7 @@ private struct RawProbePayload: Decodable {
     var title: String?
     var duration: TimeInterval?
     var webpageURL: String?
+    var thumbnail: String?
     var formats: [RawFormat]?
     var subtitles: [String: [RawSubtitleEntry]]?
     var automaticCaptions: [String: [RawSubtitleEntry]]?
@@ -136,6 +138,7 @@ private struct RawProbePayload: Decodable {
         case title
         case duration
         case webpageURL = "webpage_url"
+        case thumbnail
         case formats
         case subtitles
         case automaticCaptions = "automatic_captions"

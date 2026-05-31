@@ -110,10 +110,44 @@ struct FormatPickerView: View {
                 if isPlaylistURL, playlistMode.downloadsWholePlaylist {
                     placeholder(Loc.wholePlaylistSkips(language))
                 } else {
+                    thumbnailHeader(mediaInfo: mediaInfo)
                     formatColumns(mediaInfo: mediaInfo)
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func thumbnailHeader(mediaInfo: MediaInfo) -> some View {
+        HStack(spacing: 12) {
+            ThumbnailView(
+                url: mediaInfo.thumbnailURL,
+                duration: mediaInfo.duration,
+                targetSize: CGSize(width: 160, height: 90)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(mediaInfo.title)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(2)
+                if let duration = mediaInfo.duration {
+                    Text(formattedDuration(duration))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func formattedDuration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%d:%02d", m, s)
     }
 
     @ViewBuilder
