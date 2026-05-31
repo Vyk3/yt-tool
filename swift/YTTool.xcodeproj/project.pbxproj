@@ -26,7 +26,6 @@
 		A00000000000000000000022 /* YtDlpDownloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000031 /* YtDlpDownloadService.swift */; };
 		A00000000000000000000025 /* YtDlpArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000034 /* YtDlpArguments.swift */; };
 		A00000000000000000000026 /* AudioTranscodeFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000035 /* AudioTranscodeFormat.swift */; };
-		A00000000000000000000027 /* AdvancedOptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000036 /* AdvancedOptionsView.swift */; };
 		A00000000000000000000028 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000037 /* SettingsView.swift */; };
 		A00000000000000000000023 /* AppLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000032 /* AppLogEntry.swift */; };
 		A00000000000000000000024 /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000033 /* LogPanelView.swift */; };
@@ -38,7 +37,6 @@
 		A0000000000000000000002E /* QueueItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003D /* QueueItemRow.swift */; };
 		A0000000000000000000002F /* UpdateState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003E /* UpdateState.swift */; };
 		A00000000000000000000052 /* YtDlpUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003F /* YtDlpUpdateService.swift */; };
-		A00000000000000000000053 /* UpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000049 /* UpdateView.swift */; };
 		A00000000000000000000054 /* DownloadHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004A /* DownloadHistoryEntry.swift */; };
 		A00000000000000000000055 /* DownloadHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004B /* DownloadHistoryStore.swift */; };
 		A00000000000000000000056 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000004C /* HistoryView.swift */; };
@@ -75,7 +73,6 @@
 		A00000000000000000000031 /* YtDlpDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpDownloadService.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000034 /* YtDlpArguments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpArguments.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000035 /* AudioTranscodeFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/AudioTranscodeFormat.swift; sourceTree = SOURCE_ROOT; };
-		A00000000000000000000036 /* AdvancedOptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/AdvancedOptionsView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000037 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/SettingsView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000032 /* AppLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/AppLogEntry.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000033 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/LogPanelView.swift; sourceTree = SOURCE_ROOT; };
@@ -87,7 +84,6 @@
 		A0000000000000000000003D /* QueueItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/QueueItemRow.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000003E /* UpdateState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/UpdateState.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000003F /* YtDlpUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/YtDlpUpdateService.swift; sourceTree = SOURCE_ROOT; };
-		A00000000000000000000049 /* UpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/UpdateView.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000004A /* DownloadHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadHistoryEntry.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000004B /* DownloadHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/DownloadHistoryStore.swift; sourceTree = SOURCE_ROOT; };
 		A0000000000000000000004C /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/HistoryView.swift; sourceTree = SOURCE_ROOT; };
@@ -160,12 +156,10 @@
 				A00000000000000000000003 /* URLInputView.swift */,
 				A00000000000000000000004 /* FormatPickerView.swift */,
 				A00000000000000000000005 /* DownloadProgressView.swift */,
-				A00000000000000000000036 /* AdvancedOptionsView.swift */,
 				A00000000000000000000033 /* LogPanelView.swift */,
 				A00000000000000000000037 /* SettingsView.swift */,
 				A0000000000000000000003C /* QueueView.swift */,
 				A0000000000000000000003D /* QueueItemRow.swift */,
-				A00000000000000000000049 /* UpdateView.swift */,
 				A0000000000000000000004C /* HistoryView.swift */,
 				A000000000000000000000C0 /* AppUpdateController.swift */,
 				A000000000000000000000E8 /* SubscriptionsView.swift */,
@@ -327,7 +321,6 @@
 				A00000000000000000000026 /* AudioTranscodeFormat.swift in Sources */,
 				A00000000000000000000023 /* AppLogEntry.swift in Sources */,
 				A00000000000000000000024 /* LogPanelView.swift in Sources */,
-				A00000000000000000000027 /* AdvancedOptionsView.swift in Sources */,
 				A00000000000000000000028 /* SettingsView.swift in Sources */,
 				A00000000000000000000029 /* DownloaderPreference.swift in Sources */,
 				A0000000000000000000002A /* Aria2cLocator.swift in Sources */,
@@ -337,7 +330,6 @@
 				A0000000000000000000002E /* QueueItemRow.swift in Sources */,
 				A0000000000000000000002F /* UpdateState.swift in Sources */,
 				A00000000000000000000052 /* YtDlpUpdateService.swift in Sources */,
-				A00000000000000000000053 /* UpdateView.swift in Sources */,
 				A00000000000000000000054 /* DownloadHistoryEntry.swift in Sources */,
 				A00000000000000000000055 /* DownloadHistoryStore.swift in Sources */,
 				A00000000000000000000056 /* HistoryView.swift in Sources */,

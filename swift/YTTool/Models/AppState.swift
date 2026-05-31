@@ -931,7 +931,7 @@ final class AppState: ObservableObject {
     private func sendCompletionNotification(outputURL: URL?) {
         let content = UNMutableNotificationContent()
         content.title = Loc.notificationTitle(language)
-        content.body = outputURL?.lastPathComponent ?? Loc.notificationTitle(language)
+        content.body = outputURL?.lastPathComponent ?? Loc.notificationBody(language)
         content.sound = .default
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,

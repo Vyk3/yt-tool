@@ -531,6 +531,7 @@ enum Loc {
     // MARK: Notification localized (#11)
 
     static func notificationTitle(_ l: AppLanguage) -> String { l == .chinese ? "下载完成" : "Download Complete" }
+    static func notificationBody(_ l: AppLanguage) -> String { l == .chinese ? "文件已保存" : "File saved successfully" }
 
     // MARK: Paste URL (#13)
 

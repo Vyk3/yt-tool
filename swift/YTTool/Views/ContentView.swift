@@ -18,7 +18,6 @@ struct ContentView: View {
                 modePicker
 
                 tabContent
-                    .id(state.appMode)
             }
             .padding(24)
         }

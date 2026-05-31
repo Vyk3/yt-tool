@@ -57,7 +57,7 @@ struct QueueView: View {
                     }
                 }
                 .listStyle(.inset(alternatesRowBackgrounds: true))
-                .frame(minHeight: max(CGFloat(queue.items.count) * 52, 80), maxHeight: 300)
+                .frame(minHeight: min(max(CGFloat(queue.items.count) * 52, 80), 300), maxHeight: 300)
             }
         }
     }

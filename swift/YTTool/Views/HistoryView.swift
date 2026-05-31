@@ -23,7 +23,7 @@ struct HistoryView: View {
             .padding()
             .alert(Loc.clearHistoryTitle(language), isPresented: $showClearConfirmation) {
                 Button(Loc.clearAll(language), role: .destructive) { store.clear() }
-                Button(Loc.done(language), role: .cancel) {}
+                Button(Loc.cancelButton(language), role: .cancel) {}
             } message: {
                 Text(Loc.clearHistoryMessage(language))
             }

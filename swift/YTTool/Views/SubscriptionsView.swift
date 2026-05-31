@@ -197,7 +197,7 @@ struct SubscriptionsView: View {
             }
         }
         .alert(Loc.deleteSubscriptionsTitle(language), isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) {}
+            Button(Loc.cancelButton(language), role: .cancel) {}
             Button(
                 Loc.deleteNChannels(selectedIDs.count, language),
                 role: .destructive
