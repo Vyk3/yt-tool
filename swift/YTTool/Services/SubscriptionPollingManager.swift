@@ -15,6 +15,7 @@ final class SubscriptionPollingManager: ObservableObject {
     static let defaultPollInterval: TimeInterval = 30 * 60
 
     private static let pollIntervalKey = "subscriptionPollInterval"
+    private static let newVideosKey = "subscriptionNewVideos"
 
     var pollInterval: TimeInterval {
         didSet {
@@ -30,6 +31,7 @@ final class SubscriptionPollingManager: ObservableObject {
         self.store = store
         let stored = UserDefaults.standard.double(forKey: Self.pollIntervalKey)
         self.pollInterval = pollInterval ?? (stored > 0 ? stored : Self.defaultPollInterval)
+        self.newVideos = Self.loadNewVideos()
     }
 
     deinit {
@@ -59,10 +61,25 @@ final class SubscriptionPollingManager: ObservableObject {
 
     func dismissVideo(_ video: FeedVideo) {
         newVideos.removeAll { $0.videoID == video.videoID }
+        saveNewVideos()
     }
 
     func clearAllNewVideos() {
         newVideos.removeAll()
+        saveNewVideos()
+    }
+
+    // MARK: - Persistence
+
+    private static func loadNewVideos() -> [FeedVideo] {
+        guard let data = UserDefaults.standard.data(forKey: newVideosKey) else { return [] }
+        return (try? JSONDecoder().decode([FeedVideo].self, from: data)) ?? []
+    }
+
+    private func saveNewVideos() {
+        if let data = try? JSONEncoder().encode(newVideos) {
+            UserDefaults.standard.set(data, forKey: Self.newVideosKey)
+        }
     }
 
     // MARK: - Private
@@ -134,6 +151,7 @@ final class SubscriptionPollingManager: ObservableObject {
 
         guard !freshVideos.isEmpty else { return }
         newVideos.append(contentsOf: freshVideos)
+        saveNewVideos()
 
         // Send a single notification summarizing new uploads.
         sendNotification(videos: freshVideos, channelName: subscription.channelName)

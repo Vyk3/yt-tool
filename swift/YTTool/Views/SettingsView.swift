@@ -26,6 +26,6 @@ struct SettingsView: View {
             #endif
         }
         .padding(.horizontal, 24)
-        .frame(minWidth: 640, minHeight: 620)
+        .frame(minWidth: 520, minHeight: 480)
     }
 }

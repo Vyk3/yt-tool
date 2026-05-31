@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import UserNotifications
 
@@ -10,15 +11,14 @@ enum AppMode: String, CaseIterable, Identifiable {
     var id: String {
         rawValue
     }
+}
 
-    var label: String {
-        switch self {
-        case .single: "Single"
-        case .queue: "Queue"
-        case .subscriptions: "Subscriptions"
-        case .settings: "Settings"
-        }
-    }
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
 }
 
 @MainActor
@@ -29,6 +29,9 @@ final class AppState: ObservableObject {
         static let updateChannel = "updateChannel"
         static let autoCheckForUpdates = "autoCheckForUpdates"
         static let autoCheckForAppUpdates = "autoCheckForAppUpdates"
+        static let appLanguage = "appLanguage"
+        static let appAppearance = "appAppearance"
+        static let showTechnicalDetails = "showTechnicalDetails"
     }
 
     private static let maxLogEntries = 250
@@ -85,6 +88,7 @@ final class AppState: ObservableObject {
     @Published var appMode: AppMode = .single
     @Published var queueInputURLs: String = ""
     @Published var queueQualityStrategy: QueueQualityStrategy = .bestQuality
+    @Published var queueError: String?
     let downloadQueue = DownloadQueue()
     let historyStore = DownloadHistoryStore()
 
@@ -107,6 +111,21 @@ final class AppState: ObservableObject {
 
     @Published var autoCheckForAppUpdates: Bool = true {
         didSet { defaults.set(autoCheckForAppUpdates, forKey: StorageKey.autoCheckForAppUpdates) }
+    }
+
+    @Published var language: AppLanguage = .english {
+        didSet { defaults.set(language.rawValue, forKey: StorageKey.appLanguage) }
+    }
+
+    @Published var appearance: AppAppearance = .system {
+        didSet {
+            defaults.set(appearance.rawValue, forKey: StorageKey.appAppearance)
+            applyAppearance()
+        }
+    }
+
+    @Published var showTechnicalDetails: Bool = false {
+        didSet { defaults.set(showTechnicalDetails, forKey: StorageKey.showTechnicalDetails) }
     }
 
     var ytDlpSource: String {
@@ -175,6 +194,20 @@ final class AppState: ObservableObject {
         if defaults.object(forKey: StorageKey.autoCheckForAppUpdates) != nil {
             autoCheckForAppUpdates = defaults.bool(forKey: StorageKey.autoCheckForAppUpdates)
         }
+        if let raw = defaults.string(forKey: StorageKey.appLanguage),
+           let lang = AppLanguage(rawValue: raw)
+        {
+            language = lang
+        }
+        if let raw = defaults.string(forKey: StorageKey.appAppearance),
+           let saved = AppAppearance(rawValue: raw)
+        {
+            appearance = saved
+        }
+        if defaults.object(forKey: StorageKey.showTechnicalDetails) != nil {
+            showTechnicalDetails = defaults.bool(forKey: StorageKey.showTechnicalDetails)
+        }
+        applyAppearance()
 
         refreshFFmpegWarning()
 
@@ -549,12 +582,16 @@ final class AppState: ObservableObject {
 
     func retryDownload() {
         downloadState = .idle
+        download()
     }
 
     // MARK: - Queue
 
     func addToQueue() {
+        queueError = nil
+
         guard let outputDir = validatedSelectedOutputDirectory else {
+            queueError = Loc.queueNeedFolder(language)
             appendLog(scope: .download, level: .error, message: "Select an output folder before adding to queue.")
             return
         }
@@ -569,9 +606,11 @@ final class AppState: ObservableObject {
             normalizedCookies = try normalizedCookiesFilePathOrThrow()
             parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
         } catch let error as AppError {
+            queueError = joinedErrorMessage(error)
             appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
             return
         } catch {
+            queueError = error.localizedDescription
             appendLog(scope: .download, level: .error, message: "Invalid arguments: \(error.localizedDescription)")
             return
         }
@@ -587,6 +626,7 @@ final class AppState: ObservableObject {
 
         downloadQueue.addURLs(urls, config: config)
         queueInputURLs = ""
+        queueError = nil
         appendLog(scope: .download, level: .info, message: "Added \(urls.count) URL(s) to queue")
     }
 
@@ -791,6 +831,14 @@ final class AppState: ObservableObject {
 
     // MARK: - Helpers
 
+    func applyAppearance() {
+        NSApp?.appearance = switch appearance {
+        case .system: nil
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        }
+    }
+
     /// Call once from the main view's onAppear.
     /// Note: ad-hoc signed builds may not register with the notification center —
     /// use an Xcode dev build or Developer ID signing to test notifications.
@@ -882,8 +930,8 @@ final class AppState: ObservableObject {
 
     private func sendCompletionNotification(outputURL: URL?) {
         let content = UNMutableNotificationContent()
-        content.title = "Download Complete"
-        content.body = outputURL?.lastPathComponent ?? "Your download has finished."
+        content.title = Loc.notificationTitle(language)
+        content.body = outputURL?.lastPathComponent ?? Loc.notificationBody(language)
         content.sound = .default
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,

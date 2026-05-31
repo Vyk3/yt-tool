@@ -2,6 +2,7 @@ import SwiftUI
 
 struct QueueItemRow: View {
     @ObservedObject var item: QueueItem
+    var language: AppLanguage = .english
     let onCancel: () -> Void
     let onRetry: () -> Void
     let onRemove: () -> Void
@@ -52,7 +53,7 @@ struct QueueItemRow: View {
     private var statusDetail: some View {
         switch item.status {
         case .pending:
-            Text("Pending")
+            Text(Loc.queuePending(language))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .active:
@@ -65,20 +66,20 @@ struct QueueItemRow: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Text("Starting...")
+                Text(Loc.queueStarting(language))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         case .completed:
-            Text("Completed")
+            Text(Loc.queueCompleted(language))
                 .font(.caption)
                 .foregroundStyle(.green)
         case .failed:
-            Text(item.error?.message ?? "Failed")
+            Text(item.error?.message ?? Loc.queueItemFailed(language))
                 .font(.caption)
                 .foregroundStyle(.red)
         case .cancelled:
-            Text("Cancelled")
+            Text(Loc.queueItemCancelled(language))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -93,23 +94,39 @@ struct QueueItemRow: View {
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
-            .help("Remove from queue")
+            .help(Loc.queueRemoveHelp(language))
         case .active:
             Button(action: onCancel) {
                 Image(systemName: "stop.fill")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
-            .help("Cancel download")
+            .help(Loc.queueCancelHelp(language))
         case .failed:
             Button(action: onRetry) {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.orange)
-            .help("Retry")
-        case .completed, .cancelled:
+            .help(Loc.queueRetryHelp(language))
+        case .completed:
             EmptyView()
+        case .cancelled:
+            HStack(spacing: 8) {
+                Button(action: onRetry) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.orange)
+                .help(Loc.queueRetryHelp(language))
+
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help(Loc.queueRemoveHelp(language))
+            }
         }
     }
 }

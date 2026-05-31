@@ -5,8 +5,10 @@ struct DownloadProgressView: View {
     let downloadState: DownloadState
     let canDownload: Bool
     let showsNoSelectableFormatsHint: Bool
+    let hasOutputFolder: Bool
     let isDownloading: Bool
     let ffmpegWarningMessage: String?
+    var language: AppLanguage = .english
     let onDownload: () -> Void
     let onCancel: () -> Void
     let onReset: () -> Void
@@ -16,7 +18,7 @@ struct DownloadProgressView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Download")
+                Text(Loc.downloadHeading(language))
                     .font(.headline)
                 if let ffmpegWarningMessage {
                     ffmpegWarningButton(message: ffmpegWarningMessage)
@@ -35,13 +37,13 @@ struct DownloadProgressView: View {
     private var actionButton: some View {
         if isDownloading {
             Button(role: .destructive, action: onCancel) {
-                Label("Cancel", systemImage: "stop.circle")
+                Label(Loc.cancelButton(language), systemImage: "stop.circle")
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
         } else {
             Button(action: onDownload) {
-                Label("Download", systemImage: "arrow.down.circle")
+                Label(Loc.downloadButton(language), systemImage: "arrow.down.circle")
             }
             .buttonStyle(.borderedProminent)
             .disabled(!canDownload)
@@ -52,7 +54,7 @@ struct DownloadProgressView: View {
         Button {
             isShowingFFmpegWarning.toggle()
         } label: {
-            Label("FFmpeg unavailable", systemImage: "exclamationmark.triangle.fill")
+            Label(Loc.ffmpegUnavailable(language), systemImage: "exclamationmark.triangle.fill")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
         }
@@ -73,23 +75,23 @@ struct DownloadProgressView: View {
         switch downloadState {
         case .idle:
             if showsNoSelectableFormatsHint {
-                Text(
-                    canDownload
-                        ? "未显示可选格式，将尝试兜底下载（best）。"
-                        : "未显示可选格式。请先选择输出文件夹；若已选择，请重试 Probe 或查看日志。"
-                )
-                .foregroundStyle(.secondary)
+                Text(canDownload ? Loc.noFormatsCanDownload(language) : Loc.noFormatsNeedFolder(language))
+                    .foregroundStyle(.secondary)
+            } else if canDownload {
+                Text(Loc.readyToDownload(language))
+                    .foregroundStyle(.secondary)
+            } else if !hasOutputFolder {
+                Text(Loc.needFolderHint(language))
+                    .foregroundStyle(.secondary)
             } else {
-                Text(canDownload
-                    ? "Ready to download. Press Download to start."
-                    : "Select a format and output folder to enable download.")
+                Text(Loc.needFormatHint(language))
                     .foregroundStyle(.secondary)
             }
 
         case let .preparing(commandPreview):
             stagePanel(
-                title: "Preparing",
-                subtitle: "Building the yt-dlp command and starting the process.",
+                title: Loc.stagePreparing(language),
+                subtitle: Loc.stagePreparingSub(language),
                 body: commandPreview,
                 tint: .orange
             )
@@ -98,8 +100,8 @@ struct DownloadProgressView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
                     stageHeader(
-                        title: "Downloading",
-                        subtitle: "The active transfer is in progress.",
+                        title: Loc.stageDownloading(language),
+                        subtitle: Loc.stageDownloadingSub(language),
                         tint: .blue
                     )
                     Spacer()
@@ -112,8 +114,8 @@ struct DownloadProgressView: View {
 
                 if let details = progressDetails(progress.summaryLine) {
                     HStack(spacing: 12) {
-                        progressMetric("Size", details.size)
-                        progressMetric("Speed", details.speed)
+                        progressMetric(Loc.sizeLabel(language), details.size)
+                        progressMetric(Loc.speedLabel(language), details.speed)
                         if let eta = details.eta {
                             progressMetric("ETA", eta)
                         }
@@ -140,25 +142,25 @@ struct DownloadProgressView: View {
 
         return VStack(alignment: .leading, spacing: 10) {
             stageHeader(
-                title: "Completed ✓",
+                title: Loc.stageCompleted(language),
                 subtitle: isDirectory
-                    ? "Choose what to do with the downloaded items."
-                    : "Choose what to do with the finished file.",
+                    ? Loc.stageCompletedSubDir(language)
+                    : Loc.stageCompletedSubFile(language),
                 tint: .green
             )
 
             HStack(spacing: 10) {
-                Button("Reveal in Finder") {
+                Button(Loc.revealInFinder(language)) {
                     NSWorkspace.shared.activateFileViewerSelecting([outputURL])
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("Open Folder") {
+                Button(Loc.openFolder(language)) {
                     NSWorkspace.shared.open(isDirectory ? outputURL : outputURL.deletingLastPathComponent())
                 }
                 .buttonStyle(.bordered)
 
-                Button(isDirectory ? "Copy Folder Path" : "Copy File Path") {
+                Button(isDirectory ? Loc.copyFolderPath(language) : Loc.copyFilePath(language)) {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(outputURL.path(percentEncoded: false), forType: .string)
                 }
@@ -166,7 +168,7 @@ struct DownloadProgressView: View {
 
                 Spacer()
 
-                Button("New Download") {
+                Button(Loc.newDownload(language)) {
                     onReset()
                 }
                 .buttonStyle(.bordered)
@@ -180,24 +182,24 @@ struct DownloadProgressView: View {
     private func failurePanel(_ error: AppError) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             stageHeader(
-                title: "Failed",
-                subtitle: "The download stopped before completion.",
+                title: Loc.stageFailed(language),
+                subtitle: Loc.stageFailedSub(language),
                 tint: .red
             )
 
-            detailBlock(label: "Reason", value: error.message)
+            detailBlock(label: Loc.reasonLabel(language), value: error.message)
 
             if let suggestion = error.recoverySuggestion?.trimmingCharacters(in: .whitespacesAndNewlines),
                !suggestion.isEmpty
             {
-                detailBlock(label: "Try this", value: suggestion)
+                detailBlock(label: Loc.tryThisLabel(language), value: suggestion)
             }
 
             HStack {
                 Spacer()
-                Button("Retry") { onRetry() }
+                Button(Loc.retryDownload(language)) { onRetry() }
                     .buttonStyle(.bordered)
-                Button("New Download") { onReset() }
+                Button(Loc.newDownload(language)) { onReset() }
                     .buttonStyle(.bordered)
             }
         }
@@ -209,20 +211,20 @@ struct DownloadProgressView: View {
     private var cancelledPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             stageHeader(
-                title: "Cancelled",
-                subtitle: "The active process tree was terminated.",
+                title: Loc.stageCancelled(language),
+                subtitle: Loc.stageCancelledSub(language),
                 tint: .orange
             )
 
-            Text("You can adjust the format or output folder, then start a new download.")
+            Text(Loc.cancelledHint(language))
                 .font(.callout.monospaced())
                 .textSelection(.enabled)
 
             HStack {
                 Spacer()
-                Button("Retry") { onRetry() }
+                Button(Loc.retryDownload(language)) { onRetry() }
                     .buttonStyle(.bordered)
-                Button("New Download") { onReset() }
+                Button(Loc.newDownload(language)) { onReset() }
                     .buttonStyle(.bordered)
             }
         }

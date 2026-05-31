@@ -11,7 +11,7 @@ struct ChannelSubscription: Codable, Identifiable, Equatable {
     var lastVideoID: String?
 }
 
-struct FeedVideo: Equatable {
+struct FeedVideo: Equatable, Codable {
     var videoID: String
     var title: String
     var channelName: String

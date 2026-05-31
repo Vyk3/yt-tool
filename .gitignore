@@ -37,7 +37,7 @@
 # Cross-agent local workflow layer
 /AGENTS.md
 /CLAUDE.md
-/handoffs/
+/docs/handoffs/
 /agents
 /rules/
 /skills/

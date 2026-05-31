@@ -17,67 +17,116 @@ struct ContentView: View {
 
                 modePicker
 
-                switch state.appMode {
-                case .single:
-                    singleModeContent
-
-                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat, state: state)
-
-                    LogPanelView(entries: state.logs)
-                        .padding(.top, 8)
-
-                case .queue:
-                    queueModeContent
-
-                    AdvancedOptionsView(audioTranscodeFormat: $state.audioTranscodeFormat, state: state)
-
-                    LogPanelView(entries: state.logs)
-                        .padding(.top, 8)
-
-                case .subscriptions:
-                    SubscriptionsView(
-                        store: state.subscriptionStore,
-                        pollingManager: state.pollingManager
-                    )
-
-                    LogPanelView(entries: state.logs)
-                        .padding(.top, 8)
-
-                case .settings:
-                    #if canImport(Sparkle)
-                        SettingsTabView(
-                            state: state,
-                            pollingManager: state.pollingManager,
-                            appUpdateController: appUpdateController
-                        )
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    #else
-                        SettingsTabView(
-                            state: state,
-                            pollingManager: state.pollingManager
-                        )
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    #endif
-                }
+                tabContent
             }
             .padding(24)
         }
+        .transaction { $0.animation = nil }
         .onAppear { state.requestNotificationPermission() }
         .sheet(isPresented: $showingHistory) {
-            HistoryView(store: state.historyStore)
+            HistoryView(store: state.historyStore, language: state.language)
+        }
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch state.appMode {
+        case .single:
+            singleModeContent
+
+            LogPanelView(entries: state.logs, language: state.language)
+                .padding(.top, 8)
+
+        case .queue:
+            queueModeContent
+                .frame(maxWidth: 700)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            LogPanelView(entries: state.logs, language: state.language)
+                .padding(.top, 8)
+
+        case .subscriptions:
+            SubscriptionsView(
+                store: state.subscriptionStore,
+                pollingManager: state.pollingManager,
+                language: state.language,
+                onAddToQueue: { url in
+                    let base = state.queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let separator = base.isEmpty ? "" : "\n"
+                    state.queueInputURLs = base + separator + url
+                    state.appMode = .queue
+                }
+            )
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity, alignment: .center)
+
+        case .settings:
+            #if canImport(Sparkle)
+                SettingsTabView(
+                    state: state,
+                    pollingManager: state.pollingManager,
+                    appUpdateController: appUpdateController
+                )
+                .frame(maxWidth: .infinity, alignment: .center)
+            #else
+                SettingsTabView(
+                    state: state,
+                    pollingManager: state.pollingManager
+                )
+                .frame(maxWidth: .infinity, alignment: .center)
+            #endif
         }
     }
 
     private var modePicker: some View {
         HStack {
             Spacer(minLength: 0)
-            Picker("Mode", selection: $state.appMode) {
-                ForEach(AppMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
+            HStack(spacing: 0) {
+                let allModes = AppMode.allCases
+                ForEach(Array(allModes.enumerated()), id: \.element) { index, mode in
+                    let isSelected = state.appMode == mode
+
+                    // Thin divider between two unselected tabs
+                    if index > 0 {
+                        let prevSelected = state.appMode == allModes[index - 1]
+                        if !isSelected && !prevSelected {
+                            Rectangle()
+                                .fill(Color.primary.opacity(0.15))
+                                .frame(width: 1, height: 14)
+                        }
+                    }
+
+                    Button {
+                        var t = Transaction()
+                        t.disablesAnimations = true
+                        withTransaction(t) {
+                            state.appMode = mode
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(Loc.tabLabel(mode, state.language))
+                            if mode == .subscriptions && !state.pollingManager.newVideos.isEmpty {
+                                Circle()
+                                    .fill(isSelected ? Color.white : Color.accentColor)
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
+                        .frame(width: 120)
+                        .padding(.vertical, 5)
+                        .background(
+                            isSelected
+                                ? Color.accentColor
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 5)
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(isSelected ? .white : .primary)
                 }
             }
-            .pickerStyle(.segmented)
-            .frame(width: 520)
+            .padding(2)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
@@ -93,14 +142,22 @@ struct ContentView: View {
                 showsPlaylistModePicker: state.isPlaylistInputURL,
                 showsPlaylistVideoQualityStrategy: state.showsPlaylistVideoQualityStrategy,
                 showsPlaylistAudioQualityStrategy: state.showsPlaylistAudioQualityStrategy,
+                language: state.language,
                 onProbe: state.probe,
                 onSelectDirectory: selectOutputDirectory,
-                onClearDirectory: { state.selectedOutputDirectory = nil }
+                onClearDirectory: { state.selectedOutputDirectory = nil },
+                onPaste: {
+                    if let text = NSPasteboard.general.string(forType: .string) {
+                        state.inputURL = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                }
             )
             FormatPickerView(
                 probeState: state.probeState,
                 playlistMode: state.playlistConfig.mode,
                 isPlaylistURL: state.isPlaylistInputURL,
+                language: state.language,
+                showTechnicalDetails: state.showTechnicalDetails,
                 selectedVideo: $state.selectedVideoFormat,
                 selectedAudio: $state.selectedAudioFormat,
                 selectedSubtitle: $state.selectedSubtitle
@@ -110,8 +167,10 @@ struct ContentView: View {
                 downloadState: state.downloadState,
                 canDownload: state.canDownload,
                 showsNoSelectableFormatsHint: state.hasNoSelectableFormatsAfterProbe,
+                hasOutputFolder: state.selectedOutputDirectory != nil,
                 isDownloading: state.isDownloading,
                 ffmpegWarningMessage: state.ffmpegWarningMessage,
+                language: state.language,
                 onDownload: state.download,
                 onCancel: state.cancelDownload,
                 onReset: state.resetDownload,
@@ -128,12 +187,14 @@ struct ContentView: View {
             audio: state.selectedAudioFormat
         )
         if let total {
+            let vLabel = state.language == .chinese ? "视频" : "video"
+            let aLabel = state.language == .chinese ? "音频" : "audio"
             let parts = [
-                state.selectedVideoFormat?.fileSizeBytes.map { "video \(formatBytes($0))" },
-                state.selectedAudioFormat?.fileSizeBytes.map { "audio \(formatBytes($0))" },
+                state.selectedVideoFormat?.fileSizeBytes.map { "\(vLabel) \(formatBytes($0))" },
+                state.selectedAudioFormat?.fileSizeBytes.map { "\(aLabel) \(formatBytes($0))" },
             ].compactMap { $0 }
             let detail = parts.count > 1 ? "  (\(parts.joined(separator: " + ")))" : ""
-            Text("Estimated: \(formatBytes(total))\(detail)")
+            Text(Loc.estimated(formatBytes(total), detail, state.language))
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -145,6 +206,7 @@ struct ContentView: View {
 
             QueueView(
                 queue: state.downloadQueue,
+                language: state.language,
                 onStart: state.startQueue
             )
         }
@@ -152,7 +214,7 @@ struct ContentView: View {
 
     private var queueURLInput: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("URLs (one per line)")
+            Text(Loc.urlsPerLine(state.language))
                 .font(.headline)
 
             TextEditor(text: $state.queueInputURLs)
@@ -166,7 +228,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 Button(action: selectOutputDirectory) {
                     Label(
-                        state.selectedOutputDirectory?.lastPathComponent ?? "Choose folder...",
+                        state.selectedOutputDirectory?.lastPathComponent ?? Loc.chooseFolderHint(state.language),
                         systemImage: "folder"
                     )
                     .lineLimit(1)
@@ -181,12 +243,12 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
-                    .help("Clear selected folder")
+                    .help(Loc.clearFolderHelp(state.language))
                 }
 
-                Picker("Quality", selection: $state.queueQualityStrategy) {
+                Picker(Loc.qualityLabel(state.language), selection: $state.queueQualityStrategy) {
                     ForEach(QueueQualityStrategy.allCases) { strategy in
-                        Text(strategy.title).tag(strategy)
+                        Text(Loc.qualityTitle(strategy, state.language)).tag(strategy)
                     }
                 }
                 .frame(maxWidth: 160)
@@ -196,7 +258,7 @@ struct ContentView: View {
                 Button {
                     showingFileImporter = true
                 } label: {
-                    Label("Import", systemImage: "doc.text")
+                    Label(Loc.importButton(state.language), systemImage: "doc.text")
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
@@ -206,16 +268,21 @@ struct ContentView: View {
                         content: NSPasteboard.general.string(forType: .string)
                     )
                 } label: {
-                    Label("Paste", systemImage: "doc.on.clipboard")
+                    Label(Loc.pasteButton(state.language), systemImage: "doc.on.clipboard")
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
 
-                Button("Add to Queue", action: state.addToQueue)
+                Button(Loc.addToQueue(state.language), action: state.addToQueue)
                     .disabled(
                         state.queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            || state.selectedOutputDirectory == nil
                     )
+            }
+
+            if let error = state.queueError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
         .fileImporter(
@@ -252,7 +319,7 @@ struct ContentView: View {
             Button {
                 showingHistory = true
             } label: {
-                Label("History", systemImage: "clock.arrow.circlepath")
+                Label(Loc.history(state.language), systemImage: "clock.arrow.circlepath")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
@@ -260,16 +327,7 @@ struct ContentView: View {
     }
 
     private var headerSubtitle: String {
-        switch state.appMode {
-        case .single:
-            "Enter a video URL and press Probe to inspect available formats."
-        case .queue:
-            "Paste URLs (one per line) and add them to the download queue."
-        case .subscriptions:
-            "Subscribe to channels and get notified when new videos are uploaded."
-        case .settings:
-            "Configure download options, subscriptions, and updates."
-        }
+        Loc.headerSubtitle(state.appMode, state.language)
     }
 
     private func selectOutputDirectory() {

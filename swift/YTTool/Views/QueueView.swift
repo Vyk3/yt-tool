@@ -2,31 +2,41 @@ import SwiftUI
 
 struct QueueView: View {
     @ObservedObject var queue: DownloadQueue
+    var language: AppLanguage = .english
     let onStart: () -> Void
+
+    private var completedCount: Int { queue.items.filter { $0.status == .completed }.count }
+    private var failedCount: Int { queue.items.filter { $0.status == .failed }.count }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Queue (\(queue.items.count) items)")
+                Text(Loc.queueCount(queue.items.count, language))
                     .font(.headline)
+
+                if queue.isProcessing || completedCount > 0 || failedCount > 0, !queue.items.isEmpty {
+                    Text(Loc.queueProgress(completedCount, queue.items.count, failedCount, language))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer()
 
                 if !queue.items.isEmpty {
                     if queue.isProcessing {
-                        Button("Stop", action: queue.stopProcessing)
+                        Button(Loc.queueStop(language), action: queue.stopProcessing)
                     } else {
-                        Button("Start", action: onStart)
+                        Button(Loc.queueStart(language), action: onStart)
                             .disabled(queue.items.allSatisfy(\.status.isTerminal))
                     }
 
-                    Button("Clear done", action: queue.clearCompleted)
+                    Button(Loc.queueClearDone(language), action: queue.clearCompleted)
                         .disabled(!queue.items.contains { $0.status.isTerminal })
                 }
             }
 
             if queue.items.isEmpty {
-                Text("No items in queue. Paste URLs above and click Add to Queue.")
+                Text(Loc.queueEmpty(language))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -36,6 +46,7 @@ struct QueueView: View {
                     ForEach(queue.items) { item in
                         QueueItemRow(
                             item: item,
+                            language: language,
                             onCancel: { queue.cancelItem(item) },
                             onRetry: { queue.retryItem(item) },
                             onRemove: { queue.removeItem(item) }
@@ -46,7 +57,7 @@ struct QueueView: View {
                     }
                 }
                 .listStyle(.inset(alternatesRowBackgrounds: true))
-                .frame(minHeight: 120, maxHeight: 300)
+                .frame(minHeight: min(max(CGFloat(queue.items.count) * 52, 80), 300), maxHeight: 300)
             }
         }
     }
