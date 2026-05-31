@@ -8,6 +8,11 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Foundation Locale matching this language, for SwiftUI `.environment(\.locale, ...)`.
+    var locale: Locale {
+        Locale(identifier: rawValue)
+    }
+
     /// Display name shown in the language picker — always in the target language.
     var displayName: String {
         switch self {

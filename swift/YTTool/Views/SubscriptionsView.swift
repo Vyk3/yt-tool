@@ -5,8 +5,8 @@ struct SubscriptionsView: View {
     @ObservedObject var store: ChannelSubscriptionStore
     @ObservedObject var pollingManager: SubscriptionPollingManager
     var language: AppLanguage = .english
+    @Binding var newChannelURL: String
     var onAddToQueue: ((String) -> Void)? = nil
-    @State private var newChannelURL = ""
     @State private var isResolving = false
     @State private var resolveError: String?
     @State private var isSelecting = false
@@ -291,6 +291,7 @@ private struct NewVideoRow: View {
 
             if let date = video.publishedDate {
                 Text(date, style: .relative)
+                    .environment(\.locale, language.locale)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -390,6 +391,7 @@ private struct ChannelRow: View {
                     HStack(spacing: 0) {
                         Text(Loc.checkedPrefix(language))
                         Text(lastChecked, style: .relative)
+                            .environment(\.locale, language.locale)
                         Text(Loc.checkedSuffix(language))
                     }
                     .font(.caption)

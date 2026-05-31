@@ -89,6 +89,7 @@ final class AppState: ObservableObject {
     @Published var queueInputURLs: String = ""
     @Published var queueQualityStrategy: QueueQualityStrategy = .bestQuality
     @Published var queueError: String?
+    @Published var subscriptionInputURL: String = ""
     let downloadQueue = DownloadQueue()
     let historyStore = DownloadHistoryStore()
 
