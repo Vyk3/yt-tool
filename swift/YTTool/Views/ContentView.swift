@@ -50,6 +50,7 @@ struct ContentView: View {
                 store: state.subscriptionStore,
                 pollingManager: state.pollingManager,
                 language: state.language,
+                newChannelURL: $state.subscriptionInputURL,
                 onAddToQueue: { url in
                     let base = state.queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines)
                     let separator = base.isEmpty ? "" : "\n"

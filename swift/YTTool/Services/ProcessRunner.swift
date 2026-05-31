@@ -49,10 +49,23 @@ struct ProcessResult: Equatable {
     var stderr: String
     var exitCode: Int32
 
+    /// Raw trailing bytes from readDataToEndOfFile() that were NOT emitted
+    /// as .stdout/.stderr stream events.  Only populated in the .finished
+    /// event so that run() can merge them with its own accumulation.
+    var trailingStdout: Data?
+    var trailingStderr: Data?
+
     var combinedOutput: String {
         [stdout, stderr]
             .filter { !$0.isEmpty }
             .joined(separator: stdout.isEmpty || stderr.isEmpty ? "" : "\n")
+    }
+
+    static func == (lhs: ProcessResult, rhs: ProcessResult) -> Bool {
+        lhs.command == rhs.command
+            && lhs.stdout == rhs.stdout
+            && lhs.stderr == rhs.stderr
+            && lhs.exitCode == rhs.exitCode
     }
 }
 
@@ -80,25 +93,38 @@ final class ProcessRunner: @unchecked Sendable {
     private let lock = NSLock()
 
     func run(_ configuration: ProcessConfiguration) async throws -> ProcessResult {
-        var stdoutChunks: [String] = []
-        var stderrChunks: [String] = []
+        // Accumulate raw Data instead of String chunks so that:
+        //  1. Multi-byte UTF-8 characters split across pipe reads are not
+        //     corrupted with U+FFFD (the split bytes are rejoined before
+        //     the single String conversion at the end).
+        //  2. Trailing bytes from readDataToEndOfFile() in the .finished
+        //     result are always included — previously they were lost when
+        //     stdoutChunks was non-empty.
+        var stdoutData = Data()
+        var stderrData = Data()
 
         for try await event in stream(configuration) {
             switch event {
             case let .stdout(chunk):
-                stdoutChunks.append(chunk)
+                stdoutData.append(contentsOf: chunk.utf8)
             case let .stderr(chunk):
-                stderrChunks.append(chunk)
+                stderrData.append(contentsOf: chunk.utf8)
             case let .finished(result):
-                // Use our own unlimited accumulation instead of the capacity-limited
-                // LockedTextBuffer snapshot — large probe payloads (>16 MB) are
-                // silently truncated by the buffer's eviction policy.
-                let fullStdout = stdoutChunks.joined()
-                let fullStderr = stderrChunks.joined()
+                // Prefer our unlimited accumulation over the capacity-limited
+                // LockedTextBuffer snapshot (large probe payloads >16 MB are
+                // silently truncated by the buffer's eviction policy).
+                // Append any trailing bytes from readDataToEndOfFile() that
+                // were not emitted as .stdout/.stderr events.
+                if let trailingStdout = result.trailingStdout {
+                    stdoutData.append(trailingStdout)
+                }
+                if let trailingStderr = result.trailingStderr {
+                    stderrData.append(trailingStderr)
+                }
                 return ProcessResult(
                     command: result.command,
-                    stdout: fullStdout.isEmpty ? result.stdout : fullStdout,
-                    stderr: fullStderr.isEmpty ? result.stderr : fullStderr,
+                    stdout: stdoutData.isEmpty ? result.stdout : String(decoding: stdoutData, as: UTF8.self),
+                    stderr: stderrData.isEmpty ? result.stderr : String(decoding: stderrData, as: UTF8.self),
                     exitCode: result.exitCode
                 )
             case .started:
@@ -108,8 +134,8 @@ final class ProcessRunner: @unchecked Sendable {
 
         return ProcessResult(
             command: configuration.commandLine,
-            stdout: stdoutChunks.joined(),
-            stderr: stderrChunks.joined(),
+            stdout: String(decoding: stdoutData, as: UTF8.self),
+            stderr: String(decoding: stderrData, as: UTF8.self),
             exitCode: 0
         )
     }
@@ -155,14 +181,16 @@ final class ProcessRunner: @unchecked Sendable {
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
 
-                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                let trailingStdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                let trailingStderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
                 let result = ProcessResult(
                     command: configuration.commandLine,
-                    stdout: stdoutBuffer.snapshot() + String(decoding: stdoutData, as: UTF8.self),
-                    stderr: stderrBuffer.snapshot() + String(decoding: stderrData, as: UTF8.self),
-                    exitCode: finishedProcess.terminationStatus
+                    stdout: stdoutBuffer.snapshot() + String(decoding: trailingStdoutData, as: UTF8.self),
+                    stderr: stderrBuffer.snapshot() + String(decoding: trailingStderrData, as: UTF8.self),
+                    exitCode: finishedProcess.terminationStatus,
+                    trailingStdout: trailingStdoutData.isEmpty ? nil : trailingStdoutData,
+                    trailingStderr: trailingStderrData.isEmpty ? nil : trailingStderrData
                 )
 
                 clearActiveProcess()
