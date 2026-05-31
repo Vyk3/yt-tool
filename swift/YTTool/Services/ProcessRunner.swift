@@ -13,8 +13,8 @@ final class LockedTextBuffer: @unchecked Sendable {
     private let capacity: Int
     private let lock = NSLock()
 
-    /// - Parameter capacity: Maximum retained bytes (UTF-8).  Defaults to 8 MB.
-    init(capacity: Int = 8 * 1_048_576) {
+    /// - Parameter capacity: Maximum retained bytes (UTF-8).  Defaults to 16 MB.
+    init(capacity: Int = 16 * 1_048_576) {
         self.capacity = capacity
     }
 
@@ -80,17 +80,27 @@ final class ProcessRunner: @unchecked Sendable {
     private let lock = NSLock()
 
     func run(_ configuration: ProcessConfiguration) async throws -> ProcessResult {
-        var stdout = ""
-        var stderr = ""
+        var stdoutChunks: [String] = []
+        var stderrChunks: [String] = []
 
         for try await event in stream(configuration) {
             switch event {
             case let .stdout(chunk):
-                stdout += chunk
+                stdoutChunks.append(chunk)
             case let .stderr(chunk):
-                stderr += chunk
+                stderrChunks.append(chunk)
             case let .finished(result):
-                return result
+                // Use our own unlimited accumulation instead of the capacity-limited
+                // LockedTextBuffer snapshot — large probe payloads (>16 MB) are
+                // silently truncated by the buffer's eviction policy.
+                let fullStdout = stdoutChunks.joined()
+                let fullStderr = stderrChunks.joined()
+                return ProcessResult(
+                    command: result.command,
+                    stdout: fullStdout.isEmpty ? result.stdout : fullStdout,
+                    stderr: fullStderr.isEmpty ? result.stderr : fullStderr,
+                    exitCode: result.exitCode
+                )
             case .started:
                 continue
             }
@@ -98,8 +108,8 @@ final class ProcessRunner: @unchecked Sendable {
 
         return ProcessResult(
             command: configuration.commandLine,
-            stdout: stdout,
-            stderr: stderr,
+            stdout: stdoutChunks.joined(),
+            stderr: stderrChunks.joined(),
             exitCode: 0
         )
     }
@@ -125,18 +135,18 @@ final class ProcessRunner: @unchecked Sendable {
 
             stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else {
-                    return
-                }
+                guard !data.isEmpty else { return }
+                // Use String(decoding:as:) to avoid dropping entire chunks when a
+                // multi-byte UTF-8 character is split across pipe read boundaries.
+                let chunk = String(decoding: data, as: UTF8.self)
                 stdoutBuffer.append(chunk)
                 continuation.yield(.stdout(chunk))
             }
 
             stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else {
-                    return
-                }
+                guard !data.isEmpty else { return }
+                let chunk = String(decoding: data, as: UTF8.self)
                 stderrBuffer.append(chunk)
                 continuation.yield(.stderr(chunk))
             }

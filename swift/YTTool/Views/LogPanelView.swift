@@ -2,47 +2,51 @@ import SwiftUI
 
 struct LogPanelView: View {
     let entries: [AppLogEntry]
+    var language: AppLanguage = .english
     @State private var isExpanded = false
+    @State private var lastSeenErrorCount = 0
+
+    private var errorCount: Int {
+        entries.filter { $0.level == .error }.count
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Session Log")
+                Text(Loc.sessionLog(language))
                     .font(.headline)
+
+                if errorCount > 0 {
+                    Text(Loc.errorBadge(errorCount, language))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.red, in: Capsule())
+                }
+
                 Spacer()
-                Text("\(entries.count) entries")
+                Text(Loc.nEntries(entries.count, language))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button(isExpanded ? "Hide Logs" : "Show Logs") {
+                Button(isExpanded ? Loc.hideLogs(language) : Loc.showLogs(language)) {
                     isExpanded.toggle()
                 }
                 .buttonStyle(.borderless)
             }
+            .onChange(of: errorCount) { newValue in
+                if newValue > lastSeenErrorCount {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        isExpanded = true
+                    }
+                }
+                lastSeenErrorCount = newValue
+            }
 
             if isExpanded {
                 expandedPanel
-            } else {
-                collapsedPanel
             }
         }
-    }
-
-    private var collapsedPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if entries.isEmpty {
-                Text("Probe and download events will appear here during this app session.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Latest activity")
-                    .font(.subheadline.weight(.semibold))
-                ForEach(Array(entries.suffix(2))) { entry in
-                    row(entry)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var expandedPanel: some View {

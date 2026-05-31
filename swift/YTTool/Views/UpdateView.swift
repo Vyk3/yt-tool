@@ -3,19 +3,26 @@ import SwiftUI
 struct UpdateView: View {
     @ObservedObject var state: AppState
 
+    /// When embedded in SettingsTabView the section header is provided externally.
+    var showsHeader = true
+
+    private var lang: AppLanguage { state.language }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("yt-dlp")
-                .font(.headline)
-
-            if let version = state.currentYtDlpVersion {
-                LabeledContent("Current version", value: "\(version) (\(state.ytDlpSource))")
-            } else {
-                LabeledContent("Current version", value: "Unknown")
+            if showsHeader {
+                Text("yt-dlp")
+                    .font(.headline)
             }
 
-            LabeledContent("Channel") {
-                Picker("Channel", selection: $state.updateChannel) {
+            if let version = state.currentYtDlpVersion {
+                LabeledContent(Loc.currentVersionLabel(lang), value: "\(version) (\(state.ytDlpSource))")
+            } else {
+                LabeledContent(Loc.currentVersionLabel(lang), value: "Unknown")
+            }
+
+            LabeledContent(Loc.channelLabel(lang)) {
+                Picker(Loc.channelLabel(lang), selection: $state.updateChannel) {
                     ForEach(UpdateChannel.allCases) { channel in
                         Text(channel.label).tag(channel)
                     }
@@ -24,7 +31,7 @@ struct UpdateView: View {
                 .frame(maxWidth: 120)
             }
 
-            Toggle("Check for yt-dlp updates on launch", isOn: $state.autoCheckForUpdates)
+            Toggle(Loc.autoCheckYtDlp(lang), isOn: $state.autoCheckForUpdates)
 
             updateStatusView
         }
@@ -34,19 +41,19 @@ struct UpdateView: View {
     private var updateStatusView: some View {
         switch state.updateState {
         case .idle:
-            Button("Check for Updates", action: state.checkForUpdate)
+            Button(Loc.checkForUpdates(lang), action: state.checkForUpdate)
 
         case .checking:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Checking...")
+                Text(Loc.checking(lang))
             }
 
         case let .available(current, latest):
             VStack(alignment: .leading, spacing: 6) {
-                Text("Update available: \(current) \u{2192} \(latest)")
+                Text(Loc.updateAvailable(current, latest, lang))
                     .foregroundStyle(.orange)
-                Button("Install Update", action: state.installUpdate)
+                Button(Loc.installUpdate(lang), action: state.installUpdate)
             }
 
         case let .upToDate(version):
@@ -54,14 +61,14 @@ struct UpdateView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("Up to date (\(version))")
+                    Text(Loc.upToDate(version, lang))
                 }
-                Button("Check Again", action: state.checkForUpdate)
+                Button(Loc.checkAgain(lang), action: state.checkForUpdate)
             }
 
         case let .downloading(progress):
             VStack(alignment: .leading, spacing: 4) {
-                Text("Downloading...")
+                Text(Loc.downloadingUpdate(lang))
                 ProgressView(value: progress)
                     .frame(maxWidth: 200)
             }
@@ -69,7 +76,7 @@ struct UpdateView: View {
         case .verifying:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Verifying and installing...")
+                Text(Loc.verifyingInstalling(lang))
             }
 
         case let .completed(newVersion):
@@ -77,9 +84,9 @@ struct UpdateView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("Updated to \(newVersion)")
+                    Text(Loc.updatedTo(newVersion, lang))
                 }
-                Button("Check Again", action: state.checkForUpdate)
+                Button(Loc.checkAgain(lang), action: state.checkForUpdate)
             }
 
         case let .failed(error):
@@ -94,7 +101,7 @@ struct UpdateView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Button("Retry", action: state.checkForUpdate)
+                Button(Loc.retry(lang), action: state.checkForUpdate)
             }
         }
     }

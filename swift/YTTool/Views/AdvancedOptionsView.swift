@@ -1,18 +1,20 @@
+import AppKit
 import SwiftUI
 
 struct AdvancedOptionsView: View {
     @Binding var audioTranscodeFormat: AudioTranscodeFormat
     @ObservedObject var state: AppState
     @State private var expanded = false
+    private var lang: AppLanguage { state.language }
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("Audio transcode")
+                    Text(Loc.audioTranscode(lang))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(.secondary)
-                    Picker("Audio transcode", selection: $audioTranscodeFormat) {
+                    Picker(Loc.audioTranscode(lang), selection: $audioTranscodeFormat) {
                         ForEach(AudioTranscodeFormat.allCases) { format in
                             Text(format.title).tag(format)
                         }
@@ -25,7 +27,7 @@ struct AdvancedOptionsView: View {
             }
             .padding(.top, 8)
         } label: {
-            Text("Advanced options (optional)")
+            Text(Loc.advancedOptions(lang))
                 .font(.headline)
         }
     }
@@ -41,18 +43,30 @@ struct AdvancedOptionsView: View {
             HStack(spacing: 16) {
                 Label(engineLabel, systemImage: "gear")
                 if hasCookies {
-                    Label("Cookies set", systemImage: "checkmark.circle")
+                    Label(Loc.cookiesSet(lang), systemImage: "checkmark.circle")
                 }
                 if hasExtraArgs {
-                    Label("Extra args set", systemImage: "checkmark.circle")
+                    Label(Loc.extraArgsSet(lang), systemImage: "checkmark.circle")
                 }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Text("Change in Settings tab")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            Button {
+                state.appMode = .settings
+            } label: {
+                Text(Loc.changeInSettings(lang))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
         }
     }
 }

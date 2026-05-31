@@ -2,8 +2,7 @@ import SwiftUI
 
 // MARK: - Column widths (shared between header and rows)
 
-// Budget: content area ≈ 394pt per column (900pt window, 24pt outer padding, 16pt HStack gap).
-// 7 video columns + 6 spacings(6) + padding(24) = 332 + 36 + 24 = 392pt ≤ 394pt.
+// Detailed mode: 7 video columns + 5 audio columns.
 private enum VideoCol {
     static let id: CGFloat = 30
     static let res: CGFloat = 44
@@ -11,7 +10,7 @@ private enum VideoCol {
     static let fps: CGFloat = 38
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
-    static let note: CGFloat = 66 // "w/ audio" = 8 chars × 7.6pt ≈ 61pt; 66pt fits
+    static let note: CGFloat = 66
 }
 
 private enum AudioCol {
@@ -20,6 +19,19 @@ private enum AudioCol {
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
     static let note: CGFloat = 66
+}
+
+// Simplified mode: fewer, wider columns.
+private enum SimpleVideoCol {
+    static let res: CGFloat = 60
+    static let size: CGFloat = 70
+    static let note: CGFloat = 80
+}
+
+private enum SimpleAudioCol {
+    static let codec: CGFloat = 50
+    static let size: CGFloat = 70
+    static let quality: CGFloat = 110 // "Standard · 129k"
 }
 
 // MARK: - Selectable row style
@@ -52,39 +64,80 @@ struct FormatPickerView: View {
     let probeState: ProbeState
     let playlistMode: PlaylistMode
     let isPlaylistURL: Bool
+    var language: AppLanguage = .english
+    var showTechnicalDetails: Bool = false
     @Binding var selectedVideo: VideoFormat?
     @Binding var selectedAudio: AudioFormat?
     @Binding var selectedSubtitle: SubtitleTrack?
 
+    /// Minimum width for the video column so fixed-width items + spacing + padding fit.
+    private var videoMinWidth: CGFloat {
+        if showTechnicalDetails {
+            let items = VideoCol.id + VideoCol.res + VideoCol.codec + VideoCol.fps
+                + VideoCol.bitrate + VideoCol.size + VideoCol.note
+            return items + 6 * 6 + 24 // 6 gaps + 12pt padding each side
+        } else {
+            let items = SimpleVideoCol.res + SimpleVideoCol.size + SimpleVideoCol.note
+            return items + 2 * 6 + 24
+        }
+    }
+
+    /// Minimum width for the audio column.
+    private var audioMinWidth: CGFloat {
+        if showTechnicalDetails {
+            let items = AudioCol.id + AudioCol.codec + AudioCol.bitrate
+                + AudioCol.size + AudioCol.note
+            return items + 4 * 6 + 24
+        } else {
+            let items = SimpleAudioCol.codec + SimpleAudioCol.size + SimpleAudioCol.quality
+            return items + 2 * 6 + 24
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Formats")
+            Text(Loc.formatsHeading(language))
                 .font(.headline)
 
             switch probeState {
             case .idle:
                 placeholder(idleMessage)
             case .loading:
-                ProgressView("Loading formats…")
+                ProgressView(Loc.loadingFormats(language))
             case let .failure(error):
                 placeholder(error.message)
             case let .success(mediaInfo):
                 if isPlaylistURL, playlistMode.downloadsWholePlaylist {
-                    placeholder("Whole playlist mode skips per-item format selection and downloads every item automatically.")
+                    placeholder(Loc.wholePlaylistSkips(language))
                 } else {
-                    HStack(alignment: .top, spacing: 16) {
-                        videoColumn(formats: mediaInfo.videoFormats)
-                        audioColumn(formats: mediaInfo.audioFormats)
-                        let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
-                        if hasSubs {
-                            subtitleColumn(
-                                manual: mediaInfo.subtitleTracks,
-                                auto: mediaInfo.autoSubtitleTracks
-                            )
-                        }
-                    }
+                    formatColumns(mediaInfo: mediaInfo)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func formatColumns(mediaInfo: MediaInfo) -> some View {
+        let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
+        let columns = HStack(alignment: .top, spacing: 16) {
+            videoColumn(formats: mediaInfo.videoFormats)
+                .frame(minWidth: videoMinWidth, maxWidth: .infinity, alignment: .topLeading)
+            audioColumn(formats: mediaInfo.audioFormats)
+                .frame(minWidth: audioMinWidth, maxWidth: .infinity, alignment: .topLeading)
+            if hasSubs {
+                subtitleColumn(
+                    manual: mediaInfo.subtitleTracks,
+                    auto: mediaInfo.autoSubtitleTracks
+                )
+            }
+        }
+
+        if showTechnicalDetails {
+            ScrollView(.horizontal, showsIndicators: true) {
+                columns
+            }
+        } else {
+            columns
         }
     }
 
@@ -92,23 +145,23 @@ struct FormatPickerView: View {
         if isPlaylistURL {
             switch playlistMode {
             case .onlyFirstItem:
-                return "Probe the first item to inspect formats."
+                return Loc.probeFirstToInspect(language)
             case .wholePlaylistBestVideo, .wholePlaylistBestAudio:
-                return "Whole playlist mode downloads every item automatically."
+                return Loc.wholePlaylistAuto(language)
             }
         }
-        return "Probe a URL to inspect available formats."
+        return Loc.probeToInspect(language)
     }
 
     // MARK: - Video column
 
     private func videoColumn(formats: [VideoFormat]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Video")
+            Text(Loc.videoLabel(language))
                 .font(.subheadline.weight(.semibold))
 
             if formats.isEmpty {
-                placeholder("No video formats detected.")
+                placeholder(Loc.noVideoFormats(language))
             } else {
                 videoHeader
                 ScrollView {
@@ -124,33 +177,54 @@ struct FormatPickerView: View {
                 .frame(maxHeight: 220)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
+    @ViewBuilder
     private var videoHeader: some View {
-        HStack(spacing: 6) {
-            Text("ID").frame(width: VideoCol.id, alignment: .leading)
-            Text("Res").frame(width: VideoCol.res, alignment: .leading)
-            Text("Codec").frame(width: VideoCol.codec, alignment: .leading)
-            Text("FPS").frame(width: VideoCol.fps, alignment: .leading)
-            Text("Bitrate").frame(width: VideoCol.bitrate, alignment: .leading)
-            Text("Size").frame(width: VideoCol.size, alignment: .leading)
-            Text("Note").frame(width: VideoCol.note, alignment: .leading)
+        if showTechnicalDetails {
+            HStack(spacing: 6) {
+                Text("ID").frame(width: VideoCol.id, alignment: .leading)
+                Text(Loc.colRes(language)).frame(width: VideoCol.res, alignment: .leading)
+                Text(Loc.colCodec(language)).frame(width: VideoCol.codec, alignment: .leading)
+                Text("FPS").frame(width: VideoCol.fps, alignment: .leading)
+                Text(Loc.colBitrate(language)).frame(width: VideoCol.bitrate, alignment: .leading)
+                Text(Loc.colSize(language)).frame(width: VideoCol.size, alignment: .leading)
+                Text(Loc.colNote(language)).frame(width: VideoCol.note, alignment: .leading)
+            }
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+        } else {
+            HStack(spacing: 6) {
+                Text(Loc.colRes(language)).frame(width: SimpleVideoCol.res, alignment: .leading)
+                Text(Loc.colSize(language)).frame(width: SimpleVideoCol.size, alignment: .leading)
+                Text(Loc.colNote(language)).frame(width: SimpleVideoCol.note, alignment: .leading)
+            }
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
         }
-        .font(.caption.monospaced())
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 12)
     }
 
     private func videoRow(_ fmt: VideoFormat, isSelected: Bool) -> some View {
-        HStack(spacing: 6) {
-            Text(fmt.id).lineLimit(1).frame(width: VideoCol.id, alignment: .leading)
-            Text(fmt.resolution).lineLimit(1).frame(width: VideoCol.res, alignment: .leading)
-            Text(fmt.friendlyCodec).lineLimit(1).frame(width: VideoCol.codec, alignment: .leading)
-            Text("\(fmt.fps)fps").lineLimit(1).frame(width: VideoCol.fps, alignment: .leading)
-            Text(fmt.formattedBitrate).lineLimit(1).frame(width: VideoCol.bitrate, alignment: .leading)
-            Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size, alignment: .leading)
-            Text(fmt.note).lineLimit(1).frame(width: VideoCol.note, alignment: .leading)
+        Group {
+            if showTechnicalDetails {
+                HStack(spacing: 6) {
+                    Text(fmt.id).lineLimit(1).frame(width: VideoCol.id, alignment: .leading)
+                    Text(fmt.resolution).lineLimit(1).frame(width: VideoCol.res, alignment: .leading)
+                    Text(fmt.friendlyCodec).lineLimit(1).frame(width: VideoCol.codec, alignment: .leading)
+                    Text("\(fmt.fps)fps").lineLimit(1).frame(width: VideoCol.fps, alignment: .leading)
+                    Text(fmt.formattedBitrate).lineLimit(1).frame(width: VideoCol.bitrate, alignment: .leading)
+                    Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size, alignment: .leading)
+                    Text(Loc.videoNote(fmt.note, language)).lineLimit(1).frame(width: VideoCol.note, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Text(fmt.resolution).lineLimit(1).frame(width: SimpleVideoCol.res, alignment: .leading)
+                    Text(fmt.formattedFileSize).lineLimit(1).frame(width: SimpleVideoCol.size, alignment: .leading)
+                    Text(Loc.videoNote(fmt.note, language)).lineLimit(1).frame(width: SimpleVideoCol.note, alignment: .leading)
+                }
+            }
         }
         .modifier(SelectableRowStyle(isSelected: isSelected))
     }
@@ -159,11 +233,11 @@ struct FormatPickerView: View {
 
     private func audioColumn(formats: [AudioFormat]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Audio")
+            Text(Loc.audioLabel(language))
                 .font(.subheadline.weight(.semibold))
 
             if formats.isEmpty {
-                placeholder("No audio formats detected.")
+                placeholder(Loc.noAudioFormats(language))
             } else {
                 audioHeader
                 ScrollView {
@@ -179,29 +253,51 @@ struct FormatPickerView: View {
                 .frame(maxHeight: 220)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
+    @ViewBuilder
     private var audioHeader: some View {
-        HStack(spacing: 6) {
-            Text("ID").frame(width: AudioCol.id, alignment: .leading)
-            Text("Codec").frame(width: AudioCol.codec, alignment: .leading)
-            Text("Bitrate").frame(width: AudioCol.bitrate, alignment: .leading)
-            Text("Size").frame(width: AudioCol.size, alignment: .leading)
-            Text("Note").frame(width: AudioCol.note, alignment: .leading)
+        if showTechnicalDetails {
+            HStack(spacing: 6) {
+                Text("ID").frame(width: AudioCol.id, alignment: .leading)
+                Text(Loc.colCodec(language)).frame(width: AudioCol.codec, alignment: .leading)
+                Text(Loc.colBitrate(language)).frame(width: AudioCol.bitrate, alignment: .leading)
+                Text(Loc.colSize(language)).frame(width: AudioCol.size, alignment: .leading)
+                Text(Loc.colNote(language)).frame(width: AudioCol.note, alignment: .leading)
+            }
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+        } else {
+            HStack(spacing: 6) {
+                Text(Loc.colCodec(language)).frame(width: SimpleAudioCol.codec, alignment: .leading)
+                Text(Loc.colSize(language)).frame(width: SimpleAudioCol.size, alignment: .leading)
+                Text(Loc.qualityLabel(language)).frame(width: SimpleAudioCol.quality, alignment: .leading)
+            }
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
         }
-        .font(.caption.monospaced())
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 12)
     }
 
     private func audioRow(_ fmt: AudioFormat, isSelected: Bool) -> some View {
-        HStack(spacing: 6) {
-            Text(fmt.id).lineLimit(1).frame(width: AudioCol.id, alignment: .leading)
-            Text(fmt.friendlyCodec).lineLimit(1).frame(width: AudioCol.codec, alignment: .leading)
-            Text(fmt.formattedBitrate).lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
-            Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size, alignment: .leading)
-            Text(fmt.note).lineLimit(1).frame(width: AudioCol.note, alignment: .leading)
+        Group {
+            if showTechnicalDetails {
+                HStack(spacing: 6) {
+                    Text(fmt.id).lineLimit(1).frame(width: AudioCol.id, alignment: .leading)
+                    Text(fmt.friendlyCodec).lineLimit(1).frame(width: AudioCol.codec, alignment: .leading)
+                    Text(fmt.formattedBitrate).lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
+                    Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size, alignment: .leading)
+                    Text(Loc.audioNote(fmt.note, language)).lineLimit(1).frame(width: AudioCol.note, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Text(fmt.friendlyCodec).lineLimit(1).frame(width: SimpleAudioCol.codec, alignment: .leading)
+                    Text(fmt.formattedFileSize).lineLimit(1).frame(width: SimpleAudioCol.size, alignment: .leading)
+                    Text(Loc.audioQualityBrief(fmt.note, kbps: fmt.bitrateKbps, language))
+                        .lineLimit(1).frame(width: SimpleAudioCol.quality, alignment: .leading)
+                }
+            }
         }
         .modifier(SelectableRowStyle(isSelected: isSelected))
     }
@@ -210,13 +306,13 @@ struct FormatPickerView: View {
 
     private func subtitleColumn(manual: [SubtitleTrack], auto: [SubtitleTrack]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Subtitles")
+            Text(Loc.subtitlesLabel(language))
                 .font(.subheadline.weight(.semibold))
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 6) {
                     if !manual.isEmpty {
-                        Text("Manual")
+                        Text(Loc.manualSubs(language))
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -228,7 +324,7 @@ struct FormatPickerView: View {
                         }
                     }
                     if !auto.isEmpty {
-                        Text("Auto-generated")
+                        Text(Loc.autoSubs(language))
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -243,7 +339,7 @@ struct FormatPickerView: View {
             }
             .frame(maxHeight: 220)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(minWidth: 170, idealWidth: 200, maxWidth: 240, alignment: .topLeading)
     }
 
     private func subtitleRow(_ track: SubtitleTrack, isSelected: Bool) -> some View {

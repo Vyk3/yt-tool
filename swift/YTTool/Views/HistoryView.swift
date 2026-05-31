@@ -2,29 +2,37 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var store: DownloadHistoryStore
+    var language: AppLanguage = .english
     @Environment(\.dismiss) private var dismiss
+    @State private var showClearConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Download History")
+                Text(Loc.downloadHistory(language))
                     .font(.title2.weight(.semibold))
                 Spacer()
                 if !store.entries.isEmpty {
-                    Button("Clear All") { store.clear() }
+                    Button(Loc.clearAll(language)) { showClearConfirmation = true }
                         .foregroundStyle(.secondary)
                         .padding(.trailing, 8)
                 }
-                Button("Done") { dismiss() }
+                Button(Loc.done(language)) { dismiss() }
                     .buttonStyle(.borderedProminent)
             }
             .padding()
+            .alert(Loc.clearHistoryTitle(language), isPresented: $showClearConfirmation) {
+                Button(Loc.clearAll(language), role: .destructive) { store.clear() }
+                Button(Loc.done(language), role: .cancel) {}
+            } message: {
+                Text(Loc.clearHistoryMessage(language))
+            }
 
             Divider()
 
             if store.entries.isEmpty {
                 Spacer()
-                Text("No downloads yet.")
+                Text(Loc.noDownloadsYet(language))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                 Spacer()
@@ -75,7 +83,7 @@ struct HistoryView: View {
             if entry.succeeded, let path = entry.outputPath,
                FileManager.default.fileExists(atPath: path)
             {
-                Button("Reveal") {
+                Button(Loc.reveal(language)) {
                     NSWorkspace.shared.activateFileViewerSelecting(
                         [URL(fileURLWithPath: path)]
                     )

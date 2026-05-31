@@ -9,47 +9,61 @@ struct URLInputView: View {
     let showsPlaylistModePicker: Bool
     let showsPlaylistVideoQualityStrategy: Bool
     let showsPlaylistAudioQualityStrategy: Bool
+    var language: AppLanguage = .english
     let onProbe: () -> Void
     let onSelectDirectory: () -> Void
     let onClearDirectory: () -> Void
+    var onPaste: (() -> Void)? = nil
     @State private var isDropTargeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("URL")
+            Text(Loc.urlHeading(language))
                 .font(.headline)
 
-            TextField("https://example.com/video", text: $inputURL, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(1 ... 3)
-                .padding(.horizontal, 2)
-                .padding(.vertical, 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(isDropTargeted ? Color.accentColor.opacity(0.08) : .clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(isDropTargeted ? Color.accentColor : Color.clear, lineWidth: 1.5)
-                )
-                .onSubmit { if canProbe { onProbe() } }
-                .onDrop(
-                    of: [UTType.url.identifier, UTType.plainText.identifier],
-                    isTargeted: $isDropTargeted,
-                    perform: handleDrop(providers:)
-                )
+            HStack(spacing: 6) {
+                TextField("https://example.com/video", text: $inputURL, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1 ... 3)
+                    .onSubmit { if canProbe { onProbe() } }
 
-            Text("You can also drag a video URL into the field.")
+                if let onPaste {
+                    Button(action: onPaste) {
+                        Image(systemName: "doc.on.clipboard")
+                            .font(.body)
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help(Loc.pasteURLHelp(language))
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isDropTargeted ? Color.accentColor.opacity(0.08) : .clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isDropTargeted ? Color.accentColor : Color.clear, lineWidth: 1.5)
+            )
+            .onDrop(
+                of: [UTType.url.identifier, UTType.plainText.identifier],
+                isTargeted: $isDropTargeted,
+                perform: handleDrop(providers:)
+            )
+
+            Text(Loc.dragHint(language))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             if showsPlaylistModePicker {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text("Playlist mode")
+                        Text(Loc.playlistMode(language))
                             .font(.subheadline.weight(.semibold))
 
-                        Picker("Playlist mode", selection: $playlistConfig.mode) {
+                        Picker(Loc.playlistMode(language), selection: $playlistConfig.mode) {
                             ForEach(PlaylistMode.allCases) { mode in
                                 Text(mode.title).tag(mode)
                             }
@@ -64,8 +78,8 @@ struct URLInputView: View {
 
                     if showsPlaylistVideoQualityStrategy {
                         secondaryQualityPicker(
-                            label: "Video quality",
-                            helpText: "Choose whether whole-playlist video downloads favor compatibility or higher quality."
+                            label: Loc.videoQuality(language),
+                            helpText: Loc.videoQualityHelp(language)
                         ) {
                             Picker("Video quality", selection: $playlistConfig.videoQualityStrategy) {
                                 ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
@@ -79,8 +93,8 @@ struct URLInputView: View {
 
                     if showsPlaylistAudioQualityStrategy {
                         secondaryQualityPicker(
-                            label: "Audio quality",
-                            helpText: "Choose whether whole-playlist audio downloads favor compatibility or higher quality."
+                            label: Loc.audioQuality(language),
+                            helpText: Loc.audioQualityHelp(language)
                         ) {
                             Picker("Audio quality", selection: $playlistConfig.audioQualityStrategy) {
                                 ForEach(PlaylistAudioQualityStrategy.allCases) { strategy in
@@ -94,8 +108,8 @@ struct URLInputView: View {
 
                     if playlistConfig.mode.downloadsWholePlaylist {
                         secondaryQualityPicker(
-                            label: "Playlist formats",
-                            helpText: "Use a single strategy for all items, or map specific items to specific format selectors."
+                            label: Loc.playlistFormats(language),
+                            helpText: Loc.playlistFormatsHelp(language)
                         ) {
                             Picker("Playlist formats", selection: $playlistConfig.formatMode) {
                                 ForEach(PlaylistFormatMode.allCases) { mode in
@@ -108,16 +122,16 @@ struct URLInputView: View {
 
                         if playlistConfig.formatMode == .perItemMapping {
                             secondaryTextField(
-                                label: "Per-item map",
+                                label: Loc.perItemMap(language),
                                 placeholder: "1=137+140;2=136+140",
                                 text: $playlistConfig.perItemFormatMap,
-                                helpText: "Syntax: itemIndex=formatSelector;itemIndex=formatSelector."
+                                helpText: Loc.perItemMapHelp(language)
                             )
                         }
 
                         secondaryQualityPicker(
-                            label: "Playlist subtitles",
-                            helpText: "Apply the same subtitle strategy to each item in the playlist."
+                            label: Loc.playlistSubtitles(language),
+                            helpText: Loc.playlistSubtitlesHelp(language)
                         ) {
                             Picker("Playlist subtitles", selection: $playlistConfig.subtitleMode) {
                                 ForEach(PlaylistSubtitleMode.allCases) { mode in
@@ -130,16 +144,16 @@ struct URLInputView: View {
 
                         if playlistConfig.subtitleMode != .none {
                             secondaryTextField(
-                                label: "Subtitle language",
+                                label: Loc.subtitleLanguageLabel(language),
                                 placeholder: "en or zh-Hans",
                                 text: $playlistConfig.subtitleLanguage,
-                                helpText: "Used as --sub-langs for whole-playlist downloads."
+                                helpText: Loc.subtitleLanguageHelp(language)
                             )
                         }
 
                         secondaryQualityPicker(
-                            label: "Playlist segments",
-                            helpText: "Choose whether each item downloads fully or with a fixed time range."
+                            label: Loc.playlistSegments(language),
+                            helpText: Loc.playlistSegmentsHelp(language)
                         ) {
                             Picker("Playlist segments", selection: $playlistConfig.segmentMode) {
                                 ForEach(PlaylistSegmentMode.allCases) { mode in
@@ -152,10 +166,10 @@ struct URLInputView: View {
 
                         if playlistConfig.segmentMode == .fixedRange {
                             secondaryTextField(
-                                label: "Time range",
+                                label: Loc.timeRange(language),
                                 placeholder: "00:30-01:00",
                                 text: $playlistConfig.segmentRange,
-                                helpText: "Passed as --download-sections *<range>."
+                                helpText: Loc.timeRangeHelp(language)
                             )
                         }
                     }
@@ -163,12 +177,12 @@ struct URLInputView: View {
             }
 
             HStack(spacing: 12) {
-                Label(probeState.statusLabel, systemImage: probeState.symbolName)
+                Label(probeState.localizedStatusLabel(language), systemImage: probeState.symbolName)
                     .foregroundStyle(probeState.tintColor)
 
                 Button(action: onSelectDirectory) {
                     Label(
-                        selectedDirectory?.lastPathComponent ?? "Choose folder…",
+                        selectedDirectory?.lastPathComponent ?? Loc.chooseFolderHint(language),
                         systemImage: "folder"
                     )
                     .lineLimit(1)
@@ -183,7 +197,7 @@ struct URLInputView: View {
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
-                    .help("Clear selected folder")
+                    .help(Loc.clearFolderHelp(language))
                 }
 
                 Spacer(minLength: 0)
@@ -208,15 +222,15 @@ struct URLInputView: View {
     }
 
     private var probeButtonTitle: String {
-        showsPlaylistModePicker ? "Probe first item" : "Probe"
+        showsPlaylistModePicker ? Loc.probeFirstItem(language) : Loc.probeButton(language)
     }
 
     private var playlistModeHint: String {
         switch playlistConfig.mode {
         case .onlyFirstItem:
-            "Probe inspects only the first item, then downloads it like a single video."
+            Loc.playlistModeHintFirst(language)
         case .wholePlaylistBestVideo, .wholePlaylistBestAudio:
-            "Whole playlist downloads every item automatically."
+            Loc.playlistModeHintWhole(language)
         }
     }
 
@@ -309,14 +323,16 @@ private func extractDroppedString(from item: NSSecureCoding?) -> String? {
 }
 
 private extension ProbeState {
-    var statusLabel: String {
+    func localizedStatusLabel(_ l: AppLanguage) -> String {
         switch self {
-        case .idle: "Idle"
-        case .loading: "Probing…"
-        case let .success(info): "Ready: \(info.title)"
+        case .idle: Loc.statusIdle(l)
+        case .loading: Loc.statusProbing(l)
+        case let .success(info): Loc.statusReady(info.title, l)
         case let .failure(error): error.message
         }
     }
+
+    var statusLabel: String { localizedStatusLabel(.english) }
 
     var symbolName: String {
         switch self {

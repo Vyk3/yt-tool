@@ -6,20 +6,43 @@ struct ProbeParser {
 
         do {
             let payload = try decoder.decode(RawProbePayload.self, from: data)
+            let formats = payload.formats ?? []
             return MediaInfo(
                 title: sanitizedTitle(payload.title),
                 duration: payload.duration,
                 webpageURL: payload.webpageURL ?? "",
-                videoFormats: payload.formats.compactMap(Self.makeVideoFormat).sorted(by: videoSort),
-                audioFormats: payload.formats.compactMap(Self.makeAudioFormat).sorted(by: audioSort),
+                videoFormats: formats.compactMap(Self.makeVideoFormat).sorted(by: videoSort),
+                audioFormats: formats.compactMap(Self.makeAudioFormat).sorted(by: audioSort),
                 subtitleTracks: Self.makeSubtitleTracks(from: payload.subtitles, isAuto: false),
                 autoSubtitleTracks: Self.makeSubtitleTracks(from: payload.automaticCaptions, isAuto: true)
+            )
+        } catch let decodingError as DecodingError {
+            throw AppError(
+                message: "Failed to decode probe output.",
+                recoverySuggestion: Self.decodingErrorDetail(decodingError)
             )
         } catch {
             throw AppError(
                 message: "Failed to decode probe output.",
-                recoverySuggestion: "Check whether yt-dlp returned valid single-video JSON."
+                recoverySuggestion: error.localizedDescription
             )
+        }
+    }
+
+    private static func decodingErrorDetail(_ error: DecodingError) -> String {
+        switch error {
+        case let .keyNotFound(key, context):
+            return "Missing key '\(key.stringValue)' at \(context.codingPath.map(\.stringValue).joined(separator: "."))."
+        case let .typeMismatch(type, context):
+            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+            return "Type mismatch for \(type) at \(path): \(context.debugDescription)"
+        case let .valueNotFound(type, context):
+            let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+            return "Null value for \(type) at \(path)."
+        case let .dataCorrupted(context):
+            return "Corrupted data: \(context.debugDescription)"
+        @unknown default:
+            return error.localizedDescription
         }
     }
 
@@ -105,7 +128,7 @@ private struct RawProbePayload: Decodable {
     var title: String?
     var duration: TimeInterval?
     var webpageURL: String?
-    var formats: [RawFormat]
+    var formats: [RawFormat]?
     var subtitles: [String: [RawSubtitleEntry]]?
     var automaticCaptions: [String: [RawSubtitleEntry]]?
 
