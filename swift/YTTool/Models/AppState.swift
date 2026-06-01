@@ -18,7 +18,9 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     case light
     case dark
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 }
 
 @MainActor
@@ -116,7 +118,12 @@ final class AppState: ObservableObject {
     }
 
     @Published var language: AppLanguage = .english {
-        didSet { defaults.set(language.rawValue, forKey: StorageKey.appLanguage) }
+        didSet {
+            defaults.set(language.rawValue, forKey: StorageKey.appLanguage)
+            // Sync with system AppleLanguages so AppKit frameworks (e.g. Sparkle)
+            // pick the same language as the in-app setting.
+            defaults.set([language.rawValue], forKey: "AppleLanguages")
+        }
     }
 
     @Published var appearance: AppAppearance = .system {
@@ -205,6 +212,8 @@ final class AppState: ObservableObject {
         {
             language = lang
         }
+        // Ensure AppleLanguages is in sync on every launch.
+        defaults.set([language.rawValue], forKey: "AppleLanguages")
         if let raw = defaults.string(forKey: StorageKey.appAppearance),
            let saved = AppAppearance(rawValue: raw)
         {
@@ -891,13 +900,7 @@ final class AppState: ObservableObject {
     /// use an Xcode dev build or Developer ID signing to test notifications.
     func requestNotificationPermission() {
         UNUserNotificationCenter.current()
-            .requestAuthorization(options: [.alert, .sound]) { granted, error in
-                if let error {
-                    print("[Notification] requestAuthorization error: \(error)")
-                } else {
-                    print("[Notification] authorization granted: \(granted)")
-                }
-            }
+            .requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     func appendLog(scope: AppLogScope, level: AppLogLevel, message: String) {
