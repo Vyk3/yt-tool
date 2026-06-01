@@ -210,7 +210,7 @@ struct SettingsTabView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
-                    .onChange(of: state.autoCheckForAppUpdates) { newValue in
+                    .onChange(of: state.autoCheckForAppUpdates) { _, newValue in
                         appUpdateController.setAutoCheck(newValue)
                     }
             }
