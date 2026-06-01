@@ -42,9 +42,6 @@
 /rules/
 /skills/
 
-# Local-only workflow governance docs
-/docs/workflow-governance/
-
 # Local-only maintenance docs
 /MIGRATION_NOTES.md
 /RELEASE_CHECKLIST.md
