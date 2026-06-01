@@ -87,7 +87,9 @@ actor ThumbnailLoader {
 /// NSCache requires reference-type values.
 private final class SendableImageBox: NSObject {
     let value: SendableImage
-    init(_ value: SendableImage) { self.value = value }
+    init(_ value: SendableImage) {
+        self.value = value
+    }
 }
 
 func normalizedThumbnailRequestURL(from rawURL: String) -> URL? {

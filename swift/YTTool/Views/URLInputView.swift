@@ -13,7 +13,7 @@ struct URLInputView: View {
     let onProbe: () -> Void
     let onSelectDirectory: () -> Void
     let onClearDirectory: () -> Void
-    var onPaste: (() -> Void)? = nil
+    var onPaste: (() -> Void)?
     @State private var isDropTargeted = false
 
     var body: some View {
@@ -332,7 +332,9 @@ private extension ProbeState {
         }
     }
 
-    var statusLabel: String { localizedStatusLabel(.english) }
+    var statusLabel: String {
+        localizedStatusLabel(.english)
+    }
 
     var symbolName: String {
         switch self {

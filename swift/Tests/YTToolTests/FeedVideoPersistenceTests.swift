@@ -5,7 +5,6 @@ import XCTest
 /// the same mechanism SubscriptionPollingManager uses to keep new-video
 /// state across app restarts.
 final class FeedVideoPersistenceTests: XCTestCase {
-
     private let testKey = "test_subscriptionNewVideos_\(UUID().uuidString)"
 
     override func tearDown() async throws {
@@ -132,7 +131,7 @@ final class FeedVideoPersistenceTests: XCTestCase {
         UserDefaults.standard.set(data, forKey: testKey)
 
         // Re-load
-        let loaded = UserDefaults.standard.data(forKey: testKey)!
+        let loaded = try XCTUnwrap(UserDefaults.standard.data(forKey: testKey))
         let decoded = try JSONDecoder().decode([FeedVideo].self, from: loaded)
 
         XCTAssertEqual(decoded.count, 2)
@@ -153,7 +152,7 @@ final class FeedVideoPersistenceTests: XCTestCase {
         UserDefaults.standard.set(emptyData, forKey: testKey)
 
         // Re-load
-        let loaded = UserDefaults.standard.data(forKey: testKey)!
+        let loaded = try XCTUnwrap(UserDefaults.standard.data(forKey: testKey))
         let decoded = try JSONDecoder().decode([FeedVideo].self, from: loaded)
         XCTAssertTrue(decoded.isEmpty)
     }
