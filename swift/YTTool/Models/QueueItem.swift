@@ -65,6 +65,7 @@ final class QueueItem: ObservableObject, Identifiable {
     @Published var outputURL: URL?
     @Published var error: AppError?
     @Published var title: String?
+    @Published var thumbnailURL: String?
 
     var runner: ProcessRunner?
 

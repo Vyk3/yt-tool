@@ -235,9 +235,20 @@ struct SubscriptionsView: View {
         }
     }
 
+    private static func isYouTubeURL(_ url: String) -> Bool {
+        guard let components = URLComponents(string: url),
+              let host = components.host?.lowercased() else { return false }
+        return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
+    }
+
     private func addChannel() {
         let url = newChannelURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
+
+        guard Self.isYouTubeURL(url) else {
+            resolveError = Loc.subsYouTubeOnly(language)
+            return
+        }
 
         isResolving = true
         resolveError = nil
@@ -278,6 +289,11 @@ private struct NewVideoRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            ThumbnailView(
+                url: video.thumbnailURL,
+                targetSize: CGSize(width: 64, height: 36)
+            )
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(video.title)
                     .font(.callout.weight(.medium))

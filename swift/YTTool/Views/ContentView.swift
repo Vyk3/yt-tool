@@ -52,9 +52,7 @@ struct ContentView: View {
                 language: state.language,
                 newChannelURL: $state.subscriptionInputURL,
                 onAddToQueue: { url in
-                    let base = state.queueInputURLs.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let separator = base.isEmpty ? "" : "\n"
-                    state.queueInputURLs = base + separator + url
+                    state.addSingleURLToQueue(url)
                     state.appMode = .queue
                 }
             )
@@ -159,6 +157,7 @@ struct ContentView: View {
                 isPlaylistURL: state.isPlaylistInputURL,
                 language: state.language,
                 showTechnicalDetails: state.showTechnicalDetails,
+                showAllFormats: state.showAllFormats,
                 selectedVideo: $state.selectedVideoFormat,
                 selectedAudio: $state.selectedAudioFormat,
                 selectedSubtitle: $state.selectedSubtitle
@@ -218,13 +217,14 @@ struct ContentView: View {
             Text(Loc.urlsPerLine(state.language))
                 .font(.headline)
 
-            TextEditor(text: $state.queueInputURLs)
-                .font(.body.monospaced())
-                .frame(minHeight: 60, maxHeight: 120)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                )
+            TextField(
+                Loc.queueURLPlaceholder(state.language),
+                text: $state.queueInputURLs,
+                axis: .vertical
+            )
+            .font(.body.monospaced())
+            .lineLimit(3...6)
+            .textFieldStyle(.roundedBorder)
 
             HStack(spacing: 12) {
                 Button(action: selectOutputDirectory) {

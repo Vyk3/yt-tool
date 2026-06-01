@@ -14,6 +14,19 @@ final class ProcessRunnerTests: XCTestCase {
         )
     }
 
+    func testConfigurationRedactsCookiesPathForDisplay() {
+        let configuration = ProcessConfiguration(
+            executableURL: URL(fileURLWithPath: "/usr/bin/yt-dlp"),
+            arguments: ["--cookies", "/tmp/private-cookies.txt", "https://example.com/video"]
+        )
+
+        XCTAssertEqual(
+            configuration.redactedCommandLine,
+            ["/usr/bin/yt-dlp", "--cookies", "<cookies-file>", "https://example.com/video"]
+        )
+        XCTAssertEqual(configuration.commandLine[2], "/tmp/private-cookies.txt")
+    }
+
     func testRunCapturesStdoutStderrAndExitCode() async throws {
         let runner = ProcessRunner()
         let result = try await runner.run(

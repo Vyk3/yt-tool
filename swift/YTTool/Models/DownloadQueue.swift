@@ -13,8 +13,24 @@ final class DownloadQueue: ObservableObject {
         let newItems = urls
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .map { QueueItem(url: $0, config: config) }
+            .map { url -> QueueItem in
+                let item = QueueItem(url: url, config: config)
+                item.thumbnailURL = thumbnailURL(for: url)
+                return item
+            }
         items.append(contentsOf: newItems)
+
+        for item in newItems where item.thumbnailURL == nil {
+            Task { @MainActor [weak item] in
+                guard let item,
+                      let resolved = await RemoteThumbnailResolver.shared.resolve(url: item.url),
+                      item.thumbnailURL == nil
+                else {
+                    return
+                }
+                item.thumbnailURL = resolved
+            }
+        }
     }
 
     func removeItem(_ item: QueueItem) {
@@ -22,10 +38,6 @@ final class DownloadQueue: ObservableObject {
             cancelItem(item)
         }
         items.removeAll { $0.id == item.id }
-    }
-
-    func moveItem(from source: IndexSet, to destination: Int) {
-        items.move(fromOffsets: source, toOffset: destination)
     }
 
     func cancelItem(_ item: QueueItem) {

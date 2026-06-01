@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Column widths (shared between header and rows)
 
-// Detailed mode: 7 video columns + 5 audio columns.
+/// Detailed mode: 7 video columns + 5 audio columns.
 private enum VideoCol {
     static let id: CGFloat = 30
     static let res: CGFloat = 44
@@ -21,7 +21,7 @@ private enum AudioCol {
     static let note: CGFloat = 66
 }
 
-// Simplified mode: fewer, wider columns.
+/// Simplified mode: fewer, wider columns.
 private enum SimpleVideoCol {
     static let res: CGFloat = 60
     static let size: CGFloat = 70
@@ -66,6 +66,7 @@ struct FormatPickerView: View {
     let isPlaylistURL: Bool
     var language: AppLanguage = .english
     var showTechnicalDetails: Bool = false
+    var showAllFormats: Bool = false
     @Binding var selectedVideo: VideoFormat?
     @Binding var selectedAudio: AudioFormat?
     @Binding var selectedSubtitle: SubtitleTrack?
@@ -110,26 +111,112 @@ struct FormatPickerView: View {
                 if isPlaylistURL, playlistMode.downloadsWholePlaylist {
                     placeholder(Loc.wholePlaylistSkips(language))
                 } else {
+                    thumbnailHeader(mediaInfo: mediaInfo)
                     formatColumns(mediaInfo: mediaInfo)
                 }
             }
         }
     }
 
+    private func thumbnailHeader(mediaInfo: MediaInfo) -> some View {
+        HStack(spacing: 12) {
+            ThumbnailView(
+                url: mediaInfo.thumbnailURL,
+                duration: mediaInfo.duration,
+                targetSize: CGSize(width: 160, height: 90)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                if let uploader = mediaInfo.uploader, !uploader.isEmpty {
+                    Text(uploader)
+                        .font(.callout.weight(.medium))
+                        .lineLimit(1)
+                }
+                if let date = mediaInfo.uploadDate {
+                    Text(date, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let viewCount = mediaInfo.viewCount, viewCount >= 0 {
+                    Text(Loc.viewCount(formattedViewCount(viewCount), language))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func formattedViewCount(_ count: Int64) -> String {
+        let absolute = Double(count)
+        let units: [(threshold: Double, suffix: String)] = [
+            (1_000_000_000, "B"),
+            (1_000_000, "M"),
+            (1000, "K"),
+        ]
+
+        for unit in units where absolute >= unit.threshold {
+            let value = absolute / unit.threshold
+            let raw = value >= 100
+                ? String(format: "%.0f%@", value, unit.suffix)
+                : String(format: "%.1f%@", value, unit.suffix)
+            return raw.replacingOccurrences(of: ".0", with: "")
+        }
+
+        return NumberFormatter.localizedString(from: NSNumber(value: count), number: .decimal)
+    }
+
+    /// Max height for the format area — both sides share this cap.
+    private let formatAreaMaxHeight: CGFloat = 300
+    /// Approximate height per format row (row content + spacing).
+    private let rowHeight: CGFloat = 33
+    /// Header (label + column titles) height.
+    private let columnHeaderHeight: CGFloat = 44
+
+    /// Calculate a shared height for the format area based on content count.
+    /// Both sides use the same height so the layout stays aligned.
+    private func effectiveFormatHeight(
+        videoCount: Int,
+        audioCount: Int,
+        subtitleCount: Int
+    ) -> CGFloat {
+        let videoH = columnHeaderHeight + CGFloat(videoCount) * rowHeight
+        let audioH = columnHeaderHeight + CGFloat(audioCount) * rowHeight
+        let subH = subtitleCount > 0 ? columnHeaderHeight + CGFloat(subtitleCount) * rowHeight : 0
+        let rightH = audioH + (subH > 0 ? 12 + subH : 0)
+        let natural = max(videoH, rightH)
+        return min(max(natural, 100), formatAreaMaxHeight)
+    }
+
     @ViewBuilder
     private func formatColumns(mediaInfo: MediaInfo) -> some View {
         let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
+        let videoFormats = showAllFormats ? mediaInfo.videoFormats : Self.filterVideoFormats(mediaInfo.videoFormats)
+        let audioFormats = showAllFormats ? mediaInfo.audioFormats : Self.filterAudioFormats(mediaInfo.audioFormats)
+        let subCount = mediaInfo.subtitleTracks.count + mediaInfo.autoSubtitleTracks.count
+        let areaHeight = effectiveFormatHeight(
+            videoCount: videoFormats.count,
+            audioCount: audioFormats.count,
+            subtitleCount: hasSubs ? subCount : 0
+        )
         let columns = HStack(alignment: .top, spacing: 16) {
-            videoColumn(formats: mediaInfo.videoFormats)
+            videoColumn(formats: videoFormats)
                 .frame(minWidth: videoMinWidth, maxWidth: .infinity, alignment: .topLeading)
-            audioColumn(formats: mediaInfo.audioFormats)
-                .frame(minWidth: audioMinWidth, maxWidth: .infinity, alignment: .topLeading)
-            if hasSubs {
-                subtitleColumn(
-                    manual: mediaInfo.subtitleTracks,
-                    auto: mediaInfo.autoSubtitleTracks
-                )
+                .frame(height: areaHeight, alignment: .top)
+                .clipped()
+            VStack(alignment: .leading, spacing: 12) {
+                audioColumn(formats: audioFormats)
+                    .frame(minWidth: audioMinWidth, maxWidth: .infinity, alignment: .topLeading)
+                if hasSubs {
+                    subtitleColumn(
+                        manual: mediaInfo.subtitleTracks,
+                        auto: mediaInfo.autoSubtitleTracks
+                    )
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(height: areaHeight, alignment: .top)
+            .clipped()
         }
 
         if showTechnicalDetails {
@@ -138,6 +225,67 @@ struct FormatPickerView: View {
             }
         } else {
             columns
+        }
+    }
+
+    // MARK: - Format filtering
+
+    /// Keep one video format per resolution — prefer: H.264 > VP9 > AV1, higher bitrate.
+    private static func filterVideoFormats(_ formats: [VideoFormat]) -> [VideoFormat] {
+        var bestByRes: [String: VideoFormat] = [:]
+        var resOrder: [String] = []
+        for fmt in formats {
+            if bestByRes[fmt.resolution] == nil {
+                resOrder.append(fmt.resolution)
+                bestByRes[fmt.resolution] = fmt
+            } else {
+                let existing = bestByRes[fmt.resolution]!
+                if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
+                    bestByRes[fmt.resolution] = fmt
+                } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
+                          (fmt.bitrateKbps ?? 0) > (existing.bitrateKbps ?? 0)
+                {
+                    bestByRes[fmt.resolution] = fmt
+                }
+            }
+        }
+        return resOrder.compactMap { bestByRes[$0] }
+    }
+
+    /// Keep one audio format per quality tier — prefer: higher bitrate, AAC > Opus.
+    private static func filterAudioFormats(_ formats: [AudioFormat]) -> [AudioFormat] {
+        // Group into tiers: Standard (>=96k) and Basic (<96k)
+        var standard: AudioFormat?
+        var basic: AudioFormat?
+        for fmt in formats {
+            let bitrate = fmt.bitrateKbps ?? 0
+            if bitrate >= 96 {
+                if let existing = standard {
+                    // Prefer AAC, then higher bitrate
+                    if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
+                        standard = fmt
+                    } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
+                              bitrate > (existing.bitrateKbps ?? 0)
+                    {
+                        standard = fmt
+                    }
+                } else {
+                    standard = fmt
+                }
+            } else {
+                if basic == nil { basic = fmt }
+            }
+        }
+        return [standard, basic].compactMap { $0 }
+    }
+
+    /// Lower = higher priority. H.264/AAC > VP9/Opus > AV1.
+    private static func codecPriority(_ codec: String) -> Int {
+        switch codec.lowercased() {
+        case "h.264", "aac": 0
+        case "vp9", "opus": 1
+        case "av1": 2
+        default: 3
         }
     }
 
@@ -174,7 +322,6 @@ struct FormatPickerView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 220)
             }
         }
     }
@@ -250,7 +397,6 @@ struct FormatPickerView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 220)
             }
         }
     }
@@ -337,9 +483,7 @@ struct FormatPickerView: View {
                     }
                 }
             }
-            .frame(maxHeight: 220)
         }
-        .frame(minWidth: 170, idealWidth: 200, maxWidth: 240, alignment: .topLeading)
     }
 
     private func subtitleRow(_ track: SubtitleTrack, isSelected: Bool) -> some View {

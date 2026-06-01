@@ -30,6 +30,7 @@ final class ProbeParserTests: XCTestCase {
         XCTAssertEqual(info.title, "Example Video")
         XCTAssertEqual(info.duration, 95)
         XCTAssertEqual(info.webpageURL, "https://example.com/watch?v=123")
+        XCTAssertEqual(info.viewCount, 1_700_000_000)
         XCTAssertEqual(info.videoFormats.map(\.id), ["137"])
         XCTAssertEqual(info.audioFormats.map(\.id), ["251"])
         XCTAssertEqual(info.videoFormats.first?.note, "no audio")
@@ -103,6 +104,7 @@ final class ProbeParserTests: XCTestCase {
       "title": "Example Video",
       "duration": 95,
       "webpage_url": "https://example.com/watch?v=123",
+      "view_count": 1700000000,
       "formats": [
         {
           "format_id": "137",

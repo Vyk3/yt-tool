@@ -17,4 +17,8 @@ struct FeedVideo: Equatable, Codable {
     var channelName: String
     var publishedDate: Date?
     var url: String
+
+    var thumbnailURL: String {
+        "https://i.ytimg.com/vi/\(videoID)/mqdefault.jpg"
+    }
 }

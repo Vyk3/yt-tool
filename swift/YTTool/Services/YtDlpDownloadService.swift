@@ -126,7 +126,7 @@ struct YtDlpDownloadService {
                         ),
                         terminationGracePeriod: .seconds(3)
                     )
-                    onLog(.command, config.commandLine.joined(separator: " "))
+                    onLog(.command, config.redactedCommandLine.joined(separator: " "))
 
                     // Keep one parser per output stream so chunk buffering stays
                     // correct even when yt-dlp sends progress to stdout instead of stderr.

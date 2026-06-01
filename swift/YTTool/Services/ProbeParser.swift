@@ -7,12 +7,17 @@ struct ProbeParser {
         do {
             let payload = try decoder.decode(RawProbePayload.self, from: data)
             let formats = payload.formats ?? []
+            let dur = payload.duration
             return MediaInfo(
                 title: sanitizedTitle(payload.title),
-                duration: payload.duration,
+                duration: dur,
                 webpageURL: payload.webpageURL ?? "",
-                videoFormats: formats.compactMap(Self.makeVideoFormat).sorted(by: videoSort),
-                audioFormats: formats.compactMap(Self.makeAudioFormat).sorted(by: audioSort),
+                thumbnailURL: payload.thumbnail,
+                viewCount: payload.viewCount,
+                uploader: payload.channel ?? payload.uploader,
+                uploadDate: Self.parseUploadDate(payload.uploadDate),
+                videoFormats: formats.compactMap { Self.makeVideoFormat(from: $0, duration: dur) }.sorted(by: videoSort),
+                audioFormats: formats.compactMap { Self.makeAudioFormat(from: $0, duration: dur) }.sorted(by: audioSort),
                 subtitleTracks: Self.makeSubtitleTracks(from: payload.subtitles, isAuto: false),
                 autoSubtitleTracks: Self.makeSubtitleTracks(from: payload.automaticCaptions, isAuto: true)
             )
@@ -55,6 +60,15 @@ struct ProbeParser {
         return raw?.isEmpty == false ? raw! : "unknown"
     }
 
+    /// Parse yt-dlp "YYYYMMDD" date string.
+    private static func parseUploadDate(_ raw: String?) -> Date? {
+        guard let raw, raw.count == 8 else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: raw)
+    }
+
     private func videoSort(lhs: VideoFormat, rhs: VideoFormat) -> Bool {
         if lhs.resolution != rhs.resolution {
             return lhs.resolution > rhs.resolution
@@ -66,7 +80,7 @@ struct ProbeParser {
         lhs.bitrateKbps ?? 0 > rhs.bitrateKbps ?? 0
     }
 
-    private static func makeVideoFormat(from raw: RawFormat) -> VideoFormat? {
+    private static func makeVideoFormat(from raw: RawFormat, duration: TimeInterval?) -> VideoFormat? {
         // Exclude formats with no video track (explicit "none") or missing vcodec.
         guard let vcodec = raw.vcodec, vcodec.lowercased() != "none" else {
             return nil
@@ -74,6 +88,7 @@ struct ProbeParser {
 
         let hasAudio = raw.acodec?.lowercased() != "none" && raw.acodec != nil
         let resolution = raw.height.map { "\($0)p" } ?? raw.formatNote ?? "unknown"
+        let fileSize = raw.filesizeApprox ?? raw.filesize ?? estimatedBytes(bitrateKbps: raw.tbr, duration: duration)
 
         return VideoFormat(
             id: raw.formatID,
@@ -81,23 +96,31 @@ struct ProbeParser {
             codec: vcodec,
             fps: Int((raw.fps ?? 0).rounded()),
             bitrateKbps: raw.tbr,
-            fileSizeBytes: raw.filesizeApprox ?? raw.filesize,
+            fileSizeBytes: fileSize,
             note: hasAudio ? "w/ audio" : "no audio"
         )
     }
 
-    private static func makeAudioFormat(from raw: RawFormat) -> AudioFormat? {
+    private static func makeAudioFormat(from raw: RawFormat, duration: TimeInterval?) -> AudioFormat? {
         guard raw.vcodec?.lowercased() == "none", let acodec = raw.acodec, acodec.lowercased() != "none" else {
             return nil
         }
+
+        let fileSize = raw.filesizeApprox ?? raw.filesize ?? estimatedBytes(bitrateKbps: raw.abr, duration: duration)
 
         return AudioFormat(
             id: raw.formatID,
             codec: acodec,
             bitrateKbps: raw.abr,
-            fileSizeBytes: raw.filesizeApprox ?? raw.filesize,
+            fileSizeBytes: fileSize,
             note: raw.formatNote ?? raw.ext ?? ""
         )
+    }
+
+    /// Estimate file size from bitrate and duration when yt-dlp doesn't provide one.
+    private static func estimatedBytes(bitrateKbps: Double?, duration: TimeInterval?) -> Int64? {
+        guard let kbps = bitrateKbps, kbps > 0, let dur = duration, dur > 0 else { return nil }
+        return Int64(kbps * 1000 / 8 * dur)
     }
 
     private static func makeSubtitleTracks(
@@ -128,6 +151,11 @@ private struct RawProbePayload: Decodable {
     var title: String?
     var duration: TimeInterval?
     var webpageURL: String?
+    var thumbnail: String?
+    var viewCount: Int64?
+    var uploader: String?
+    var channel: String?
+    var uploadDate: String?
     var formats: [RawFormat]?
     var subtitles: [String: [RawSubtitleEntry]]?
     var automaticCaptions: [String: [RawSubtitleEntry]]?
@@ -136,6 +164,11 @@ private struct RawProbePayload: Decodable {
         case title
         case duration
         case webpageURL = "webpage_url"
+        case thumbnail
+        case viewCount = "view_count"
+        case uploader
+        case channel
+        case uploadDate = "upload_date"
         case formats
         case subtitles
         case automaticCaptions = "automatic_captions"

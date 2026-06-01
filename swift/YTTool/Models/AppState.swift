@@ -32,6 +32,7 @@ final class AppState: ObservableObject {
         static let appLanguage = "appLanguage"
         static let appAppearance = "appAppearance"
         static let showTechnicalDetails = "showTechnicalDetails"
+        static let showAllFormats = "showAllFormats"
     }
 
     private static let maxLogEntries = 250
@@ -129,6 +130,10 @@ final class AppState: ObservableObject {
         didSet { defaults.set(showTechnicalDetails, forKey: StorageKey.showTechnicalDetails) }
     }
 
+    @Published var showAllFormats: Bool = false {
+        didSet { defaults.set(showAllFormats, forKey: StorageKey.showAllFormats) }
+    }
+
     var ytDlpSource: String {
         FileManager.default.fileExists(atPath: BundledToolLocator.userLocalURL(for: .ytDlp).path)
             ? "user-installed" : "bundled"
@@ -207,6 +212,9 @@ final class AppState: ObservableObject {
         }
         if defaults.object(forKey: StorageKey.showTechnicalDetails) != nil {
             showTechnicalDetails = defaults.bool(forKey: StorageKey.showTechnicalDetails)
+        }
+        if defaults.object(forKey: StorageKey.showAllFormats) != nil {
+            showAllFormats = defaults.bool(forKey: StorageKey.showAllFormats)
         }
         applyAppearance()
 
@@ -629,6 +637,44 @@ final class AppState: ObservableObject {
         queueInputURLs = ""
         queueError = nil
         appendLog(scope: .download, level: .info, message: "Added \(urls.count) URL(s) to queue")
+    }
+
+    /// Directly add a single URL to the download queue (used by Subs "add" button).
+    /// Returns true on success.
+    @discardableResult
+    func addSingleURLToQueue(_ url: String) -> Bool {
+        guard let outputDir = validatedSelectedOutputDirectory else {
+            queueError = Loc.queueNeedFolder(language)
+            return false
+        }
+
+        let normalizedCookies: String?
+        let parsedExtra: [String]
+        do {
+            normalizedCookies = try normalizedCookiesFilePathOrThrow()
+            parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch let error as AppError {
+            queueError = joinedErrorMessage(error)
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
+            return false
+        } catch {
+            queueError = error.localizedDescription
+            appendLog(scope: .download, level: .error, message: "Invalid arguments: \(error.localizedDescription)")
+            return false
+        }
+
+        let config = QueueItemConfig(
+            outputDirectory: outputDir,
+            cookiesFilePath: normalizedCookies,
+            extraArguments: parsedExtra,
+            audioTranscodeFormat: audioTranscodeFormat,
+            downloaderPreference: downloaderPreference,
+            qualityStrategy: queueQualityStrategy
+        )
+
+        downloadQueue.addURLs([url], config: config)
+        appendLog(scope: .download, level: .info, message: "Added \(url) to queue from subscriptions")
+        return true
     }
 
     @discardableResult
@@ -1054,7 +1100,7 @@ final class AppState: ObservableObject {
             let flag = subtitleTrack.isAuto ? "--write-auto-subs" : "--write-subs"
             subtitleFlags = " \(flag) --sub-langs \(subtitleTrack.lang)"
         }
-        let cookiesFlags = (cookiesFilePath?.isEmpty == false) ? " --cookies \"\(cookiesFilePath!)\"" : ""
+        let cookiesFlags = (cookiesFilePath?.isEmpty == false) ? " --cookies \"<cookies-file>\"" : ""
         let transcodeFlags = audioTranscodeFormat?.ytDlpAudioFormat.map { " -x --audio-format \($0)" } ?? ""
         let extraFlags = extraArguments.isEmpty ? "" : " " + extraArguments.joined(separator: " ")
         let target = title ?? "playlist items"

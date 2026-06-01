@@ -34,7 +34,7 @@ struct LogPanelView: View {
                 }
                 .buttonStyle(.borderless)
             }
-            .onChange(of: errorCount) { newValue in
+            .onChange(of: errorCount) { _, newValue in
                 if newValue > lastSeenErrorCount {
                     withAnimation(.easeOut(duration: 0.2)) {
                         isExpanded = true
@@ -65,7 +65,7 @@ struct LogPanelView: View {
             .onAppear {
                 scrollToLastEntry(proxy)
             }
-            .onChange(of: entries.count) { _ in
+            .onChange(of: entries.count) {
                 scrollToLastEntry(proxy)
             }
         }

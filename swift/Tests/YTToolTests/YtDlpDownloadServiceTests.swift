@@ -338,7 +338,8 @@ final class YtDlpDownloadServiceTests: XCTestCase {
             }
         ) {}
 
-        XCTAssertTrue(commandSink.value?.contains("--cookies /tmp/cookies.txt") == true)
+        XCTAssertTrue(commandSink.value?.contains("--cookies <cookies-file>") == true)
+        XCTAssertFalse(commandSink.value?.contains("/tmp/cookies.txt") == true)
         XCTAssertTrue(commandSink.value?.contains("-x --audio-format mp3") == true)
         XCTAssertTrue(commandSink.value?.contains("--playlist-items 1") == true)
     }

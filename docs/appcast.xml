@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>YTTool Updates</title>
+    <link>https://vyk3.github.io/yt-tool/appcast.xml</link>
+    <language>en</language>
+    <item>
+      <title>v0.2.0</title>
+      <pubDate>Mon, 02 Jun 2026 12:00:00 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>v0.2.0</h2>
+        <h3>Added</h3>
+        <ul>
+          <li>Video thumbnails with duration badge in queue and subscriptions</li>
+          <li>Format filtering by resolution, codec, and file size</li>
+          <li>Cookies setup guide popover in Settings</li>
+          <li>Privacy info popover in About section</li>
+        </ul>
+        <h3>Changed</h3>
+        <ul>
+          <li>Minimum macOS requirement raised to macOS 14</li>
+          <li>Cookies path redaction now covers --cookies=path form</li>
+          <li>Add-to-queue errors are now surfaced to the user</li>
+        </ul>
+        <h3>Fixed</h3>
+        <ul>
+          <li>Swift 6 strict concurrency errors with NSImage</li>
+          <li>onChange deprecation warnings on macOS 14</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/Vyk3/yt-tool/releases/download/v0.2.0/YTTool.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="PLACEHOLDER_SIGNATURE"
+        length="0"
+      />
+    </item>
+    <item>
+      <title>v0.1.5</title>
+      <pubDate>Fri, 30 May 2026 12:00:00 +0000</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>v0.1.5</h2>
+        <h3>Added</h3>
+        <ul>
+          <li>Channel subscription monitoring — subscribe to YouTube channels and get macOS notifications for new uploads</li>
+          <li>Unified Settings tab view</li>
+          <li>Subscription unit tests (FeedXMLParser, ChannelSubscriptionStore)</li>
+        </ul>
+        <h3>Changed</h3>
+        <ul>
+          <li>Concurrent RSS feed polling via TaskGroup</li>
+          <li>Batch disk writes for subscription updates</li>
+          <li>Poll interval persisted to UserDefaults</li>
+        </ul>
+        <h3>Fixed</h3>
+        <ul>
+          <li>Crash on invalid subscription URL</li>
+          <li>Timer leak in SubscriptionPollingManager deinit</li>
+          <li>Swift 6 strict concurrency compilation errors</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/Vyk3/yt-tool/releases/download/v0.1.5/YTTool.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="9bOjepK68jMPOPb/OkrXMci7m1z2UluhyRO/AqmNfDjienQHwtm38KZorAY/4e+sTVJcqDGp4X7bLUr6cgMrCQ=="
+        length="80861189"
+      />
+    </item>
+  </channel>
+</rss>
