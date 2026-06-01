@@ -22,7 +22,7 @@
 ## 系统要求
 
 - **Apple Silicon（M1 或更新）**：官方打包发布版（YTTool.dmg / YTTool.zip）为 arm64-only，不支持 Intel Mac。
-- **macOS 13 Ventura 或更新版本**。
+- **macOS 14 Sonoma 或更新版本**。
 
 ## 给普通用户
 

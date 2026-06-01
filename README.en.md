@@ -22,7 +22,7 @@ English | [简体中文](README.md)
 ## System Requirements
 
 - **Apple Silicon (M1 or later)**: The packaged release (YTTool.dmg / YTTool.zip) is arm64-only. Intel Mac is not supported.
-- **macOS 13 Ventura or later**.
+- **macOS 14 Sonoma or later**.
 
 ## For Users
 
