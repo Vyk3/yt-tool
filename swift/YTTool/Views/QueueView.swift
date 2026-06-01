@@ -5,8 +5,13 @@ struct QueueView: View {
     var language: AppLanguage = .english
     let onStart: () -> Void
 
-    private var completedCount: Int { queue.items.filter { $0.status == .completed }.count }
-    private var failedCount: Int { queue.items.filter { $0.status == .failed }.count }
+    private var completedCount: Int {
+        queue.items.filter { $0.status == .completed }.count
+    }
+
+    private var failedCount: Int {
+        queue.items.filter { $0.status == .failed }.count
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

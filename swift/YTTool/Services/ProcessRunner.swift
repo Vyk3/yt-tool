@@ -58,7 +58,7 @@ final class UTF8LineBuffer: @unchecked Sendable {
         let start = data.startIndex
         let scanLimit = min(count, 4)
 
-        for i in 1...scanLimit {
+        for i in 1 ... scanLimit {
             let byteIndex = start + count - i
             let byte = data[byteIndex]
 

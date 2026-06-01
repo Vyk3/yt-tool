@@ -3,7 +3,7 @@ import SwiftUI
 struct ThumbnailView: View {
     let url: String?
     var duration: TimeInterval?
-    var targetSize: CGSize = CGSize(width: 64, height: 36)
+    var targetSize: CGSize = .init(width: 64, height: 36)
 
     @State private var image: NSImage?
     @State private var failed = false

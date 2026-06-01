@@ -53,6 +53,7 @@
 		A000000000000000000000F4 /* ThumbnailLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F3 /* ThumbnailLoader.swift */; };
 		A000000000000000000000F6 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F5 /* ThumbnailView.swift */; };
 		A000000000000000000000A1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000A0 /* Sparkle */; };
+		A000000000000000000000FA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F9 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -102,6 +103,8 @@
 		A000000000000000000000F3 /* ThumbnailLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ThumbnailLoader.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000F5 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/ThumbnailView.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A000000000000000000000F7 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = YTTool/Resources/en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000F8 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "YTTool/Resources/zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -228,11 +231,24 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000D /* Binaries */,
+				A000000000000000000000F9 /* InfoPlist.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXVariantGroup section */
+		A000000000000000000000F9 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A000000000000000000000F7 /* en */,
+				A000000000000000000000F8 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXNativeTarget section */
 		A00000000000000000000050 /* YTTool */ = {
@@ -276,6 +292,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = A00000000000000000000040;
@@ -297,6 +314,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A0000000000000000000001C /* Binaries in Resources */,
+				A000000000000000000000FA /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

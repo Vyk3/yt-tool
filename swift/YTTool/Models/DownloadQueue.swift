@@ -116,8 +116,9 @@ final class DownloadQueue: ObservableObject {
 
     private func processItem(_ item: QueueItem, locator: BundledToolLocator) async {
         item.status = .active
-        item.runner = ProcessRunner()
-        let service = YtDlpDownloadService(locator: locator, runner: item.runner!)
+        let runner = ProcessRunner()
+        item.runner = runner
+        let service = YtDlpDownloadService(locator: locator, runner: runner)
 
         let aria2cPath: String? = if item.config.downloaderPreference == .aria2c {
             resolvedAria2cPath()

@@ -6,7 +6,7 @@ struct SubscriptionsView: View {
     @ObservedObject var pollingManager: SubscriptionPollingManager
     var language: AppLanguage = .english
     @Binding var newChannelURL: String
-    var onAddToQueue: ((String) -> Void)? = nil
+    var onAddToQueue: ((String) -> Void)?
     @State private var isResolving = false
     @State private var resolveError: String?
     @State private var isSelecting = false
@@ -130,7 +130,7 @@ struct SubscriptionsView: View {
                 Spacer()
 
                 // Delete button — only when items are selected
-                if isSelecting && !selectedIDs.isEmpty {
+                if isSelecting, !selectedIDs.isEmpty {
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
                     } label: {
@@ -284,7 +284,7 @@ struct SubscriptionsView: View {
 private struct NewVideoRow: View {
     let video: FeedVideo
     var language: AppLanguage = .english
-    var onAddToQueue: (() -> Void)? = nil
+    var onAddToQueue: (() -> Void)?
     let onDismiss: () -> Void
 
     var body: some View {

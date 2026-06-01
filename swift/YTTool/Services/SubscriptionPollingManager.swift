@@ -31,7 +31,7 @@ final class SubscriptionPollingManager: ObservableObject {
         self.store = store
         let stored = UserDefaults.standard.double(forKey: Self.pollIntervalKey)
         self.pollInterval = pollInterval ?? (stored > 0 ? stored : Self.defaultPollInterval)
-        self.newVideos = Self.loadNewVideos()
+        newVideos = Self.loadNewVideos()
     }
 
     deinit {

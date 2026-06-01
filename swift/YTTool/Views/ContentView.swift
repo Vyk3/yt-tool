@@ -88,7 +88,7 @@ struct ContentView: View {
                     // Thin divider between two unselected tabs
                     if index > 0 {
                         let prevSelected = state.appMode == allModes[index - 1]
-                        if !isSelected && !prevSelected {
+                        if !isSelected, !prevSelected {
                             Rectangle()
                                 .fill(Color.primary.opacity(0.15))
                                 .frame(width: 1, height: 14)
@@ -104,7 +104,7 @@ struct ContentView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Text(Loc.tabLabel(mode, state.language))
-                            if mode == .subscriptions && !state.pollingManager.newVideos.isEmpty {
+                            if mode == .subscriptions, !state.pollingManager.newVideos.isEmpty {
                                 Circle()
                                     .fill(isSelected ? Color.white : Color.accentColor)
                                     .frame(width: 6, height: 6)
@@ -223,7 +223,7 @@ struct ContentView: View {
                 axis: .vertical
             )
             .font(.body.monospaced())
-            .lineLimit(3...6)
+            .lineLimit(3 ... 6)
             .textFieldStyle(.roundedBorder)
 
             HStack(spacing: 12) {
@@ -336,7 +336,7 @@ struct ContentView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
+        panel.prompt = Loc.selectFolder(state.language)
         if panel.runModal() == .OK {
             state.selectedOutputDirectory = panel.url
         }

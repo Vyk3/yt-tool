@@ -6,13 +6,29 @@
 
 ## [Unreleased]
 
+### Fixed
+- **Sparkle 更新弹窗语言同步**：添加 `zh-Hans` 到 `knownRegions`，在 app 启动时同步 `AppleLanguages`，Sparkle 更新弹窗语言跟随应用内语言设置。
+- **hardcoded 字符串本地化**：10 处 Picker label、ETA、ffmpeg 缺失提示、文件夹选择按钮从硬编码英文改为 `Loc` 双语支持。
+- **DownloadQueue force unwrap**：`processItem` 中消除 `item.runner!`，改用局部变量传递。
+- **debug print 清理**：移除 `requestNotificationPermission` 中的调试输出。
+
+---
+
+## [0.2.0] — 2026-06-02
+
 ### Added
 - **完整双语本地化**：新增 `Localization.swift`，所有 UI 字符串支持中文和英文切换。(#67)
 - **Settings 三列布局**：重写 `SettingsTabView` 为紧凑三列布局（分区 | 标题 | 控件），列宽随语言自适应。(#67)
 - **开发构建脚本**：新增 `dev_launch.sh`，自动编译并启动 app bundle。(#67)
 - **FeedVideo 持久化测试**：新增 `FeedVideoPersistenceTests` 覆盖订阅视频数据往返。(#67)
+- **视频缩略图**：队列和订阅列表显示视频缩略图及时长徽章，支持 YouTube 直出和 Bilibili API 解析，异步加载带内存/磁盘双层缓存。(#70)
+- **格式筛选**：Format Picker 新增按分辨率、编码、文件大小等条件筛选，技术详情默认折叠。(#70)
+- **Cookies 使用指南**：Settings 中新增 Cookies 获取步骤弹窗，中英文自适应。(#70)
+- **隐私说明弹窗**：About 区域新增隐私说明，说明数据仅保留本地。(#70)
 
 ### Changed
+- 最低系统要求从 macOS 13 提升至 macOS 14。(#70)
+  > Why：NSImage 的 Sendable conformance 在 macOS 14+ 才可用，Swift 6 strict concurrency 下无法兼容 macOS 13
 - **ProcessRunner UTF-8 安全解码**：引入 `UTF8LineBuffer`，在 `readabilityHandler` 层缓冲不完整的 multi-byte UTF-8 序列，仅在字节完整时才解码为 String。(#68)
   > Why：原 `String(decoding:as:)` 对 pipe 读取边界上被拆分的 CJK / emoji 字符替换为 U+FFFD（替换字符），下游 `run()` 的 Data 累积无法修复已损坏的数据
 - **ProcessRunner trailing bytes 简化**：`terminationHandler` 中 `readDataToEndOfFile()` 的数据现作为正常 `.stdout`/`.stderr` 事件 yield，而非通过 `ProcessResult` 额外字段传递。移除 `trailingStdout`/`trailingStderr` 字段、自定义 `==` 和 `run()` 中的合并逻辑，净减约 20 行。(#68)
@@ -22,29 +38,6 @@
 - **probe 可靠性**：`ProbeParser.formats` 改为 optional，新增详细 `DecodingError` 报告。(#67)
 - **格式表格水平滚动**：技术详情模式下格式表格增加 `ScrollView` 水平滚动。(#67)
 - **标签页内容宽度约束**：队列（700pt）和订阅（600pt）标签页增加 `maxWidth` 约束，低内容量时信息密度更佳。(#67)
-
-### Fixed
-- **相对时间戳语言匹配**：`Text(date, style: .relative)` 增加 `.environment(\.locale, language.locale)`，订阅页面的相对时间显示随 app 语言切换，不再跟随系统 locale。(#68)
-- **队列列表溢出**：`QueueView` 限制 `minHeight` 不超过 `maxHeight`（300pt），6 个以上项目时不再撑破容器。(#67)
-- **本地化遗漏**：订阅页删除确认弹窗的 "Cancel" 改用 `Loc.cancelButton()`；历史页取消按钮改用 `Loc.cancelButton()` 替换 `Loc.done()`。(#67)
-- **通知正文重复**：`AppState` 通知 body 使用 `Loc.notificationBody()` 替换错误复用的 `Loc.notificationTitle()`。(#67)
-- **标签页切换状态丢失**：移除 `ContentView` 中的 `.id(state.appMode)`，该修饰符导致切换标签页时子视图 `@State` 被销毁重建。(#67)
-- **dev_launch.sh 陈旧构建**：通过 `PIPESTATUS[0]` 捕获 xcodebuild 退出码，编译失败时不再静默启动上一次成功构建的 `.app`。(#67)
-- **死代码清理**：移除零引用的 `UpdateView.swift` 和 `AdvancedOptionsView.swift`。(#67)
-
----
-
-## [0.2.0] — 2026-06-02
-
-### Added
-- **视频缩略图**：队列和订阅列表显示视频缩略图及时长徽章，支持 YouTube 直出和 Bilibili API 解析，异步加载带内存/磁盘双层缓存。(#70)
-- **格式筛选**：Format Picker 新增按分辨率、编码、文件大小等条件筛选，技术详情默认折叠。(#70)
-- **Cookies 使用指南**：Settings 中新增 Cookies 获取步骤弹窗，中英文自适应。(#70)
-- **隐私说明弹窗**：About 区域新增隐私说明，说明数据仅保留本地。(#70)
-
-### Changed
-- 最低系统要求从 macOS 13 提升至 macOS 14。(#70)
-  > Why：NSImage 的 Sendable conformance 在 macOS 14+ 才可用，Swift 6 strict concurrency 下无法兼容 macOS 13
 - Cookies 路径在日志中脱敏，同时支持 `--cookies path` 和 `--cookies=path` 两种形式。(#70)
 - `addSingleURLToQueue` 失败时设置 `queueError` 并记录日志，不再静默吞没错误。(#70)
 - 订阅页"添加到队列"失败后自动切换到队列页，确保用户能看到错误提示。(#70)
@@ -54,6 +47,13 @@
 - 移除死代码：`releasesLink()`、`DownloadQueue.moveItem()`。(#70)
 
 ### Fixed
+- **相对时间戳语言匹配**：`Text(date, style: .relative)` 增加 `.environment(\.locale, language.locale)`，订阅页面的相对时间显示随 app 语言切换，不再跟随系统 locale。(#68)
+- **队列列表溢出**：`QueueView` 限制 `minHeight` 不超过 `maxHeight`（300pt），6 个以上项目时不再撑破容器。(#67)
+- **本地化遗漏**：订阅页删除确认弹窗的 "Cancel" 改用 `Loc.cancelButton()`；历史页取消按钮改用 `Loc.cancelButton()` 替换 `Loc.done()`。(#67)
+- **通知正文重复**：`AppState` 通知 body 使用 `Loc.notificationBody()` 替换错误复用的 `Loc.notificationTitle()`。(#67)
+- **标签页切换状态丢失**：移除 `ContentView` 中的 `.id(state.appMode)`，该修饰符导致切换标签页时子视图 `@State` 被销毁重建。(#67)
+- **dev_launch.sh 陈旧构建**：通过 `PIPESTATUS[0]` 捕获 xcodebuild 退出码，编译失败时不再静默启动上一次成功构建的 `.app`。(#67)
+- **死代码清理**：移除零引用的 `UpdateView.swift` 和 `AdvancedOptionsView.swift`。(#67)
 - 修复 Swift 6 strict concurrency 下 `NSImage` 跨 actor 边界的编译错误（`SendableImage` wrapper）。(#70)
 - 修复 `onChange(of:)` 在 macOS 14 下的弃用警告。(#70)
 
