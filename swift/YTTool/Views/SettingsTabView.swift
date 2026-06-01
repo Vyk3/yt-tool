@@ -81,7 +81,7 @@ struct SettingsTabView: View {
                 title: Loc.downloadEngine(lang),
                 status: state.aria2cAvailable ? nil : Loc.aria2cNotFound(lang)
             ) {
-                Picker("Engine", selection: $state.downloaderPreference) {
+                Picker(Loc.downloadEngine(lang), selection: $state.downloaderPreference) {
                     ForEach(DownloaderPreference.allCases) { pref in
                         Text(pref.label).tag(pref)
                     }
@@ -134,7 +134,7 @@ struct SettingsTabView: View {
                 title: Loc.checkInterval(lang),
                 help: Loc.checkIntervalDescription(lang)
             ) {
-                Picker("Interval", selection: Binding(
+                Picker(Loc.checkInterval(lang), selection: Binding(
                     get: { pollingManager.pollInterval },
                     set: { pollingManager.pollInterval = $0 }
                 )) {

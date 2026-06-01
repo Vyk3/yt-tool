@@ -81,7 +81,7 @@ struct URLInputView: View {
                             label: Loc.videoQuality(language),
                             helpText: Loc.videoQualityHelp(language)
                         ) {
-                            Picker("Video quality", selection: $playlistConfig.videoQualityStrategy) {
+                            Picker(Loc.videoQuality(language), selection: $playlistConfig.videoQualityStrategy) {
                                 ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
                                     Text(strategy.title).tag(strategy)
                                 }
@@ -96,7 +96,7 @@ struct URLInputView: View {
                             label: Loc.audioQuality(language),
                             helpText: Loc.audioQualityHelp(language)
                         ) {
-                            Picker("Audio quality", selection: $playlistConfig.audioQualityStrategy) {
+                            Picker(Loc.audioQuality(language), selection: $playlistConfig.audioQualityStrategy) {
                                 ForEach(PlaylistAudioQualityStrategy.allCases) { strategy in
                                     Text(strategy.title).tag(strategy)
                                 }
@@ -111,7 +111,7 @@ struct URLInputView: View {
                             label: Loc.playlistFormats(language),
                             helpText: Loc.playlistFormatsHelp(language)
                         ) {
-                            Picker("Playlist formats", selection: $playlistConfig.formatMode) {
+                            Picker(Loc.playlistFormats(language), selection: $playlistConfig.formatMode) {
                                 ForEach(PlaylistFormatMode.allCases) { mode in
                                     Text(mode.title).tag(mode)
                                 }
@@ -133,7 +133,7 @@ struct URLInputView: View {
                             label: Loc.playlistSubtitles(language),
                             helpText: Loc.playlistSubtitlesHelp(language)
                         ) {
-                            Picker("Playlist subtitles", selection: $playlistConfig.subtitleMode) {
+                            Picker(Loc.playlistSubtitles(language), selection: $playlistConfig.subtitleMode) {
                                 ForEach(PlaylistSubtitleMode.allCases) { mode in
                                     Text(mode.title).tag(mode)
                                 }
@@ -155,7 +155,7 @@ struct URLInputView: View {
                             label: Loc.playlistSegments(language),
                             helpText: Loc.playlistSegmentsHelp(language)
                         ) {
-                            Picker("Playlist segments", selection: $playlistConfig.segmentMode) {
+                            Picker(Loc.playlistSegments(language), selection: $playlistConfig.segmentMode) {
                                 ForEach(PlaylistSegmentMode.allCases) { mode in
                                     Text(mode.title).tag(mode)
                                 }

@@ -1064,4 +1064,18 @@ enum Loc {
     static func pasteURLHelp(_ l: AppLanguage) -> String {
         l == .chinese ? "从剪贴板粘贴 URL" : "Paste URL from clipboard"
     }
+
+    // MARK: Misc UI labels
+
+    static func etaLabel(_ l: AppLanguage) -> String {
+        l == .chinese ? "剩余" : "ETA"
+    }
+
+    static func ffmpegMissingHelp(_ l: AppLanguage) -> String {
+        l == .chinese ? "ffmpeg 或 ffprobe 缺失。" : "ffmpeg or ffprobe is missing."
+    }
+
+    static func selectFolder(_ l: AppLanguage) -> String {
+        l == .chinese ? "选择" : "Select"
+    }
 }

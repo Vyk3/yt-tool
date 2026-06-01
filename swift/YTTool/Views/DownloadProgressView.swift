@@ -65,7 +65,7 @@ struct DownloadProgressView: View {
                 .frame(width: 280, alignment: .leading)
                 .padding(12)
         }
-        .help("ffmpeg or ffprobe is missing.")
+        .help(Loc.ffmpegMissingHelp(language))
     }
 
     // MARK: - Status body
@@ -117,7 +117,7 @@ struct DownloadProgressView: View {
                         progressMetric(Loc.sizeLabel(language), details.size)
                         progressMetric(Loc.speedLabel(language), details.speed)
                         if let eta = details.eta {
-                            progressMetric("ETA", eta)
+                            progressMetric(Loc.etaLabel(language), eta)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

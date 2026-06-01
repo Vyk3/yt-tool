@@ -336,7 +336,7 @@ struct ContentView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
+        panel.prompt = Loc.selectFolder(state.language)
         if panel.runModal() == .OK {
             state.selectedOutputDirectory = panel.url
         }
