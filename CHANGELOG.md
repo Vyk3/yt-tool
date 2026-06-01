@@ -8,6 +8,29 @@
 
 ---
 
+## [0.2.0] — 2026-06-02
+
+### Added
+- **视频缩略图**：队列和订阅列表显示视频缩略图及时长徽章，支持 YouTube 直出和 Bilibili API 解析，异步加载带内存/磁盘双层缓存。(#70)
+- **格式筛选**：Format Picker 新增按分辨率、编码、文件大小等条件筛选，技术详情默认折叠。(#70)
+- **Cookies 使用指南**：Settings 中新增 Cookies 获取步骤弹窗，中英文自适应。(#70)
+- **隐私说明弹窗**：About 区域新增隐私说明，说明数据仅保留本地。(#70)
+
+### Changed
+- 最低系统要求从 macOS 13 提升至 macOS 14。(#70)
+  > Why：NSImage 的 Sendable conformance 在 macOS 14+ 才可用，Swift 6 strict concurrency 下无法兼容 macOS 13
+- Cookies 路径在日志中脱敏，同时支持 `--cookies path` 和 `--cookies=path` 两种形式。(#70)
+- `addSingleURLToQueue` 失败时设置 `queueError` 并记录日志，不再静默吞没错误。(#70)
+- 订阅页"添加到队列"失败后自动切换到队列页，确保用户能看到错误提示。(#70)
+
+### Removed
+- 移除隐私说明中"源代码完全开放"条目（与 GitHub 链接重复，对非技术用户无意义）。(#70)
+- 移除死代码：`releasesLink()`、`DownloadQueue.moveItem()`。(#70)
+
+### Fixed
+- 修复 Swift 6 strict concurrency 下 `NSImage` 跨 actor 边界的编译错误（`SendableImage` wrapper）。(#70)
+- 修复 `onChange(of:)` 在 macOS 14 下的弃用警告。(#70)
+
 ## [0.1.5] — 2026-05-30
 
 ### Added
