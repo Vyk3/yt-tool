@@ -17,6 +17,8 @@ jobs:
   build-macos:
     name: build macOS app
     runs-on: macos-latest
+    env:
+      SPARKLE_ED25519_KEY: ${{ secrets.SPARKLE_ED25519_KEY }}
     outputs:
       sparkle_signature: ${{ steps.sign.outputs.signature }}
       sparkle_length: ${{ steps.sign.outputs.length }}
