@@ -1,4 +1,3 @@
-@preconcurrency import AppKit
 import SwiftUI
 
 struct ThumbnailView: View {
@@ -63,7 +62,7 @@ struct ThumbnailView: View {
         failed = false
         let loaded = await ThumbnailLoader.shared.load(url: url, targetSize: targetSize)
         if let loaded {
-            image = loaded
+            image = loaded.nsImage
         } else {
             failed = true
         }

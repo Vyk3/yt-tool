@@ -1,12 +1,18 @@
-@preconcurrency import AppKit
+import AppKit
 import Foundation
+
+/// Sendable wrapper for NSImage — required because NSImage's Sendable
+/// conformance is unavailable in strict Swift 6 concurrency mode.
+struct SendableImage: @unchecked Sendable {
+    let nsImage: NSImage
+}
 
 actor ThumbnailLoader {
     static let shared = ThumbnailLoader()
 
-    private let cache = NSCache<NSString, NSImage>()
+    private let cache = NSCache<NSString, SendableImageBox>()
     private let session: URLSession
-    private var inFlight: [String: Task<NSImage?, Never>] = [:]
+    private var inFlight: [String: Task<SendableImage?, Never>] = [:]
     private static let maxConcurrent = 4
     private var activeCount = 0
 
@@ -17,17 +23,17 @@ actor ThumbnailLoader {
         session = URLSession(configuration: config)
     }
 
-    func load(url: String, targetSize: CGSize = CGSize(width: 320, height: 180)) async -> NSImage? {
+    func load(url: String, targetSize: CGSize = CGSize(width: 320, height: 180)) async -> SendableImage? {
         let key = url as NSString
         if let cached = cache.object(forKey: key) {
-            return cached
+            return cached.value
         }
 
         if let existing = inFlight[url] {
             return await existing.value
         }
 
-        let task = Task<NSImage?, Never> {
+        let task = Task<SendableImage?, Never> {
             await waitForSlot()
             defer { releaseSlot() }
 
@@ -38,9 +44,10 @@ actor ThumbnailLoader {
             guard let image = NSImage(data: data) else { return nil }
 
             let downscaled = downsample(image, to: targetSize)
+            let wrapped = SendableImage(nsImage: downscaled)
             let cost = Int(targetSize.width * targetSize.height * 4)
-            cache.setObject(downscaled, forKey: key, cost: cost)
-            return downscaled
+            cache.setObject(SendableImageBox(wrapped), forKey: key, cost: cost)
+            return wrapped
         }
 
         inFlight[url] = task
@@ -77,6 +84,12 @@ actor ThumbnailLoader {
     }
 }
 
+/// NSCache requires reference-type values.
+private final class SendableImageBox: NSObject {
+    let value: SendableImage
+    init(_ value: SendableImage) { self.value = value }
+}
+
 func normalizedThumbnailRequestURL(from rawURL: String) -> URL? {
     let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
     let urlString = trimmed.hasPrefix("//") ? "https:\(trimmed)" : trimmed
@@ -98,8 +111,8 @@ func youTubeVideoID(from url: String) -> String? {
     guard let host = components.host?.lowercased() else { return nil }
 
     if host == "youtu.be" {
-        let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return path.isEmpty ? nil : path
+        let id = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return id.isEmpty ? nil : id
     }
 
     guard host == "youtube.com" || host.hasSuffix(".youtube.com") else { return nil }
@@ -115,7 +128,7 @@ func youTubeVideoID(from url: String) -> String? {
 
 func thumbnailURL(for url: String) -> String? {
     if let videoID = youTubeVideoID(from: url) {
-        return "https://i.ytimg.com/vi/\(videoID)/mqdefault.jpg"
+        return "https://i.ytimg.com/vi/\(videoID)/hqdefault.jpg"
     }
     return nil
 }
