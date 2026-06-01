@@ -5,6 +5,29 @@
     <link>https://vyk3.github.io/yt-tool/appcast.xml</link>
     <language>en</language>
     <item>
+      <title>v0.2.1</title>
+      <pubDate>Mon, 02 Jun 2026 18:00:00 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.2.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>v0.2.1</h2>
+        <h3>Fixed</h3>
+        <ul>
+          <li>Sparkle update dialog now respects in-app language setting</li>
+          <li>10 hardcoded English strings localized (Picker labels, ETA, ffmpeg prompt, folder button)</li>
+          <li>DownloadQueue force unwrap eliminated in processItem</li>
+          <li>Debug prints removed from notification permission request</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/Vyk3/yt-tool/releases/download/v0.2.1/YTTool.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="PLACEHOLDER"
+        length="0"
+      />
+    </item>
+    <item>
       <title>v0.2.0</title>
       <pubDate>Mon, 02 Jun 2026 12:00:00 +0000</pubDate>
       <sparkle:version>3</sparkle:version>

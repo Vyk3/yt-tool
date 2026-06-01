@@ -6,11 +6,15 @@
 
 ## [Unreleased]
 
+---
+
+## [0.2.1] — 2026-06-02
+
 ### Fixed
-- **Sparkle 更新弹窗语言同步**：添加 `zh-Hans` 到 `knownRegions`，在 app 启动时同步 `AppleLanguages`，Sparkle 更新弹窗语言跟随应用内语言设置。
-- **hardcoded 字符串本地化**：10 处 Picker label、ETA、ffmpeg 缺失提示、文件夹选择按钮从硬编码英文改为 `Loc` 双语支持。
-- **DownloadQueue force unwrap**：`processItem` 中消除 `item.runner!`，改用局部变量传递。
-- **debug print 清理**：移除 `requestNotificationPermission` 中的调试输出。
+- **Sparkle 更新弹窗语言同步**：添加 `zh-Hans` 到 `knownRegions`，在 app 启动时同步 `AppleLanguages`，Sparkle 更新弹窗语言跟随应用内语言设置。(#73)
+- **hardcoded 字符串本地化**：10 处 Picker label、ETA、ffmpeg 缺失提示、文件夹选择按钮从硬编码英文改为 `Loc` 双语支持。(#73)
+- **DownloadQueue force unwrap**：`processItem` 中消除 `item.runner!`，改用局部变量传递。(#73)
+- **debug print 清理**：移除 `requestNotificationPermission` 中的调试输出。(#73)
 
 ---
 
@@ -259,7 +263,9 @@ Swift 重写完整功能覆盖：(#34, #35, #36, #37)
 ---
 
 <!-- 版本对比链接 -->
-[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Vyk3/yt-tool/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Vyk3/yt-tool/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/Vyk3/yt-tool/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/Vyk3/yt-tool/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/Vyk3/yt-tool/compare/v0.1.2...v0.1.3
