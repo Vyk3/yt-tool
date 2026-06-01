@@ -42,21 +42,27 @@ struct QueueView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 12)
             } else {
-                List {
-                    ForEach(queue.items) { item in
-                        QueueItemRow(
-                            item: item,
-                            language: language,
-                            onCancel: { queue.cancelItem(item) },
-                            onRetry: { queue.retryItem(item) },
-                            onRemove: { queue.removeItem(item) }
-                        )
-                    }
-                    .onMove { source, destination in
-                        queue.moveItem(from: source, to: destination)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(queue.items.enumerated()), id: \.element.id) { index, item in
+                            QueueItemRow(
+                                item: item,
+                                language: language,
+                                onCancel: { queue.cancelItem(item) },
+                                onRetry: { queue.retryItem(item) },
+                                onRemove: { queue.removeItem(item) }
+                            )
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(
+                                index.isMultiple(of: 2)
+                                    ? Color.clear
+                                    : Color.primary.opacity(0.03),
+                                in: RoundedRectangle(cornerRadius: 6)
+                            )
+                        }
                     }
                 }
-                .listStyle(.inset(alternatesRowBackgrounds: true))
                 .frame(minHeight: min(max(CGFloat(queue.items.count) * 52, 80), 300), maxHeight: 300)
             }
         }

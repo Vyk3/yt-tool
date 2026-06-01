@@ -14,7 +14,7 @@ struct QueueItemRow: View {
 
             ThumbnailView(
                 url: item.thumbnailURL,
-                targetSize: CGSize(width: 48, height: 27)
+                targetSize: CGSize(width: 64, height: 36)
             )
 
             VStack(alignment: .leading, spacing: 2) {

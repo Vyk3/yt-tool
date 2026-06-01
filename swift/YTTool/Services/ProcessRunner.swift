@@ -73,6 +73,20 @@ struct ProcessConfiguration {
     var commandLine: [String] {
         [executableURL.path] + arguments
     }
+
+    var redactedCommandLine: [String] {
+        var result = commandLine
+        var index = 0
+        while index < result.count {
+            if result[index] == "--cookies", result.indices.contains(index + 1) {
+                result[index + 1] = "<cookies-file>"
+                index += 2
+            } else {
+                index += 1
+            }
+        }
+        return result
+    }
 }
 
 final class ProcessRunner: @unchecked Sendable {

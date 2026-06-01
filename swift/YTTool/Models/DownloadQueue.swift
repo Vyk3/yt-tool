@@ -19,6 +19,18 @@ final class DownloadQueue: ObservableObject {
                 return item
             }
         items.append(contentsOf: newItems)
+
+        for item in newItems where item.thumbnailURL == nil {
+            Task { @MainActor [weak item] in
+                guard let item,
+                      let resolved = await RemoteThumbnailResolver.shared.resolve(url: item.url),
+                      item.thumbnailURL == nil
+                else {
+                    return
+                }
+                item.thumbnailURL = resolved
+            }
+        }
     }
 
     func removeItem(_ item: QueueItem) {

@@ -42,7 +42,7 @@ struct YtDlpProbeService {
                 extraArguments: extraArguments
             )
         )
-        onLog(.command, config.commandLine.joined(separator: " "))
+        onLog(.command, config.redactedCommandLine.joined(separator: " "))
 
         let result = try await runner.run(config)
         let stdout = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)

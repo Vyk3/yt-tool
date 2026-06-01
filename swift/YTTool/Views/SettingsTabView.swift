@@ -10,9 +10,13 @@ struct SettingsTabView: View {
     #endif
 
     private let repoURL = URL(string: "https://github.com/Vyk3/yt-tool")!
-    private let releaseURL = URL(string: "https://github.com/Vyk3/yt-tool/releases")!
 
-    private var lang: AppLanguage { state.language }
+    @State private var showsCookiesGuide = false
+    @State private var showsPrivacyInfo = false
+
+    private var lang: AppLanguage {
+        state.language
+    }
 
     /// Section label column width — adaptive to avoid wrapping in English.
     private var sectionColumnWidth: CGFloat {
@@ -59,6 +63,16 @@ struct SettingsTabView: View {
                     .controlSize(.small)
             }
 
+            settingsRow(
+                title: Loc.showAllFormats(lang),
+                help: Loc.showAllFormatsHelp(lang)
+            ) {
+                Toggle("", isOn: $state.showAllFormats)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+
             sectionDivider()
 
             // ── Download ────────────────────────────────────────────
@@ -88,9 +102,19 @@ struct SettingsTabView: View {
                 title: Loc.cookiesFile(lang),
                 help: Loc.cookiesDescription(lang)
             ) {
-                TextField("/path/to/cookies.txt", text: $state.cookiesFilePath)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 260)
+                HStack(spacing: 6) {
+                    Text(Loc.cookiesGuideLink(lang))
+                        .font(.caption)
+                        .foregroundStyle(Color.accentColor)
+                        .onTapGesture { showsCookiesGuide.toggle() }
+                        .popover(isPresented: $showsCookiesGuide) {
+                            cookiesGuidePopover
+                        }
+
+                    TextField("/path/to/cookies.txt", text: $state.cookiesFilePath)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 260)
+                }
             }
 
             settingsRow(
@@ -141,11 +165,11 @@ struct SettingsTabView: View {
 
     @ViewBuilder
     private var updatesSection: some View {
-        // yt-dlp dependency row — version on right
+        // yt-dlp dependency row — description inline, version on right
         settingsRow(
             section: Loc.sectionUpdates(lang),
             title: Loc.ytDlpDependency(lang),
-            status: Loc.ytDlpDescription(lang)
+            help: Loc.ytDlpDescription(lang)
         ) {
             if let version = state.currentYtDlpVersion {
                 Text("\(version) (\(state.ytDlpSource))")
@@ -207,7 +231,6 @@ struct SettingsTabView: View {
         #endif
     }
 
-    @ViewBuilder
     private var ytDlpStatusRow: some View {
         HStack(spacing: 12) {
             Color.clear.frame(width: sectionColumnWidth)
@@ -295,9 +318,17 @@ struct SettingsTabView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 16) {
-                Link(Loc.repositoryLink(lang), destination: repoURL)
-                Link(Loc.releasesLink(lang), destination: releaseURL)
+            HStack(spacing: 20) {
+                Link(destination: repoURL) {
+                    Label("GitHub", systemImage: "link")
+                }
+
+                Label(Loc.privacyTitle(lang), systemImage: "hand.raised")
+                    .foregroundStyle(Color.accentColor)
+                    .onTapGesture { showsPrivacyInfo.toggle() }
+                    .popover(isPresented: $showsPrivacyInfo) {
+                        privacyPopover
+                    }
             }
             .font(.callout)
             .padding(.top, 2)
@@ -306,15 +337,89 @@ struct SettingsTabView: View {
         .padding(.vertical, 16)
     }
 
+    private var cookiesGuidePopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(Loc.cookiesGuideTitle(lang))
+                .font(.headline)
+
+            Text(Loc.cookiesGuideIntro(lang))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            // 3-step cards
+            let titles = Loc.cookiesGuideStepTitles(lang)
+            let details = Loc.cookiesGuideStepDetails(lang)
+            VStack(spacing: 12) {
+                ForEach(0 ..< titles.count, id: \.self) { i in
+                    HStack(alignment: .top, spacing: 10) {
+                        Text("\(i + 1)")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 20, height: 20)
+                            .background(Color.accentColor, in: Circle())
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(titles[i])
+                                .font(.caption.weight(.semibold))
+                            Text(details[i])
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            Text(Loc.cookiesGuideWarning(lang))
+                .font(.caption)
+                .foregroundStyle(.orange)
+
+            Divider()
+
+            Text(Loc.cookiesGuideAdvanced(lang))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .frame(width: popoverWidth, alignment: .leading)
+    }
+
+    private var privacyPopover: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(Loc.privacyTitle(lang))
+                .font(.headline)
+
+            ForEach(Loc.privacyPoints(lang), id: \.self) { point in
+                HStack(alignment: .top, spacing: 6) {
+                    Text("•")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(point)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: popoverWidth, alignment: .leading)
+    }
+
+    /// Popover width — adaptive so key names (extension, paths) don't break mid-word.
+    private var popoverWidth: CGFloat {
+        lang == .chinese ? 420 : 460
+    }
+
     // MARK: - Layout primitives
 
     /// 3-column row: section label | setting name | control — all left-aligned.
-    private func settingsRow<Control: View>(
+    private func settingsRow(
         section: String? = nil,
         title: String,
         help: String? = nil,
         status: String? = nil,
-        @ViewBuilder control: () -> Control
+        @ViewBuilder control: () -> some View
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(section ?? "")
@@ -322,16 +427,23 @@ struct SettingsTabView: View {
                 .frame(width: sectionColumnWidth, alignment: .leading)
                 .opacity(section != nil ? 1 : 0)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.callout)
-                if let status {
-                    Text(status)
+            HStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.callout)
+                    if let status {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let help, !help.isEmpty {
+                    Image(systemName: "questionmark.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .help(help)
                 }
             }
-            .help(help ?? "")
             .frame(width: titleColumnWidth, alignment: .leading)
 
             control()

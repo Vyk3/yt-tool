@@ -11,9 +11,9 @@ actor ThumbnailLoader {
     private var activeCount = 0
 
     private init() {
-        cache.totalCostLimit = 50 * 1_024 * 1_024
+        cache.totalCostLimit = 50 * 1024 * 1024
         let config = URLSessionConfiguration.default
-        config.urlCache = URLCache(memoryCapacity: 20 * 1_024 * 1_024, diskCapacity: 100 * 1_024 * 1_024)
+        config.urlCache = URLCache(memoryCapacity: 20 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024)
         session = URLSession(configuration: config)
     }
 
@@ -31,7 +31,7 @@ actor ThumbnailLoader {
             await waitForSlot()
             defer { releaseSlot() }
 
-            guard let requestURL = URL(string: url) else { return nil }
+            guard let requestURL = normalizedThumbnailRequestURL(from: url) else { return nil }
             guard let (data, response) = try? await session.data(from: requestURL) else { return nil }
             guard let httpResponse = response as? HTTPURLResponse,
                   (200 ..< 300).contains(httpResponse.statusCode) else { return nil }
@@ -77,6 +77,22 @@ actor ThumbnailLoader {
     }
 }
 
+func normalizedThumbnailRequestURL(from rawURL: String) -> URL? {
+    let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    let urlString = trimmed.hasPrefix("//") ? "https:\(trimmed)" : trimmed
+    guard var components = URLComponents(string: urlString),
+          let scheme = components.scheme?.lowercased(),
+          scheme == "http" || scheme == "https"
+    else {
+        return nil
+    }
+
+    if scheme == "http" {
+        components.scheme = "https"
+    }
+    return components.url
+}
+
 func youTubeVideoID(from url: String) -> String? {
     guard let components = URLComponents(string: url) else { return nil }
     guard let host = components.host?.lowercased() else { return nil }
@@ -87,6 +103,13 @@ func youTubeVideoID(from url: String) -> String? {
     }
 
     guard host == "youtube.com" || host.hasSuffix(".youtube.com") else { return nil }
+
+    let segments = components.path.split(separator: "/")
+    if segments.count == 2, segments[0] == "shorts" || segments[0] == "live" {
+        let id = String(segments[1])
+        return id.isEmpty ? nil : id
+    }
+
     return components.queryItems?.first(where: { $0.name == "v" })?.value
 }
 
@@ -95,4 +118,97 @@ func thumbnailURL(for url: String) -> String? {
         return "https://i.ytimg.com/vi/\(videoID)/mqdefault.jpg"
     }
     return nil
+}
+
+enum BilibiliVideoID: Equatable {
+    case bvid(String)
+    case aid(String)
+
+    var queryItem: URLQueryItem {
+        switch self {
+        case let .bvid(value):
+            URLQueryItem(name: "bvid", value: value)
+        case let .aid(value):
+            URLQueryItem(name: "aid", value: value)
+        }
+    }
+}
+
+func bilibiliVideoID(from url: String) -> BilibiliVideoID? {
+    guard let components = URLComponents(string: url),
+          let host = components.host?.lowercased(),
+          host == "bilibili.com" || host.hasSuffix(".bilibili.com")
+    else {
+        return nil
+    }
+
+    let segments = components.path.split(separator: "/").map(String.init)
+    guard let videoIndex = segments.firstIndex(of: "video"),
+          segments.indices.contains(videoIndex + 1)
+    else {
+        return nil
+    }
+
+    let rawID = segments[videoIndex + 1]
+    if rawID.hasPrefix("BV") {
+        return .bvid(rawID)
+    }
+    if rawID.hasPrefix("av") {
+        let aid = String(rawID.dropFirst(2))
+        return aid.isEmpty ? nil : .aid(aid)
+    }
+    return nil
+}
+
+actor RemoteThumbnailResolver {
+    static let shared = RemoteThumbnailResolver()
+
+    private let session: URLSession
+
+    private init() {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 8
+        session = URLSession(configuration: config)
+    }
+
+    func resolve(url: String) async -> String? {
+        if let direct = thumbnailURL(for: url) {
+            return direct
+        }
+        if let videoID = bilibiliVideoID(from: url) {
+            return await bilibiliThumbnailURL(for: videoID)
+        }
+        return nil
+    }
+
+    private func bilibiliThumbnailURL(for videoID: BilibiliVideoID) async -> String? {
+        var components = URLComponents(string: "https://api.bilibili.com/x/web-interface/view")
+        components?.queryItems = [videoID.queryItem]
+        guard let url = components?.url else { return nil }
+
+        var request = URLRequest(url: url)
+        request.setValue("https://www.bilibili.com", forHTTPHeaderField: "Referer")
+
+        guard let (data, response) = try? await session.data(for: request),
+              let httpResponse = response as? HTTPURLResponse,
+              (200 ..< 300).contains(httpResponse.statusCode),
+              let payload = try? JSONDecoder().decode(BilibiliViewResponse.self, from: data),
+              payload.code == 0,
+              let pic = payload.data?.pic,
+              !pic.isEmpty
+        else {
+            return nil
+        }
+
+        return pic
+    }
+}
+
+private struct BilibiliViewResponse: Decodable {
+    var code: Int
+    var data: BilibiliViewData?
+}
+
+private struct BilibiliViewData: Decodable {
+    var pic: String?
 }

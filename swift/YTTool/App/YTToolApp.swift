@@ -11,19 +11,20 @@ struct YTToolApp: App {
         WindowGroup {
             #if canImport(Sparkle)
                 ContentView(state: state, appUpdateController: appUpdateController)
-                    .frame(minWidth: 900, minHeight: 620)
+                    .frame(minWidth: 760, minHeight: 620)
                     .onAppear {
                         appUpdateController.start(autoCheck: state.autoCheckForAppUpdates)
                         state.pollingManager.startPolling()
                     }
             #else
                 ContentView(state: state)
-                    .frame(minWidth: 900, minHeight: 620)
+                    .frame(minWidth: 760, minHeight: 620)
                     .onAppear {
                         state.pollingManager.startPolling()
                     }
             #endif
         }
+        .defaultSize(width: 800, height: 640)
         .windowResizability(.automatic)
 
         Settings {
