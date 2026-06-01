@@ -51,9 +51,8 @@ struct ContentView: View {
                 pollingManager: state.pollingManager,
                 language: state.language,
                 onAddToQueue: { url in
-                    if state.addSingleURLToQueue(url) {
-                        state.appMode = .queue
-                    }
+                    state.addSingleURLToQueue(url)
+                    state.appMode = .queue
                 }
             )
             .frame(maxWidth: 600)
