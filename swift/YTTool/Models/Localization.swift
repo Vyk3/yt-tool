@@ -347,10 +347,6 @@ enum Loc {
         l == .chinese ? "仓库" : "Repository"
     }
 
-    static func releasesLink(_ l: AppLanguage) -> String {
-        l == .chinese ? "发布" : "Releases"
-    }
-
     static func languageLabel(_ l: AppLanguage) -> String {
         l == .chinese ? "语言" : "Language"
     }

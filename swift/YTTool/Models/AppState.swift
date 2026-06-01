@@ -652,7 +652,13 @@ final class AppState: ObservableObject {
         do {
             normalizedCookies = try normalizedCookiesFilePathOrThrow()
             parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch let error as AppError {
+            queueError = joinedErrorMessage(error)
+            appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
+            return false
         } catch {
+            queueError = error.localizedDescription
+            appendLog(scope: .download, level: .error, message: "Invalid arguments: \(error.localizedDescription)")
             return false
         }
 

@@ -40,10 +40,6 @@ final class DownloadQueue: ObservableObject {
         items.removeAll { $0.id == item.id }
     }
 
-    func moveItem(from source: IndexSet, to destination: Int) {
-        items.move(fromOffsets: source, toOffset: destination)
-    }
-
     func cancelItem(_ item: QueueItem) {
         guard item.status == .active || item.status == .pending else { return }
         item.status = .cancelled

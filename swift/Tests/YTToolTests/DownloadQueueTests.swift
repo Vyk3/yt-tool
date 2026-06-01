@@ -51,17 +51,6 @@ final class DownloadQueueTests: XCTestCase {
         XCTAssertEqual(queue.items[0].url, "https://example.com/b")
     }
 
-    // MARK: - Move
-
-    func testMoveItem() {
-        let queue = DownloadQueue()
-        queue.addURLs(["https://a.com", "https://b.com", "https://c.com"], config: makeConfig())
-        queue.moveItem(from: IndexSet(integer: 2), to: 0)
-        XCTAssertEqual(queue.items[0].url, "https://c.com")
-        XCTAssertEqual(queue.items[1].url, "https://a.com")
-        XCTAssertEqual(queue.items[2].url, "https://b.com")
-    }
-
     // MARK: - Cancel
 
     func testCancelPendingItem() {
