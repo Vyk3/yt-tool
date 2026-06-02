@@ -74,7 +74,7 @@ enum Loc {
     // MARK: Subscriptions view
 
     static func channelURLPlaceholder(_ l: AppLanguage) -> String {
-        l == .chinese ? "YouTube 频道或视频 URL" : "YouTube channel or video URL"
+        l == .chinese ? "YouTube / bilibili 频道或视频 URL" : "YouTube / bilibili channel or video URL"
     }
 
     static func subscribe(_ l: AppLanguage) -> String {
@@ -1001,8 +1001,8 @@ enum Loc {
         l == .chinese ? "加入队列" : "Add to Queue"
     }
 
-    static func subsYouTubeOnly(_ l: AppLanguage) -> String {
-        l == .chinese ? "订阅功能仅支持 YouTube 频道" : "Subscriptions only support YouTube channels"
+    static func subsUnsupportedPlatform(_ l: AppLanguage) -> String {
+        l == .chinese ? "仅支持 YouTube 和 bilibili 链接" : "Only YouTube and bilibili URLs are supported"
     }
 
     static func addedToQueueInput(_ l: AppLanguage) -> String {

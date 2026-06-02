@@ -19,7 +19,8 @@ final class FeedVideoPersistenceTests: XCTestCase {
             title: "Test Video",
             channelName: "Test Channel",
             publishedDate: Date(timeIntervalSince1970: 1_700_000_000),
-            url: "https://www.youtube.com/watch?v=abc123"
+            url: "https://www.youtube.com/watch?v=abc123",
+            thumbnailURL: "https://i.ytimg.com/vi/abc123/mqdefault.jpg"
         )
 
         let data = try JSONEncoder().encode([video])
@@ -40,14 +41,16 @@ final class FeedVideoPersistenceTests: XCTestCase {
                 title: "First",
                 channelName: "Ch A",
                 publishedDate: Date(timeIntervalSince1970: 1_700_000_000),
-                url: "https://www.youtube.com/watch?v=vid1"
+                url: "https://www.youtube.com/watch?v=vid1",
+                thumbnailURL: "https://i.ytimg.com/vi/vid1/mqdefault.jpg"
             ),
             FeedVideo(
                 videoID: "vid2",
                 title: "Second",
                 channelName: "Ch B",
                 publishedDate: nil,
-                url: "https://www.youtube.com/watch?v=vid2"
+                url: "https://www.youtube.com/watch?v=vid2",
+                thumbnailURL: "https://i.ytimg.com/vi/vid2/mqdefault.jpg"
             ),
         ]
 
@@ -77,7 +80,8 @@ final class FeedVideoPersistenceTests: XCTestCase {
                 title: "Persisted Video",
                 channelName: "Persisted Channel",
                 publishedDate: Date(),
-                url: "https://www.youtube.com/watch?v=persist1"
+                url: "https://www.youtube.com/watch?v=persist1",
+                thumbnailURL: "https://i.ytimg.com/vi/persist1/mqdefault.jpg"
             ),
         ]
 
@@ -116,13 +120,33 @@ final class FeedVideoPersistenceTests: XCTestCase {
         XCTAssertNil(decoded)
     }
 
+    // MARK: - Backward compatibility
+
+    func testDecodesLegacyFeedVideoWithoutThumbnailURL() throws {
+        let json = """
+        [{"videoID":"abc123","title":"Old Video","channelName":"Channel","url":"https://www.youtube.com/watch?v=abc123"}]
+        """
+        let decoded = try JSONDecoder().decode([FeedVideo].self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.count, 1)
+        XCTAssertEqual(decoded[0].thumbnailURL, "https://i.ytimg.com/vi/abc123/mqdefault.jpg")
+    }
+
+    func testDecodesLegacySubscriptionWithoutPlatform() throws {
+        let json = """
+        [{"id":"00000000-0000-0000-0000-000000000001","channelID":"UC123","channelName":"Test","channelURL":"https://youtube.com/channel/UC123","dateAdded":0,"isEnabled":true}]
+        """
+        let decoded = try JSONDecoder().decode([ChannelSubscription].self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.count, 1)
+        XCTAssertEqual(decoded[0].platform, .youtube)
+    }
+
     // MARK: - Dismiss / clear simulation
 
     func testDismissRemovesOneAndPersists() throws {
         var videos = [
-            FeedVideo(videoID: "a", title: "A", channelName: "C", publishedDate: nil, url: "u1"),
-            FeedVideo(videoID: "b", title: "B", channelName: "C", publishedDate: nil, url: "u2"),
-            FeedVideo(videoID: "c", title: "C", channelName: "C", publishedDate: nil, url: "u3"),
+            FeedVideo(videoID: "a", title: "A", channelName: "C", publishedDate: nil, url: "u1", thumbnailURL: "t1"),
+            FeedVideo(videoID: "b", title: "B", channelName: "C", publishedDate: nil, url: "u2", thumbnailURL: "t2"),
+            FeedVideo(videoID: "c", title: "C", channelName: "C", publishedDate: nil, url: "u3", thumbnailURL: "t3"),
         ]
 
         // Simulate dismissVideo("b")
@@ -141,7 +165,7 @@ final class FeedVideoPersistenceTests: XCTestCase {
     func testClearAllPersistsEmpty() throws {
         // Write some videos first
         let videos = [
-            FeedVideo(videoID: "x", title: "X", channelName: "C", publishedDate: nil, url: "u"),
+            FeedVideo(videoID: "x", title: "X", channelName: "C", publishedDate: nil, url: "u", thumbnailURL: "t"),
         ]
         let data = try JSONEncoder().encode(videos)
         UserDefaults.standard.set(data, forKey: testKey)

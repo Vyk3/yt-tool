@@ -8,7 +8,8 @@ final class SubscriptionPollingManager: ObservableObject {
     @Published private(set) var newVideos: [FeedVideo] = []
 
     private let store: ChannelSubscriptionStore
-    private let feedService = YouTubeFeedService()
+    private let youtubeFeedService = YouTubeFeedService()
+    private let bilibiliFeedService = BilibiliFeedService()
     private nonisolated(unsafe) var timer: Timer?
 
     /// Default poll interval in seconds (30 minutes).
@@ -97,11 +98,18 @@ final class SubscriptionPollingManager: ObservableObject {
         let enabled = store.subscriptions.filter(\.isEnabled)
         guard !enabled.isEmpty else { return }
 
-        let service = feedService
+        let ytService = youtubeFeedService
+        let biliService = bilibiliFeedService
         let results = await withTaskGroup(of: (ChannelSubscription, [FeedVideo]?).self) { group in
             for subscription in enabled {
                 group.addTask {
-                    let videos = try? await service.fetchFeed(channelID: subscription.channelID)
+                    let videos: [FeedVideo]?
+                    switch subscription.platform {
+                    case .youtube:
+                        videos = try? await ytService.fetchFeed(channelID: subscription.channelID)
+                    case .bilibili:
+                        videos = try? await biliService.fetchFeed(channelID: subscription.channelID)
+                    }
                     return (subscription, videos)
                 }
             }

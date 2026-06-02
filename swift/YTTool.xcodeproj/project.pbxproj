@@ -54,6 +54,7 @@
 		A000000000000000000000F6 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F5 /* ThumbnailView.swift */; };
 		A000000000000000000000A1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000A0 /* Sparkle */; };
 		A000000000000000000000FA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000F9 /* InfoPlist.strings */; };
+		A000000000000000000000B2 /* BilibiliFeedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000B1 /* BilibiliFeedService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -102,6 +103,7 @@
 		A000000000000000000000F1 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/Localization.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000F3 /* ThumbnailLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ThumbnailLoader.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000F5 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/ThumbnailView.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000B1 /* BilibiliFeedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/BilibiliFeedService.swift; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A000000000000000000000F7 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = YTTool/Resources/en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000F8 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "YTTool/Resources/zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
@@ -214,6 +216,7 @@
 				A000000000000000000000E4 /* SubscriptionPollingManager.swift */,
 				A000000000000000000000E6 /* YouTubeFeedService.swift */,
 				A000000000000000000000F3 /* ThumbnailLoader.swift */,
+				A000000000000000000000B1 /* BilibiliFeedService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -369,6 +372,7 @@
 				A000000000000000000000F2 /* Localization.swift in Sources */,
 				A000000000000000000000F4 /* ThumbnailLoader.swift in Sources */,
 				A000000000000000000000F6 /* ThumbnailView.swift in Sources */,
+				A000000000000000000000B2 /* BilibiliFeedService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

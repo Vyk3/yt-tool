@@ -235,18 +235,12 @@ struct SubscriptionsView: View {
         }
     }
 
-    private static func isYouTubeURL(_ url: String) -> Bool {
-        guard let components = URLComponents(string: url),
-              let host = components.host?.lowercased() else { return false }
-        return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
-    }
-
     private func addChannel() {
         let url = newChannelURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
 
-        guard Self.isYouTubeURL(url) else {
-            resolveError = Loc.subsYouTubeOnly(language)
+        guard let platform = Platform.detect(from: url) else {
+            resolveError = Loc.subsUnsupportedPlatform(language)
             return
         }
 
@@ -255,8 +249,13 @@ struct SubscriptionsView: View {
 
         Task {
             do {
-                let service = YouTubeFeedService()
-                let result = try await service.resolveChannelID(from: url)
+                let result: (channelID: String, channelName: String)
+                switch platform {
+                case .youtube:
+                    result = try await YouTubeFeedService().resolveChannelID(from: url)
+                case .bilibili:
+                    result = try await BilibiliFeedService().resolveChannelID(from: url)
+                }
 
                 let subscription = ChannelSubscription(
                     id: UUID(),
@@ -265,8 +264,7 @@ struct SubscriptionsView: View {
                     channelURL: url,
                     dateAdded: Date(),
                     isEnabled: true,
-                    lastCheckedDate: nil,
-                    lastVideoID: nil
+                    platform: platform
                 )
                 store.add(subscription)
                 newChannelURL = ""
