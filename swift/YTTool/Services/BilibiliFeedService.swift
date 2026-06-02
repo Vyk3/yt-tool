@@ -162,6 +162,9 @@ actor BilibiliFeedService {
         let imgKey = extractKey(from: imgURL)
         let subKey = extractKey(from: subURL)
         let rawKey = imgKey + subKey
+        guard rawKey.count >= 64 else {
+            throw FeedError.channelIDResolutionFailed
+        }
 
         let mixinKey = String(Self.mixinKeyEncTab.prefix(32).map { i in
             let idx = rawKey.index(rawKey.startIndex, offsetBy: i)
@@ -232,7 +235,7 @@ private struct BilibiliNavResponse: Decodable {
     }
 }
 
-struct BilibiliArcSearchResponse: Decodable {
+private struct BilibiliArcSearchResponse: Decodable {
     var code: Int
     var data: ArcData?
 

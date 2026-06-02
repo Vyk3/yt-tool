@@ -139,6 +139,24 @@ final class BilibiliFeedServiceTests: XCTestCase {
         }
     }
 
+    func testBilibiliSubscriptionCodableRoundTrip() throws {
+        let sub = ChannelSubscription(
+            id: UUID(),
+            channelID: "12345",
+            channelName: "测试UP主",
+            channelURL: "https://space.bilibili.com/12345",
+            dateAdded: Date(timeIntervalSince1970: 1_700_000_000),
+            isEnabled: true,
+            platform: .bilibili
+        )
+        let data = try JSONEncoder().encode(sub)
+        let decoded = try JSONDecoder().decode(ChannelSubscription.self, from: data)
+        XCTAssertEqual(decoded.platform, .bilibili)
+        XCTAssertEqual(decoded.channelID, "12345")
+        XCTAssertEqual(decoded.channelName, "测试UP主")
+        XCTAssertEqual(decoded.channelURL, "https://space.bilibili.com/12345")
+    }
+
     // MARK: - Helpers
 
     private func awaitSync<T>(_ block: @escaping @Sendable () async throws -> T) throws -> T {
