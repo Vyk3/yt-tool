@@ -2,43 +2,47 @@ import XCTest
 @testable import YTTool
 
 final class BilibiliFeedServiceTests: XCTestCase {
-    // MARK: - Response parsing
+    // MARK: - Response parsing (seasons_series_list format)
 
-    func testParsesTypicalArcSearchResponse() throws {
+    func testParsesTypicalSeasonsResponse() throws {
         let json = """
         {
           "code": 0,
           "data": {
-            "list": {
-              "vlist": [
+            "items_lists": {
+              "page": { "page_num": 1, "page_size": 20, "total": 2 },
+              "seasons_list": [
                 {
-                  "bvid": "BV1xx411c7mD",
-                  "title": "测试视频标题",
-                  "pic": "//i0.hdslb.com/bfs/archive/cover.jpg",
-                  "created": 1700000000,
-                  "author": "测试UP主"
-                },
-                {
-                  "bvid": "BV1yy411c8nE",
-                  "title": "第二个视频",
-                  "pic": "https://i0.hdslb.com/bfs/archive/cover2.jpg",
-                  "created": 1699900000,
-                  "author": "测试UP主"
+                  "archives": [
+                    {
+                      "bvid": "BV1xx411c7mD",
+                      "title": "测试视频标题",
+                      "pic": "//i0.hdslb.com/bfs/archive/cover.jpg",
+                      "ctime": 1700000000
+                    },
+                    {
+                      "bvid": "BV1yy411c8nE",
+                      "title": "第二个视频",
+                      "pic": "https://i0.hdslb.com/bfs/archive/cover2.jpg",
+                      "ctime": 1699900000
+                    }
+                  ]
                 }
-              ]
+              ],
+              "series_list": []
             }
           }
         }
         """
         let data = Data(json.utf8)
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: data) }
+        let videos = try awaitSync { try await service.parseFeedResponse(data: data, channelID: "12345") }
 
         XCTAssertEqual(videos.count, 2)
 
+        // Sorted by ctime descending
         XCTAssertEqual(videos[0].videoID, "BV1xx411c7mD")
         XCTAssertEqual(videos[0].title, "测试视频标题")
-        XCTAssertEqual(videos[0].channelName, "测试UP主")
         XCTAssertEqual(videos[0].url, "https://www.bilibili.com/video/BV1xx411c7mD")
         XCTAssertEqual(videos[0].thumbnailURL, "https://i0.hdslb.com/bfs/archive/cover.jpg")
         XCTAssertEqual(videos[0].publishedDate, Date(timeIntervalSince1970: 1_700_000_000))
@@ -47,32 +51,31 @@ final class BilibiliFeedServiceTests: XCTestCase {
         XCTAssertEqual(videos[1].thumbnailURL, "https://i0.hdslb.com/bfs/archive/cover2.jpg")
     }
 
-    func testParsesEmptyVlist() throws {
+    func testParsesEmptySeasonsResponse() throws {
         let json = """
-        { "code": 0, "data": { "list": { "vlist": [] } } }
+        {
+          "code": 0,
+          "data": {
+            "items_lists": {
+              "page": { "page_num": 1, "page_size": 20, "total": 0 },
+              "seasons_list": [],
+              "series_list": []
+            }
+          }
+        }
         """
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8)) }
+        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
         XCTAssertTrue(videos.isEmpty)
     }
 
     func testNonZeroCodeThrows() {
         let json = """
-        { "code": -403, "message": "访问权限不足" }
+        { "code": -400, "message": "请求错误" }
         """
         let service = BilibiliFeedService()
         XCTAssertThrowsError(
-            try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8)) }
-        )
-    }
-
-    func testNullDataFieldThrows() {
-        let json = """
-        { "code": -352, "data": null }
-        """
-        let service = BilibiliFeedService()
-        XCTAssertThrowsError(
-            try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8)) }
+            try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
         )
     }
 
@@ -81,21 +84,81 @@ final class BilibiliFeedServiceTests: XCTestCase {
         {
           "code": 0,
           "data": {
-            "list": {
-              "vlist": [{
-                "bvid": "BV1test",
-                "title": "Test",
-                "pic": "//i0.hdslb.com/bfs/archive/test.jpg",
-                "created": 1700000000,
-                "author": "Author"
+            "items_lists": {
+              "seasons_list": [{
+                "archives": [{
+                  "bvid": "BV1test",
+                  "title": "Test",
+                  "pic": "//i0.hdslb.com/bfs/archive/test.jpg",
+                  "ctime": 1700000000
+                }]
+              }],
+              "series_list": []
+            }
+          }
+        }
+        """
+        let service = BilibiliFeedService()
+        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        XCTAssertEqual(videos[0].thumbnailURL, "https://i0.hdslb.com/bfs/archive/test.jpg")
+    }
+
+    func testHttpThumbnailUpgradedToHttps() throws {
+        let json = """
+        {
+          "code": 0,
+          "data": {
+            "items_lists": {
+              "seasons_list": [{
+                "archives": [{
+                  "bvid": "BV1test",
+                  "title": "Test",
+                  "pic": "http://i0.hdslb.com/bfs/archive/test.jpg",
+                  "ctime": 1700000000
+                }]
+              }],
+              "series_list": []
+            }
+          }
+        }
+        """
+        let service = BilibiliFeedService()
+        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        XCTAssertEqual(videos[0].thumbnailURL, "https://i0.hdslb.com/bfs/archive/test.jpg")
+    }
+
+    func testMergesSeasonAndSeriesArchives() throws {
+        let json = """
+        {
+          "code": 0,
+          "data": {
+            "items_lists": {
+              "seasons_list": [{
+                "archives": [{
+                  "bvid": "BV1season",
+                  "title": "From Season",
+                  "pic": "https://example.com/s.jpg",
+                  "ctime": 1700000000
+                }]
+              }],
+              "series_list": [{
+                "archives": [{
+                  "bvid": "BV1series",
+                  "title": "From Series",
+                  "pic": "https://example.com/r.jpg",
+                  "ctime": 1700100000
+                }]
               }]
             }
           }
         }
         """
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8)) }
-        XCTAssertEqual(videos[0].thumbnailURL, "https://i0.hdslb.com/bfs/archive/test.jpg")
+        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        XCTAssertEqual(videos.count, 2)
+        // Series video is newer, should be first
+        XCTAssertEqual(videos[0].videoID, "BV1series")
+        XCTAssertEqual(videos[1].videoID, "BV1season")
     }
 
     // MARK: - Platform detection
