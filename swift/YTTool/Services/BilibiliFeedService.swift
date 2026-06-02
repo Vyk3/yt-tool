@@ -64,7 +64,7 @@ actor BilibiliFeedService {
                 throw FeedError.channelIDResolutionFailed
             }
             let mid = String(midStr)
-            let name = try await fetchUploaderName(mid: mid)
+            let name = try await resolveUploaderName(mid: mid)
             return (channelID: mid, channelName: name)
         }
 
@@ -95,6 +95,37 @@ actor BilibiliFeedService {
     }
 
     // MARK: - Channel resolution helpers
+
+    /// Resolve uploader name for a given mid.
+    ///
+    /// Strategy:
+    /// 1. Try `card` API (single call, fastest).
+    /// 2. Fallback: fetch `seasons_series_list` → pick a bvid →
+    ///    `view` API → owner name. The card endpoint is frequently
+    ///    blocked by bilibili's anti-bot (-352) while seasons and
+    ///    view endpoints remain available.
+    private func resolveUploaderName(mid: String) async throws -> String {
+        // Fast path — card API
+        if let name = try? await fetchUploaderName(mid: mid) {
+            return name
+        }
+
+        // Fallback — seasons → view chain
+        let seasonsData = try await curlFetch(
+            url: "\(Self.seasonsURL)?mid=\(mid)&page_num=1&page_size=1"
+        )
+        let seasonsResponse = try JSONDecoder().decode(BilibiliSeasonsResponse.self, from: seasonsData)
+
+        let bvid = seasonsResponse.data?.itemsLists?.seasonsList?.first?.archives?.first?.bvid
+            ?? seasonsResponse.data?.itemsLists?.seriesList?.first?.archives?.first?.bvid
+
+        if let bvid {
+            let (_, name) = try await resolveFromVideoView(bvid: bvid)
+            if !name.isEmpty { return name }
+        }
+
+        throw FeedError.channelIDResolutionFailed
+    }
 
     /// Fetch uploader name via the card API (no WBI required).
     private func fetchUploaderName(mid: String) async throws -> String {
