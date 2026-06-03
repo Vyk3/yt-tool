@@ -6,12 +6,16 @@
 
 ## [Unreleased]
 
+---
+
+## [0.2.2] — 2026-06-03
+
 ### Added
-- **bilibili 订阅支持**：订阅 tab 支持添加 bilibili 频道（space URL 或视频 URL），自动解析 UP 主名称并轮询新视频。
-- **Platform 枚举**：`ChannelSubscription` 新增 `.youtube` / `.bilibili` 平台标识，URL 自动检测，Codable 向后兼容。
-- **BilibiliFeedService**：独立的 bilibili 频道解析和视频拉取服务（actor），使用 curl 子进程绕过 TLS 指纹检测。
-- **API fallback 链路**：card API 被限流时自动降级到 seasons → view API 链路获取 UP 主名称。
-- **bilibili 单元测试**：新增 12 个测试覆盖响应解析、平台检测、Codable 往返、缩略图 URL 规范化。
+- **bilibili 订阅支持**：订阅 tab 支持添加 bilibili 频道（space URL 或视频 URL），自动解析 UP 主名称并轮询新视频。(#78)
+- **Platform 枚举**：`ChannelSubscription` 新增 `.youtube` / `.bilibili` 平台标识，URL 自动检测，Codable 向后兼容。(#78)
+- **BilibiliFeedService**：独立的 bilibili 频道解析和视频拉取服务（actor），使用 curl 子进程绕过 TLS 指纹检测。(#78)
+- **API fallback 链路**：card API 被限流时自动降级到 seasons → view API 链路获取 UP 主名称。(#78)
+- **bilibili 单元测试**：新增 12 个测试覆盖响应解析、平台检测、Codable 往返、缩略图 URL 规范化。(#78)
 
 ---
 
@@ -270,7 +274,8 @@ Swift 重写完整功能覆盖：(#34, #35, #36, #37)
 ---
 
 <!-- 版本对比链接 -->
-[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Vyk3/yt-tool/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Vyk3/yt-tool/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Vyk3/yt-tool/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/Vyk3/yt-tool/compare/v0.1.4...v0.1.5
