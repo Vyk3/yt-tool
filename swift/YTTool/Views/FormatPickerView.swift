@@ -106,7 +106,7 @@ struct FormatPickerView: View {
             case .loading:
                 ProgressView(Loc.loadingFormats(language))
             case let .failure(error):
-                if error.recoverySuggestion == AppState.validationErrorMarker {
+                if error.kind == .unsupportedURL {
                     placeholder(idleMessage)
                 } else {
                     placeholder(Loc.statusProbeFailed(error.recoverySuggestion, language))

@@ -222,5 +222,4 @@ final class BilibiliFeedServiceTests: XCTestCase {
         XCTAssertEqual(decoded.channelName, "测试UP主")
         XCTAssertEqual(decoded.channelURL, "https://space.bilibili.com/12345")
     }
-
 }

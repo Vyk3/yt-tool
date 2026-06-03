@@ -34,7 +34,8 @@ struct ChannelSubscription: Codable, Identifiable, Equatable {
 
     init(id: UUID, channelID: String, channelName: String, channelURL: String,
          dateAdded: Date, isEnabled: Bool, lastCheckedDate: Date? = nil,
-         lastVideoID: String? = nil, platform: Platform = .youtube) {
+         lastVideoID: String? = nil, platform: Platform = .youtube)
+    {
         self.id = id
         self.channelID = channelID
         self.channelName = channelName
@@ -69,7 +70,8 @@ struct FeedVideo: Equatable, Codable {
     var thumbnailURL: String
 
     init(videoID: String, title: String, channelName: String,
-         publishedDate: Date? = nil, url: String, thumbnailURL: String) {
+         publishedDate: Date? = nil, url: String, thumbnailURL: String)
+    {
         self.videoID = videoID
         self.title = title
         self.channelName = channelName

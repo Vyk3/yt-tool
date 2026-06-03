@@ -902,11 +902,11 @@ enum Loc {
 
     static func queueUnsupportedURLs(_ count: Int, _ l: AppLanguage) -> String {
         if l == .chinese {
-            return count == 1
+            count == 1
                 ? "1 个链接不属于已知视频平台，已跳过。"
                 : "\(count) 个链接不属于已知视频平台，已跳过。"
         } else {
-            return count == 1
+            count == 1
                 ? "1 URL is not from a supported video platform and was skipped."
                 : "\(count) URLs are not from supported video platforms and were skipped."
         }
