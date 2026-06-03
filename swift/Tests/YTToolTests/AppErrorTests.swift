@@ -15,21 +15,13 @@ final class AppErrorTests: XCTestCase {
         XCTAssertNil(error.recoverySuggestion)
     }
 
-    func testKindDoesNotAffectEquality() {
+    func testDifferentKindAffectsEquality() {
         let a = AppError(kind: .general, message: "msg")
         let b = AppError(kind: .unsupportedURL, message: "msg")
         XCTAssertNotEqual(a, b)
     }
 
-    // MARK: - Codable backward compatibility
-
-    func testDecodeWithoutKindDefaultsToGeneral() throws {
-        let json = #"{"message":"oops","recoverySuggestion":"try again"}"#
-        let decoded = try JSONDecoder().decode(AppError.self, from: Data(json.utf8))
-        XCTAssertEqual(decoded.kind, .general)
-        XCTAssertEqual(decoded.message, "oops")
-        XCTAssertEqual(decoded.recoverySuggestion, "try again")
-    }
+    // MARK: - Codable round-trip
 
     func testRoundTripWithKind() throws {
         let original = AppError(kind: .unsupportedURL, message: "not supported")

@@ -247,10 +247,7 @@ final class AppState: ObservableObject {
         guard !url.isEmpty else { return }
 
         guard isSupportedVideoHost(url) else {
-            probeState = .failure(AppError(
-                kind: .unsupportedURL,
-                message: Loc.queueUnsupportedURLs(1, language)
-            ))
+            probeState = .failure(unsupportedURLError())
             appendLog(scope: .probe, level: .error, message: "URL is not from a supported video platform: \(url)")
             return
         }
@@ -932,16 +929,17 @@ final class AppState: ObservableObject {
 
     // MARK: - Helpers
 
+    private func unsupportedURLError() -> AppError {
+        AppError(kind: .unsupportedURL, message: Loc.queueUnsupportedURLs(1, language))
+    }
+
     /// Re-localize stored validation errors when the user switches language.
     private func refreshValidationErrors() {
         // Probe validation error
         if case let .failure(error) = probeState,
            error.kind == .unsupportedURL
         {
-            probeState = .failure(AppError(
-                kind: .unsupportedURL,
-                message: Loc.queueUnsupportedURLs(1, language)
-            ))
+            probeState = .failure(unsupportedURLError())
         }
         // Queue validation error (count persisted across input clears)
         if queueUnsupportedCount > 0, queueError != nil {
