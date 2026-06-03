@@ -4,7 +4,7 @@ import XCTest
 final class BilibiliFeedServiceTests: XCTestCase {
     // MARK: - Response parsing (seasons_series_list format)
 
-    func testParsesTypicalSeasonsResponse() throws {
+    func testParsesTypicalSeasonsResponse() async throws {
         let json = """
         {
           "code": 0,
@@ -36,7 +36,7 @@ final class BilibiliFeedServiceTests: XCTestCase {
         """
         let data = Data(json.utf8)
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: data, channelID: "12345") }
+        let videos = try await service.parseFeedResponse(data: data, channelID: "12345")
 
         XCTAssertEqual(videos.count, 2)
 
@@ -51,7 +51,7 @@ final class BilibiliFeedServiceTests: XCTestCase {
         XCTAssertEqual(videos[1].thumbnailURL, "https://i0.hdslb.com/bfs/archive/cover2.jpg")
     }
 
-    func testParsesEmptySeasonsResponse() throws {
+    func testParsesEmptySeasonsResponse() async throws {
         let json = """
         {
           "code": 0,
@@ -65,21 +65,24 @@ final class BilibiliFeedServiceTests: XCTestCase {
         }
         """
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        let videos = try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345")
         XCTAssertTrue(videos.isEmpty)
     }
 
-    func testNonZeroCodeThrows() {
+    func testNonZeroCodeThrows() async {
         let json = """
         { "code": -400, "message": "请求错误" }
         """
         let service = BilibiliFeedService()
-        XCTAssertThrowsError(
-            try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
-        )
+        do {
+            _ = try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345")
+            XCTFail("Expected error to be thrown")
+        } catch {
+            // Expected
+        }
     }
 
-    func testProtocolRelativeThumbnailURLNormalized() throws {
+    func testProtocolRelativeThumbnailURLNormalized() async throws {
         let json = """
         {
           "code": 0,
@@ -99,11 +102,11 @@ final class BilibiliFeedServiceTests: XCTestCase {
         }
         """
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        let videos = try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345")
         XCTAssertEqual(videos[0].thumbnailURL, "https://i0.hdslb.com/bfs/archive/test.jpg")
     }
 
-    func testHttpThumbnailUpgradedToHttps() throws {
+    func testHttpThumbnailUpgradedToHttps() async throws {
         let json = """
         {
           "code": 0,
@@ -123,11 +126,11 @@ final class BilibiliFeedServiceTests: XCTestCase {
         }
         """
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        let videos = try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345")
         XCTAssertEqual(videos[0].thumbnailURL, "https://i0.hdslb.com/bfs/archive/test.jpg")
     }
 
-    func testMergesSeasonAndSeriesArchives() throws {
+    func testMergesSeasonAndSeriesArchives() async throws {
         let json = """
         {
           "code": 0,
@@ -154,7 +157,7 @@ final class BilibiliFeedServiceTests: XCTestCase {
         }
         """
         let service = BilibiliFeedService()
-        let videos = try awaitSync { try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345") }
+        let videos = try await service.parseFeedResponse(data: Data(json.utf8), channelID: "12345")
         XCTAssertEqual(videos.count, 2)
         // Series video is newer, should be first
         XCTAssertEqual(videos[0].videoID, "BV1series")
@@ -220,20 +223,4 @@ final class BilibiliFeedServiceTests: XCTestCase {
         XCTAssertEqual(decoded.channelURL, "https://space.bilibili.com/12345")
     }
 
-    // MARK: - Helpers
-
-    private func awaitSync<T>(_ block: @escaping @Sendable () async throws -> T) throws -> T {
-        let expectation = expectation(description: "async")
-        nonisolated(unsafe) var result: Result<T, Error>!
-        Task {
-            do {
-                result = .success(try await block())
-            } catch {
-                result = .failure(error)
-            }
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 5)
-        return try result.get()
-    }
 }
