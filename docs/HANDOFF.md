@@ -74,8 +74,8 @@ guard let previousLastVideoID else { return }
 | 编号 | 项目 | 优先级 | 理由 |
 |------|------|--------|------|
 | 3.2 | release workflow tag 检查 | ✅ 已修复 | — |
-| 1.1 | recoverySuggestion sentinel | 中 | 影响可维护性，但功能不受影响 |
-| 1.2 | Set + contains(where:) | 低 | 纯代码质量，无功能影响 |
+| 1.1 | recoverySuggestion sentinel | ✅ 已修复 | AppError.Kind enum 替代 magic string |
+| 1.2 | Set + contains(where:) | ✅ 已修复 | 改为 [String] 反映实际 O(n) 用法 |
 | 3.1 | 反爬韧性 | 低 | 当前工作正常，预防性 |
 | 2.2 | cookie 过期检测 | 低 | 依赖实测，scope 不确定 |
 
@@ -83,6 +83,6 @@ guard let previousLastVideoID else { return }
 
 ## 落地建议
 
-- 1.1 + 1.2 可以合并为一个代码质量 PR
+- ~~1.1 + 1.2 可以合并为一个代码质量 PR~~ → 已合并为 `refactor/code-quality-1.1-1.2` PR
 - 3.1 视实际遇到问题再处理
 - 2.2 scope 较大，需要先实测 bilibili cookie 过期的具体表现再决定方案
