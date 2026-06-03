@@ -208,4 +208,40 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssertTrue(args.contains("4"))
         XCTAssertFalse(args.contains("--downloader"))
     }
+
+    // MARK: - isSupportedVideoHost
+
+    func testSupportedVideoHostRecognisesKnownPlatforms() {
+        XCTAssertTrue(isSupportedVideoHost("https://www.youtube.com/watch?v=abc"))
+        XCTAssertTrue(isSupportedVideoHost("https://youtu.be/abc"))
+        XCTAssertTrue(isSupportedVideoHost("https://www.bilibili.com/video/BV1xx"))
+        XCTAssertTrue(isSupportedVideoHost("https://vimeo.com/123"))
+        XCTAssertTrue(isSupportedVideoHost("https://twitter.com/user/status/1"))
+        XCTAssertTrue(isSupportedVideoHost("https://x.com/user/status/1"))
+        XCTAssertTrue(isSupportedVideoHost("https://www.tiktok.com/@user/video/1"))
+        XCTAssertTrue(isSupportedVideoHost("https://www.twitch.tv/channel"))
+        XCTAssertTrue(isSupportedVideoHost("https://soundcloud.com/artist/track"))
+        XCTAssertTrue(isSupportedVideoHost("https://www.dailymotion.com/video/x1"))
+        XCTAssertTrue(isSupportedVideoHost("https://www.xiaohongshu.com/explore/abc"))
+    }
+
+    func testSupportedVideoHostMatchesSubdomains() {
+        XCTAssertTrue(isSupportedVideoHost("https://m.youtube.com/watch?v=abc"))
+        XCTAssertTrue(isSupportedVideoHost("https://music.youtube.com/watch?v=abc"))
+        XCTAssertTrue(isSupportedVideoHost("https://m.bilibili.com/video/BV1xx"))
+    }
+
+    func testSupportedVideoHostRejectsUnknownDomains() {
+        XCTAssertFalse(isSupportedVideoHost("https://example.com"))
+        XCTAssertFalse(isSupportedVideoHost("https://example.com/video"))
+        XCTAssertFalse(isSupportedVideoHost("https://google.com"))
+        XCTAssertFalse(isSupportedVideoHost("https://random-site.org/page"))
+        XCTAssertFalse(isSupportedVideoHost("not-a-url"))
+    }
+
+    func testSupportedVideoHostRejectsChannelPages() {
+        // bilibili space pages are channel listings, not downloadable videos
+        XCTAssertFalse(isSupportedVideoHost("https://space.bilibili.com/12345"))
+        XCTAssertFalse(isSupportedVideoHost("https://space.bilibili.com/12345/video"))
+    }
 }

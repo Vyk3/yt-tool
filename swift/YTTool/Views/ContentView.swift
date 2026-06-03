@@ -217,14 +217,13 @@ struct ContentView: View {
             Text(Loc.urlsPerLine(state.language))
                 .font(.headline)
 
-            TextField(
-                Loc.queueURLPlaceholder(state.language),
+            PlaceholderTextEditor(
                 text: $state.queueInputURLs,
-                axis: .vertical
+                placeholder: Loc.queueURLPlaceholder(state.language)
             )
-            .font(.body.monospaced())
-            .lineLimit(3 ... 6)
-            .textFieldStyle(.roundedBorder)
+            .frame(minHeight: 60, maxHeight: 120)
+            .padding(4)
+            .background(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.3)))
 
             HStack(spacing: 12) {
                 Button(action: selectOutputDirectory) {

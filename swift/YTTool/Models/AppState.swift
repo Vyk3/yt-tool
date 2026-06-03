@@ -39,6 +39,9 @@ final class AppState: ObservableObject {
 
     private static let maxLogEntries = 250
     private static let diskSpaceSafetyMarginBytes: Int64 = 64 * 1_048_576
+    /// Sentinel used to identify probe validation errors so they can be
+    /// re-localized when the user switches language.
+    nonisolated static let validationErrorMarker = "__VALIDATION_UNSUPPORTED_URL__"
 
     // MARK: - Probe
 
@@ -92,6 +95,10 @@ final class AppState: ObservableObject {
     @Published var queueInputURLs: String = ""
     @Published var queueQualityStrategy: QueueQualityStrategy = .bestQuality
     @Published var queueError: String?
+    /// Tracks the count for queue validation errors so they can be
+    /// re-localized when the user switches language (even after the
+    /// input field is cleared on partial submit).
+    private var queueUnsupportedCount = 0
     @Published var subscriptionInputURL: String = ""
     let downloadQueue = DownloadQueue()
     let historyStore = DownloadHistoryStore()
@@ -123,6 +130,7 @@ final class AppState: ObservableObject {
             // Sync with system AppleLanguages so AppKit frameworks (e.g. Sparkle)
             // pick the same language as the in-app setting.
             defaults.set([language.rawValue], forKey: "AppleLanguages")
+            refreshValidationErrors()
         }
     }
 
@@ -240,6 +248,15 @@ final class AppState: ObservableObject {
         guard !isWholePlaylistDownload else { return }
         let url = trimmedInputURL
         guard !url.isEmpty else { return }
+
+        guard isSupportedVideoHost(url) else {
+            probeState = .failure(AppError(
+                message: Loc.queueUnsupportedURLs(1, language),
+                recoverySuggestion: Self.validationErrorMarker
+            ))
+            appendLog(scope: .probe, level: .error, message: "URL is not from a supported video platform: \(url)")
+            return
+        }
 
         probeTask?.cancel()
         let attemptID = beginProbeAttempt()
@@ -607,6 +624,7 @@ final class AppState: ObservableObject {
 
     func addToQueue() {
         queueError = nil
+        queueUnsupportedCount = 0
 
         guard let outputDir = validatedSelectedOutputDirectory else {
             queueError = Loc.queueNeedFolder(language)
@@ -614,9 +632,19 @@ final class AppState: ObservableObject {
             return
         }
 
-        let urls = parseLines(queueInputURLs)
+        let allURLs = parseLines(queueInputURLs)
 
-        guard !urls.isEmpty else { return }
+        guard !allURLs.isEmpty else { return }
+
+        let supported = allURLs.filter { isSupportedVideoHost($0) }
+        let unsupportedCount = allURLs.count - supported.count
+
+        guard !supported.isEmpty else {
+            queueUnsupportedCount = unsupportedCount
+            queueError = Loc.queueUnsupportedURLs(unsupportedCount, language)
+            appendLog(scope: .download, level: .warning, message: "\(unsupportedCount) URL(s) skipped: not from a supported video platform")
+            return
+        }
 
         let normalizedCookies: String?
         let parsedExtra: [String]
@@ -642,16 +670,29 @@ final class AppState: ObservableObject {
             qualityStrategy: queueQualityStrategy
         )
 
-        downloadQueue.addURLs(urls, config: config)
+        downloadQueue.addURLs(supported, config: config)
         queueInputURLs = ""
-        queueError = nil
-        appendLog(scope: .download, level: .info, message: "Added \(urls.count) URL(s) to queue")
+        if unsupportedCount > 0 {
+            queueUnsupportedCount = unsupportedCount
+            queueError = Loc.queueUnsupportedURLs(unsupportedCount, language)
+            appendLog(scope: .download, level: .warning, message: "\(unsupportedCount) URL(s) skipped: not from a supported video platform")
+        } else {
+            queueError = nil
+        }
+        appendLog(scope: .download, level: .info, message: "Added \(supported.count) URL(s) to queue")
     }
 
     /// Directly add a single URL to the download queue (used by Subs "add" button).
     /// Returns true on success.
     @discardableResult
     func addSingleURLToQueue(_ url: String) -> Bool {
+        guard isSupportedVideoHost(url) else {
+            queueUnsupportedCount = 1
+            queueError = Loc.queueUnsupportedURLs(1, language)
+            appendLog(scope: .download, level: .warning, message: "URL skipped: \(url) is not from a supported video platform")
+            return false
+        }
+
         guard let outputDir = validatedSelectedOutputDirectory else {
             queueError = Loc.queueNeedFolder(language)
             return false
@@ -682,6 +723,8 @@ final class AppState: ObservableObject {
         )
 
         downloadQueue.addURLs([url], config: config)
+        queueUnsupportedCount = 0
+        queueError = nil
         appendLog(scope: .download, level: .info, message: "Added \(url) to queue from subscriptions")
         return true
     }
@@ -697,9 +740,12 @@ final class AppState: ObservableObject {
         }
         let filteredCount = allLines.count - incoming.count
 
+        let supported = incoming.filter { isSupportedVideoHost($0) }
+        let unsupportedCount = incoming.count - supported.count
+
         var seen = existingLines
         var unique: [String] = []
-        for url in incoming {
+        for url in supported {
             if seen.insert(url).inserted {
                 unique.append(url)
             }
@@ -713,8 +759,9 @@ final class AppState: ObservableObject {
 
         return URLImportResult(
             importedCount: unique.count,
-            skippedCount: incoming.count - unique.count,
-            filteredCount: filteredCount
+            skippedCount: supported.count - unique.count,
+            filteredCount: filteredCount,
+            unsupportedCount: unsupportedCount
         )
     }
 
@@ -748,6 +795,7 @@ final class AppState: ObservableObject {
         var parts = ["Imported \(result.importedCount) URL(s) from \(source)"]
         if result.skippedCount > 0 { parts.append("skipped \(result.skippedCount) duplicate(s)") }
         if result.filteredCount > 0 { parts.append("filtered \(result.filteredCount) non-URL line(s)") }
+        if result.unsupportedCount > 0 { parts.append("rejected \(result.unsupportedCount) unsupported URL(s)") }
         return parts.joined(separator: ", ")
     }
 
@@ -886,6 +934,23 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    /// Re-localize stored validation errors when the user switches language.
+    private func refreshValidationErrors() {
+        // Probe validation error
+        if case let .failure(error) = probeState,
+           error.recoverySuggestion == Self.validationErrorMarker
+        {
+            probeState = .failure(AppError(
+                message: Loc.queueUnsupportedURLs(1, language),
+                recoverySuggestion: Self.validationErrorMarker
+            ))
+        }
+        // Queue validation error (count persisted across input clears)
+        if queueUnsupportedCount > 0, queueError != nil {
+            queueError = Loc.queueUnsupportedURLs(queueUnsupportedCount, language)
+        }
+    }
 
     func applyAppearance() {
         NSApp?.appearance = switch appearance {
@@ -1205,6 +1270,7 @@ final class AppState: ObservableObject {
         let importedCount: Int
         let skippedCount: Int
         let filteredCount: Int
+        let unsupportedCount: Int
     }
 
     struct PerItemFormatSelection {

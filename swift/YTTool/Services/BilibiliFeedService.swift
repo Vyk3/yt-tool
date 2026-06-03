@@ -1,4 +1,4 @@
-import Foundation
+@preconcurrency import Foundation
 
 actor BilibiliFeedService {
     private static let cardURL = "https://api.bilibili.com/x/web-interface/card"
@@ -13,7 +13,7 @@ actor BilibiliFeedService {
     ///
     /// bilibili's anti-bot rejects requests from URLSession based on
     /// TLS fingerprinting. curl's TLS fingerprint passes their checks.
-    private func curlFetch(url: String) async throws -> Data {
+    private nonisolated func curlFetch(url: String) async throws -> Data {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
         process.arguments = [
@@ -27,19 +27,25 @@ actor BilibiliFeedService {
         process.standardOutput = stdoutPipe
         process.standardError = FileHandle.nullDevice
 
+        let stdout = stdoutPipe.fileHandleForReading
         return try await withCheckedThrowingContinuation { continuation in
-            process.terminationHandler = { proc in
-                let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                guard proc.terminationStatus == 0, !data.isEmpty else {
-                    continuation.resume(throwing: FeedError.feedFetchFailed)
-                    return
-                }
-                continuation.resume(returning: data)
-            }
             do {
                 try process.run()
             } catch {
                 continuation.resume(throwing: FeedError.feedFetchFailed)
+                return
+            }
+            // Read stdout on a detached thread BEFORE waiting for termination.
+            // If we read inside terminationHandler the pipe buffer (~64 KB) can
+            // fill up, blocking curl's write and preventing termination.
+            DispatchQueue.global(qos: .utility).async {
+                let data = stdout.readDataToEndOfFile()
+                process.waitUntilExit()
+                guard process.terminationStatus == 0, !data.isEmpty else {
+                    continuation.resume(throwing: FeedError.feedFetchFailed)
+                    return
+                }
+                continuation.resume(returning: data)
             }
         }
     }

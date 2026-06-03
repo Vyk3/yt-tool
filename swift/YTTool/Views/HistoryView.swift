@@ -83,15 +83,32 @@ struct HistoryView: View {
             if entry.succeeded, let path = entry.outputPath,
                FileManager.default.fileExists(atPath: path)
             {
+                let fileURL = URL(fileURLWithPath: path)
+                Button(Loc.openFolder(language)) {
+                    NSWorkspace.shared.open(fileURL.deletingLastPathComponent())
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .font(.callout)
+
                 Button(Loc.reveal(language)) {
-                    NSWorkspace.shared.activateFileViewerSelecting(
-                        [URL(fileURLWithPath: path)]
-                    )
+                    NSWorkspace.shared.activateFileViewerSelecting([fileURL])
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
                 .font(.callout)
             }
+
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    store.remove(id: entry.id)
+                }
+            } label: {
+                Image(systemName: "trash")
+                    .font(.callout)
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
     }

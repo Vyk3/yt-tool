@@ -37,6 +37,15 @@ final class ChannelSubscriptionStore: ObservableObject {
         saveIfNeeded()
     }
 
+    func move(fromOffsets source: IndexSet, toOffset destination: Int) {
+        subscriptions.move(fromOffsets: source, toOffset: destination)
+        saveIfNeeded()
+    }
+
+    func moveInMemory(fromOffsets source: IndexSet, toOffset destination: Int) {
+        subscriptions.move(fromOffsets: source, toOffset: destination)
+    }
+
     func toggleEnabled(id: UUID) {
         guard let index = subscriptions.firstIndex(where: { $0.id == id }) else { return }
         subscriptions[index].isEnabled.toggle()
@@ -86,7 +95,7 @@ final class ChannelSubscriptionStore: ObservableObject {
         }
     }
 
-    private func save() {
+    func save() {
         guard let url = fileURL else { return }
         let dir = url.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

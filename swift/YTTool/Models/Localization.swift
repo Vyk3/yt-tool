@@ -475,6 +475,12 @@ enum Loc {
         l == .chinese ? "就绪：\(title)" : "Ready: \(title)"
     }
 
+    static func statusProbeFailed(_ detail: String?, _ l: AppLanguage) -> String {
+        let prefix = l == .chinese ? "探测失败。" : "yt-dlp probe failed."
+        if let detail, !detail.isEmpty { return "\(prefix) \(detail)" }
+        return prefix
+    }
+
     static func chooseFolderHint(_ l: AppLanguage) -> String {
         l == .chinese ? "选择文件夹…" : "Choose folder…"
     }
@@ -892,6 +898,18 @@ enum Loc {
 
     static func queueNeedFolder(_ l: AppLanguage) -> String {
         l == .chinese ? "请先选择输出文件夹再添加到队列。" : "Select an output folder before adding to queue."
+    }
+
+    static func queueUnsupportedURLs(_ count: Int, _ l: AppLanguage) -> String {
+        if l == .chinese {
+            return count == 1
+                ? "1 个链接不属于已知视频平台，已跳过。"
+                : "\(count) 个链接不属于已知视频平台，已跳过。"
+        } else {
+            return count == 1
+                ? "1 URL is not from a supported video platform and was skipped."
+                : "\(count) URLs are not from supported video platforms and were skipped."
+        }
     }
 
     static func queueProgress(_ completed: Int, _ total: Int, _ failed: Int, _ l: AppLanguage) -> String {

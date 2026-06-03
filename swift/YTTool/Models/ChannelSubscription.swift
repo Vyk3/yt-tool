@@ -12,15 +12,13 @@ enum Platform: String, Codable, Equatable {
 }
 
 func isYouTubeSubscriptionURL(_ url: String) -> Bool {
-    guard let components = URLComponents(string: url),
-          let host = components.host?.lowercased() else { return false }
-    return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
+    isYouTubeURL(url)
 }
 
 func isBilibiliURL(_ url: String) -> Bool {
     guard let components = URLComponents(string: url),
           let host = components.host?.lowercased() else { return false }
-    return host == "bilibili.com" || host.hasSuffix(".bilibili.com")
+    return host == "bilibili.com" || host.hasSuffix(".bilibili.com") || host == "b23.tv"
 }
 
 struct ChannelSubscription: Codable, Identifiable, Equatable {

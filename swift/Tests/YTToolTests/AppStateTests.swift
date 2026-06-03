@@ -364,21 +364,21 @@ final class AppStateTests: XCTestCase {
     func testImportURLsAppendsToEmpty() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "https://a.com\nhttps://b.com\nhttps://c.com")
+        let result = state.importURLs(from: "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1\nhttps://bilibili.com/video/BVc1")
         XCTAssertEqual(result.importedCount, 3)
         XCTAssertEqual(result.skippedCount, 0)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com\nhttps://c.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1\nhttps://bilibili.com/video/BVc1")
     }
 
     func testImportURLsDedupsAgainstExisting() {
         let state = AppState(defaults: freshDefaults())
-        state.queueInputURLs = "https://a.com\nhttps://b.com"
-        let result = state.importURLs(from: "https://b.com\nhttps://c.com")
+        state.queueInputURLs = "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1"
+        let result = state.importURLs(from: "https://vimeo.com/b1\nhttps://bilibili.com/video/BVc1")
         XCTAssertEqual(result.importedCount, 1)
         XCTAssertEqual(result.skippedCount, 1)
-        XCTAssertTrue(state.queueInputURLs.contains("https://c.com"))
+        XCTAssertTrue(state.queueInputURLs.contains("https://bilibili.com/video/BVc1"))
         XCTAssertEqual(
-            state.queueInputURLs.components(separatedBy: "\n").filter { $0 == "https://b.com" }.count,
+            state.queueInputURLs.components(separatedBy: "\n").filter { $0 == "https://vimeo.com/b1" }.count,
             1
         )
     }
@@ -386,77 +386,77 @@ final class AppStateTests: XCTestCase {
     func testImportURLsDedupsWithinBatch() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "https://a.com\nhttps://a.com\nhttps://b.com")
+        let result = state.importURLs(from: "https://youtube.com/watch?v=a1\nhttps://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
         XCTAssertEqual(result.importedCount, 2)
         XCTAssertEqual(result.skippedCount, 1)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
     }
 
     func testImportURLsTrimsWhitespace() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "  https://a.com  \n  https://b.com  ")
+        let result = state.importURLs(from: "  https://youtube.com/watch?v=a1  \n  https://vimeo.com/b1  ")
         XCTAssertEqual(result.importedCount, 2)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
     }
 
     func testImportURLsSkipsBlankLines() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "https://a.com\n\n\nhttps://b.com\n")
+        let result = state.importURLs(from: "https://youtube.com/watch?v=a1\n\n\nhttps://vimeo.com/b1\n")
         XCTAssertEqual(result.importedCount, 2)
         XCTAssertEqual(result.skippedCount, 0)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
     }
 
     func testImportURLsEmptyInput() {
         let state = AppState(defaults: freshDefaults())
-        state.queueInputURLs = "https://existing.com"
+        state.queueInputURLs = "https://youtube.com/watch?v=exist"
         let result = state.importURLs(from: "")
         XCTAssertEqual(result.importedCount, 0)
         XCTAssertEqual(result.skippedCount, 0)
-        XCTAssertEqual(state.queueInputURLs, "https://existing.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=exist")
     }
 
     func testImportURLsAllDuplicates() {
         let state = AppState(defaults: freshDefaults())
-        state.queueInputURLs = "https://a.com\nhttps://b.com"
-        let result = state.importURLs(from: "https://a.com\nhttps://b.com")
+        state.queueInputURLs = "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1"
+        let result = state.importURLs(from: "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
         XCTAssertEqual(result.importedCount, 0)
         XCTAssertEqual(result.skippedCount, 2)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
     }
 
     func testImportURLsPreservesExisting() {
         let state = AppState(defaults: freshDefaults())
-        state.queueInputURLs = "https://a.com"
-        let result = state.importURLs(from: "https://b.com")
+        state.queueInputURLs = "https://youtube.com/watch?v=a1"
+        let result = state.importURLs(from: "https://vimeo.com/b1")
         XCTAssertEqual(result.importedCount, 1)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
     }
 
     func testImportURLsNoDoubleNewline() {
         let state = AppState(defaults: freshDefaults())
-        state.queueInputURLs = "https://a.com\n"
-        let result = state.importURLs(from: "https://b.com")
+        state.queueInputURLs = "https://youtube.com/watch?v=a1\n"
+        let result = state.importURLs(from: "https://vimeo.com/b1")
         XCTAssertEqual(result.importedCount, 1)
         let lines = state.queueInputURLs.components(separatedBy: "\n").filter { !$0.isEmpty }
-        XCTAssertEqual(lines, ["https://a.com", "https://b.com"])
+        XCTAssertEqual(lines, ["https://youtube.com/watch?v=a1", "https://vimeo.com/b1"])
     }
 
     func testImportURLsFiltersNonURLLines() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "My Favorite Videos\nhttps://a.com\nsome random text\nhttps://b.com")
+        let result = state.importURLs(from: "My Favorite Videos\nhttps://youtube.com/watch?v=a1\nsome random text\nhttps://vimeo.com/b1")
         XCTAssertEqual(result.importedCount, 2)
         XCTAssertEqual(result.filteredCount, 2)
-        XCTAssertEqual(state.queueInputURLs, "https://a.com\nhttps://b.com")
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=a1\nhttps://vimeo.com/b1")
     }
 
     func testImportURLsAcceptsHTTPWithoutS() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "http://legacy.example.com\nhttps://modern.example.com")
+        let result = state.importURLs(from: "http://youtube.com/watch?v=legacy\nhttps://vimeo.com/modern")
         XCTAssertEqual(result.importedCount, 2)
         XCTAssertEqual(result.filteredCount, 0)
     }
@@ -464,7 +464,7 @@ final class AppStateTests: XCTestCase {
     func testImportURLsFiltersCaseInsensitive() {
         let state = AppState(defaults: freshDefaults())
         state.queueInputURLs = ""
-        let result = state.importURLs(from: "HTTPS://A.COM\nHttp://B.COM")
+        let result = state.importURLs(from: "HTTPS://YOUTUBE.COM/watch?v=a1\nHttp://VIMEO.COM/b1")
         XCTAssertEqual(result.importedCount, 2)
         XCTAssertEqual(result.filteredCount, 0)
     }
@@ -476,6 +476,15 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(result.importedCount, 0)
         XCTAssertEqual(result.filteredCount, 3)
         XCTAssertEqual(state.queueInputURLs, "")
+    }
+
+    func testImportURLsRejectsUnsupportedHosts() {
+        let state = AppState(defaults: freshDefaults())
+        state.queueInputURLs = ""
+        let result = state.importURLs(from: "https://example.com\nhttps://youtube.com/watch?v=ok\nhttps://random.org/page")
+        XCTAssertEqual(result.importedCount, 1)
+        XCTAssertEqual(result.unsupportedCount, 2)
+        XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=ok")
     }
 
     private func freshDefaults() -> UserDefaults {

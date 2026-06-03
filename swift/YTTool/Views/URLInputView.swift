@@ -325,10 +325,14 @@ private func extractDroppedString(from item: NSSecureCoding?) -> String? {
 private extension ProbeState {
     func localizedStatusLabel(_ l: AppLanguage) -> String {
         switch self {
-        case .idle: Loc.statusIdle(l)
-        case .loading: Loc.statusProbing(l)
-        case let .success(info): Loc.statusReady(info.title, l)
-        case let .failure(error): error.message
+        case .idle: return Loc.statusIdle(l)
+        case .loading: return Loc.statusProbing(l)
+        case let .success(info): return Loc.statusReady(info.title, l)
+        case let .failure(error):
+            if error.recoverySuggestion == AppState.validationErrorMarker {
+                return error.message
+            }
+            return Loc.statusProbeFailed(error.recoverySuggestion, l)
         }
     }
 

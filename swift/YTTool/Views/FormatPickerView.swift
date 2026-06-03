@@ -106,7 +106,11 @@ struct FormatPickerView: View {
             case .loading:
                 ProgressView(Loc.loadingFormats(language))
             case let .failure(error):
-                placeholder(error.message)
+                if error.recoverySuggestion == AppState.validationErrorMarker {
+                    placeholder(idleMessage)
+                } else {
+                    placeholder(Loc.statusProbeFailed(error.recoverySuggestion, language))
+                }
             case let .success(mediaInfo):
                 if isPlaylistURL, playlistMode.downloadsWholePlaylist {
                     placeholder(Loc.wholePlaylistSkips(language))
