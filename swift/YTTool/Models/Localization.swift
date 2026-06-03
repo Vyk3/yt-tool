@@ -74,7 +74,7 @@ enum Loc {
     // MARK: Subscriptions view
 
     static func channelURLPlaceholder(_ l: AppLanguage) -> String {
-        l == .chinese ? "YouTube 频道或视频 URL" : "YouTube channel or video URL"
+        l == .chinese ? "YouTube / bilibili 频道或视频 URL" : "YouTube / bilibili channel or video URL"
     }
 
     static func subscribe(_ l: AppLanguage) -> String {
@@ -473,6 +473,12 @@ enum Loc {
 
     static func statusReady(_ title: String, _ l: AppLanguage) -> String {
         l == .chinese ? "就绪：\(title)" : "Ready: \(title)"
+    }
+
+    static func statusProbeFailed(_ detail: String?, _ l: AppLanguage) -> String {
+        let prefix = l == .chinese ? "探测失败。" : "yt-dlp probe failed."
+        if let detail, !detail.isEmpty { return "\(prefix) \(detail)" }
+        return prefix
     }
 
     static func chooseFolderHint(_ l: AppLanguage) -> String {
@@ -894,6 +900,18 @@ enum Loc {
         l == .chinese ? "请先选择输出文件夹再添加到队列。" : "Select an output folder before adding to queue."
     }
 
+    static func queueUnsupportedURLs(_ count: Int, _ l: AppLanguage) -> String {
+        if l == .chinese {
+            return count == 1
+                ? "1 个链接不属于已知视频平台，已跳过。"
+                : "\(count) 个链接不属于已知视频平台，已跳过。"
+        } else {
+            return count == 1
+                ? "1 URL is not from a supported video platform and was skipped."
+                : "\(count) URLs are not from supported video platforms and were skipped."
+        }
+    }
+
     static func queueProgress(_ completed: Int, _ total: Int, _ failed: Int, _ l: AppLanguage) -> String {
         if l == .chinese {
             var s = "\(completed)/\(total) 已完成"
@@ -1001,8 +1019,8 @@ enum Loc {
         l == .chinese ? "加入队列" : "Add to Queue"
     }
 
-    static func subsYouTubeOnly(_ l: AppLanguage) -> String {
-        l == .chinese ? "订阅功能仅支持 YouTube 频道" : "Subscriptions only support YouTube channels"
+    static func subsUnsupportedPlatform(_ l: AppLanguage) -> String {
+        l == .chinese ? "仅支持 YouTube 和 bilibili 链接" : "Only YouTube and bilibili URLs are supported"
     }
 
     static func addedToQueueInput(_ l: AppLanguage) -> String {

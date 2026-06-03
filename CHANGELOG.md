@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### Added
+- **bilibili 订阅支持**：订阅 tab 支持添加 bilibili 频道（space URL 或视频 URL），自动解析 UP 主名称并轮询新视频。
+- **Platform 枚举**：`ChannelSubscription` 新增 `.youtube` / `.bilibili` 平台标识，URL 自动检测，Codable 向后兼容。
+- **BilibiliFeedService**：独立的 bilibili 频道解析和视频拉取服务（actor），使用 curl 子进程绕过 TLS 指纹检测。
+- **API fallback 链路**：card API 被限流时自动降级到 seasons → view API 链路获取 UP 主名称。
+- **bilibili 单元测试**：新增 12 个测试覆盖响应解析、平台检测、Codable 往返、缩略图 URL 规范化。
+
 ---
 
 ## [0.2.1] — 2026-06-02

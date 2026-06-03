@@ -210,7 +210,8 @@ final class FeedXMLParser: NSObject, XMLParserDelegate {
                 publishedDate: Self.iso8601.date(from: currentPublished.trimmingCharacters(in: .whitespacesAndNewlines)),
                 url: currentLink.isEmpty
                     ? "https://www.youtube.com/watch?v=\(videoID)"
-                    : currentLink
+                    : currentLink,
+                thumbnailURL: "https://i.ytimg.com/vi/\(videoID)/mqdefault.jpg"
             )
             videos.append(video)
         } else if elementName == "author" {

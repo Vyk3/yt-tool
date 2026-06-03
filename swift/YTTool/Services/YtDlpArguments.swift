@@ -5,6 +5,48 @@ func isYouTubeURL(_ url: String) -> Bool {
     return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
 }
 
+private let supportedVideoHosts: Set<String> = [
+    "youtube.com", "youtu.be",
+    "bilibili.com", "b23.tv",
+    "vimeo.com",
+    "dailymotion.com", "dai.ly",
+    "twitter.com", "x.com",
+    "tiktok.com",
+    "twitch.tv",
+    "soundcloud.com",
+    "facebook.com", "fb.watch",
+    "instagram.com",
+    "reddit.com",
+    "nicovideo.jp",
+    "crunchyroll.com",
+    "bandcamp.com",
+    "mixcloud.com",
+    "streamable.com",
+    "rumble.com",
+    "odysee.com",
+    "bitchute.com",
+    "pinterest.com",
+    "ted.com",
+    "abema.tv",
+    "weibo.com",
+    "douyin.com",
+    "kuaishou.com",
+    "ixigua.com",
+    "xiaohongshu.com",
+]
+
+/// Hosts that look like a supported video platform but are
+/// channel/user pages, not downloadable video URLs.
+private let nonVideoSubdomains: Set<String> = [
+    "space.bilibili.com",
+]
+
+func isSupportedVideoHost(_ url: String) -> Bool {
+    guard let host = URLComponents(string: url)?.host?.lowercased() else { return false }
+    if nonVideoSubdomains.contains(host) { return false }
+    return supportedVideoHosts.contains { host == $0 || host.hasSuffix(".\($0)") }
+}
+
 func buildProbeArguments(url: String) -> [String] {
     buildProbeArguments(url: url, cookiesFilePath: nil, extraArguments: [])
 }

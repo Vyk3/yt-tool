@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SubscriptionsView: View {
     @ObservedObject var store: ChannelSubscriptionStore
@@ -12,6 +13,7 @@ struct SubscriptionsView: View {
     @State private var isSelecting = false
     @State private var selectedIDs: Set<UUID> = []
     @State private var showDeleteConfirmation = false
+    @State private var draggedSubscription: ChannelSubscription?
 
     /// Channel names that have unseen new videos.
     private var channelsWithNewVideos: Set<String> {
@@ -192,6 +194,18 @@ struct SubscriptionsView: View {
                             onTapSelection: { toggleSelection(sub.id) },
                             onToggleEnabled: { store.toggleEnabled(id: sub.id) }
                         )
+                        .onDrag {
+                            draggedSubscription = sub
+                            return NSItemProvider(object: sub.id.uuidString as NSString)
+                        }
+                        .onDrop(
+                            of: [UTType.text],
+                            delegate: SubscriptionDropDelegate(
+                                target: sub,
+                                store: store,
+                                draggedItem: $draggedSubscription
+                            )
+                        )
                     }
                 }
             }
@@ -235,18 +249,12 @@ struct SubscriptionsView: View {
         }
     }
 
-    private static func isYouTubeURL(_ url: String) -> Bool {
-        guard let components = URLComponents(string: url),
-              let host = components.host?.lowercased() else { return false }
-        return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
-    }
-
     private func addChannel() {
         let url = newChannelURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return }
 
-        guard Self.isYouTubeURL(url) else {
-            resolveError = Loc.subsYouTubeOnly(language)
+        guard let platform = Platform.detect(from: url) else {
+            resolveError = Loc.subsUnsupportedPlatform(language)
             return
         }
 
@@ -255,8 +263,13 @@ struct SubscriptionsView: View {
 
         Task {
             do {
-                let service = YouTubeFeedService()
-                let result = try await service.resolveChannelID(from: url)
+                let result: (channelID: String, channelName: String)
+                switch platform {
+                case .youtube:
+                    result = try await YouTubeFeedService().resolveChannelID(from: url)
+                case .bilibili:
+                    result = try await BilibiliFeedService().resolveChannelID(from: url)
+                }
 
                 let subscription = ChannelSubscription(
                     id: UUID(),
@@ -265,8 +278,7 @@ struct SubscriptionsView: View {
                     channelURL: url,
                     dateAdded: Date(),
                     isEnabled: true,
-                    lastCheckedDate: nil,
-                    lastVideoID: nil
+                    platform: platform
                 )
                 store.add(subscription)
                 newChannelURL = ""
@@ -367,31 +379,32 @@ private struct ChannelRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Selection circle — slides in from the left
-            if isSelecting {
-                Button(action: onTapSelection) {
-                    ZStack {
-                        Circle()
-                            .strokeBorder(
-                                isSelected ? Color.clear : Color.secondary.opacity(0.35),
-                                lineWidth: 1.5
-                            )
-                            .background(
-                                Circle().fill(isSelected ? Color.accentColor : Color.clear)
-                            )
-                            .frame(width: 20, height: 20)
+            // Selection circle — always reserves space, opacity toggles
+            Button(action: onTapSelection) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            isSelected ? Color.clear : Color.secondary.opacity(0.35),
+                            lineWidth: 1.5
+                        )
+                        .background(
+                            Circle().fill(isSelected ? Color.accentColor : Color.clear)
+                        )
+                        .frame(width: 16, height: 16)
 
-                        if isSelected {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
                     }
                 }
-                .buttonStyle(.borderless)
-                .padding(.trailing, 12)
-                .transition(.move(edge: .leading).combined(with: .opacity))
             }
+            .buttonStyle(.borderless)
+            .frame(width: 16)
+            .padding(.trailing, 10)
+            .opacity(isSelecting ? 1 : 0)
+            .disabled(!isSelecting)
+            .accessibilityHidden(!isSelecting)
 
             // Blue dot — new videos indicator (always occupies space for alignment)
             Circle()
@@ -416,6 +429,12 @@ private struct ChannelRow: View {
             }
 
             Spacer(minLength: 12)
+
+            // Drag handle
+            Image(systemName: "line.3.horizontal")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.trailing, 10)
 
             // Enable toggle
             Toggle(isOn: Binding(
@@ -449,5 +468,38 @@ private struct ChannelRow: View {
         .onTapGesture {
             if isSelecting { onTapSelection() }
         }
+    }
+}
+
+// MARK: - Drop delegate for channel reordering
+
+private struct SubscriptionDropDelegate: DropDelegate {
+    let target: ChannelSubscription
+    let store: ChannelSubscriptionStore
+    @Binding var draggedItem: ChannelSubscription?
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedItem = nil
+        store.save()
+        return true
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedItem,
+              dragged.id != target.id,
+              let fromIndex = store.subscriptions.firstIndex(where: { $0.id == dragged.id }),
+              let toIndex = store.subscriptions.firstIndex(where: { $0.id == target.id })
+        else { return }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            store.moveInMemory(
+                fromOffsets: IndexSet(integer: fromIndex),
+                toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
+            )
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
     }
 }
