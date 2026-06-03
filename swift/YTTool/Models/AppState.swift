@@ -39,9 +39,6 @@ final class AppState: ObservableObject {
 
     private static let maxLogEntries = 250
     private static let diskSpaceSafetyMarginBytes: Int64 = 64 * 1_048_576
-    /// Sentinel used to identify probe validation errors so they can be
-    /// re-localized when the user switches language.
-    nonisolated static let validationErrorMarker = "__VALIDATION_UNSUPPORTED_URL__"
 
     // MARK: - Probe
 
@@ -251,8 +248,8 @@ final class AppState: ObservableObject {
 
         guard isSupportedVideoHost(url) else {
             probeState = .failure(AppError(
-                message: Loc.queueUnsupportedURLs(1, language),
-                recoverySuggestion: Self.validationErrorMarker
+                kind: .unsupportedURL,
+                message: Loc.queueUnsupportedURLs(1, language)
             ))
             appendLog(scope: .probe, level: .error, message: "URL is not from a supported video platform: \(url)")
             return
@@ -939,11 +936,11 @@ final class AppState: ObservableObject {
     private func refreshValidationErrors() {
         // Probe validation error
         if case let .failure(error) = probeState,
-           error.recoverySuggestion == Self.validationErrorMarker
+           error.kind == .unsupportedURL
         {
             probeState = .failure(AppError(
-                message: Loc.queueUnsupportedURLs(1, language),
-                recoverySuggestion: Self.validationErrorMarker
+                kind: .unsupportedURL,
+                message: Loc.queueUnsupportedURLs(1, language)
             ))
         }
         // Queue validation error (count persisted across input clears)

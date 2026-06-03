@@ -329,7 +329,7 @@ private extension ProbeState {
         case .loading: return Loc.statusProbing(l)
         case let .success(info): return Loc.statusReady(info.title, l)
         case let .failure(error):
-            if error.recoverySuggestion == AppState.validationErrorMarker {
+            if error.kind == .unsupportedURL {
                 return error.message
             }
             return Loc.statusProbeFailed(error.recoverySuggestion, l)

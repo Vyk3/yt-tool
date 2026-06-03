@@ -5,7 +5,7 @@ func isYouTubeURL(_ url: String) -> Bool {
     return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
 }
 
-private let supportedVideoHosts: Set<String> = [
+private let supportedVideoHosts: [String] = [
     "youtube.com", "youtu.be",
     "bilibili.com", "b23.tv",
     "vimeo.com",
