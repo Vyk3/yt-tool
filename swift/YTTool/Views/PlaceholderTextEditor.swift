@@ -35,7 +35,7 @@ struct PlaceholderTextEditor: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    func updateNSView(_ scrollView: NSScrollView, context _: Context) {
         guard let textView = scrollView.documentView as? PlaceholderNSTextView else { return }
         if textView.string != text {
             textView.string = text

@@ -163,7 +163,7 @@ actor BilibiliFeedService {
     ///
     /// Collects all archive entries across seasons and series, then sorts
     /// by creation time (newest first) and returns the most recent 15.
-    func parseFeedResponse(data: Data, channelID: String) throws -> [FeedVideo] {
+    func parseFeedResponse(data: Data, channelID _: String) throws -> [FeedVideo] {
         let response = try JSONDecoder().decode(BilibiliSeasonsResponse.self, from: data)
         guard response.code == 0 else { throw FeedError.feedFetchFailed }
 
@@ -188,13 +188,12 @@ actor BilibiliFeedService {
         // processNewVideos merges channelName from the subscription anyway.
         return top.map { archive in
             let pic = archive.pic ?? ""
-            let normalizedPic: String
-            if pic.hasPrefix("//") {
-                normalizedPic = "https:\(pic)"
+            let normalizedPic: String = if pic.hasPrefix("//") {
+                "https:\(pic)"
             } else if pic.hasPrefix("http://") {
-                normalizedPic = pic.replacingOccurrences(of: "http://", with: "https://")
+                pic.replacingOccurrences(of: "http://", with: "https://")
             } else {
-                normalizedPic = pic
+                pic
             }
 
             return FeedVideo(

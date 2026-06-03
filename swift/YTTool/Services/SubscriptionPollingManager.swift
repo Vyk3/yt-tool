@@ -103,12 +103,11 @@ final class SubscriptionPollingManager: ObservableObject {
         let results = await withTaskGroup(of: (ChannelSubscription, [FeedVideo]?).self) { group in
             for subscription in enabled {
                 group.addTask {
-                    let videos: [FeedVideo]?
-                    switch subscription.platform {
+                    let videos: [FeedVideo]? = switch subscription.platform {
                     case .youtube:
-                        videos = try? await ytService.fetchFeed(channelID: subscription.channelID)
+                        try? await ytService.fetchFeed(channelID: subscription.channelID)
                     case .bilibili:
-                        videos = try? await biliService.fetchFeed(channelID: subscription.channelID)
+                        try? await biliService.fetchFeed(channelID: subscription.channelID)
                     }
                     return (subscription, videos)
                 }

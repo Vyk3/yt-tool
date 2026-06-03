@@ -263,12 +263,11 @@ struct SubscriptionsView: View {
 
         Task {
             do {
-                let result: (channelID: String, channelName: String)
-                switch platform {
+                let result: (channelID: String, channelName: String) = switch platform {
                 case .youtube:
-                    result = try await YouTubeFeedService().resolveChannelID(from: url)
+                    try await YouTubeFeedService().resolveChannelID(from: url)
                 case .bilibili:
-                    result = try await BilibiliFeedService().resolveChannelID(from: url)
+                    try await BilibiliFeedService().resolveChannelID(from: url)
                 }
 
                 let subscription = ChannelSubscription(
@@ -478,13 +477,13 @@ private struct SubscriptionDropDelegate: DropDelegate {
     let store: ChannelSubscriptionStore
     @Binding var draggedItem: ChannelSubscription?
 
-    func performDrop(info: DropInfo) -> Bool {
+    func performDrop(info _: DropInfo) -> Bool {
         draggedItem = nil
         store.save()
         return true
     }
 
-    func dropEntered(info: DropInfo) {
+    func dropEntered(info _: DropInfo) {
         guard let dragged = draggedItem,
               dragged.id != target.id,
               let fromIndex = store.subscriptions.firstIndex(where: { $0.id == dragged.id }),
@@ -499,7 +498,7 @@ private struct SubscriptionDropDelegate: DropDelegate {
         }
     }
 
-    func dropUpdated(info: DropInfo) -> DropProposal? {
+    func dropUpdated(info _: DropInfo) -> DropProposal? {
         DropProposal(operation: .move)
     }
 }
