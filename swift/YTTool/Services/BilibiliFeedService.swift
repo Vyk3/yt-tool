@@ -1,9 +1,25 @@
+import CryptoKit
 @preconcurrency import Foundation
 
 actor BilibiliFeedService {
     private static let cardURL = "https://api.bilibili.com/x/web-interface/card"
     private static let viewURL = "https://api.bilibili.com/x/web-interface/view"
     private static let seasonsURL = "https://api.bilibili.com/x/polymer/web-space/seasons_series_list"
+    private static let navURL = "https://api.bilibili.com/x/web-interface/nav"
+    private static let arcSearchURL = "https://api.bilibili.com/x/space/wbi/arc/search"
+
+    // MARK: - WBI signing
+
+    static let mixinTable: [Int] = [
+        46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
+        27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
+        37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4,
+        22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52,
+    ]
+
+    private var cachedWBIKeys: (imgKey: String, subKey: String)?
+    private var wbiKeysFetchedAt: Date?
+    private static let wbiKeysTTL: TimeInterval = 3600
 
     init() {}
 
@@ -50,6 +66,82 @@ actor BilibiliFeedService {
         }
     }
 
+    // MARK: - WBI key management
+
+    private func getWBIKeys() async throws -> (imgKey: String, subKey: String) {
+        if let cached = cachedWBIKeys,
+           let fetchedAt = wbiKeysFetchedAt,
+           Date().timeIntervalSince(fetchedAt) < Self.wbiKeysTTL
+        {
+            return cached
+        }
+        return try await refreshWBIKeys()
+    }
+
+    private func refreshWBIKeys() async throws -> (imgKey: String, subKey: String) {
+        let data = try await curlFetch(url: Self.navURL)
+        let response = try JSONDecoder().decode(BilibiliNavResponse.self, from: data)
+
+        guard let imgURL = response.data?.wbiImg?.imgURL,
+              let subURL = response.data?.wbiImg?.subURL
+        else { throw FeedError.feedFetchFailed }
+
+        let imgKey = Self.extractKeyFromURL(imgURL)
+        let subKey = Self.extractKeyFromURL(subURL)
+        guard !imgKey.isEmpty, !subKey.isEmpty else { throw FeedError.feedFetchFailed }
+
+        cachedWBIKeys = (imgKey, subKey)
+        wbiKeysFetchedAt = Date()
+        return (imgKey, subKey)
+    }
+
+    private func invalidateWBIKeys() {
+        cachedWBIKeys = nil
+        wbiKeysFetchedAt = nil
+    }
+
+    private nonisolated static func extractKeyFromURL(_ urlString: String) -> String {
+        guard let url = URL(string: urlString) else { return "" }
+        return url.deletingPathExtension().lastPathComponent
+    }
+
+    nonisolated static func generateMixinKey(imgKey: String, subKey: String) -> String {
+        let raw = Array(imgKey + subKey)
+        let mixed = mixinTable.compactMap { i -> Character? in
+            i < raw.count ? raw[i] : nil
+        }
+        return String(mixed.prefix(32))
+    }
+
+    nonisolated static func signParams(
+        _ params: [String: String],
+        mixinKey: String,
+        timestamp: Int? = nil
+    ) -> [String: String] {
+        var params = params
+        params["wts"] = String(timestamp ?? Int(Date().timeIntervalSince1970))
+
+        let sorted = params.sorted { $0.key < $1.key }
+        let query = sorted.map { key, value in
+            let cleaned = Self.wbiCleanValue(value)
+            let encoded = cleaned.addingPercentEncoding(withAllowedCharacters: .wbiAllowed) ?? cleaned
+            return "\(key)=\(encoded)"
+        }.joined(separator: "&")
+
+        let digest = Insecure.MD5.hash(data: Data((query + mixinKey).utf8))
+        params["w_rid"] = digest.map { String(format: "%02x", $0) }.joined()
+        return params
+    }
+
+    private nonisolated static func wbiCleanValue(_ value: String) -> String {
+        var result = ""
+        result.reserveCapacity(value.count)
+        for c in value where c != "!" && c != "'" && c != "(" && c != ")" && c != "*" {
+            result.append(c)
+        }
+        return result
+    }
+
     // MARK: - Public
 
     /// Resolve a bilibili URL to (mid, uploader name).
@@ -90,10 +182,54 @@ actor BilibiliFeedService {
 
     /// Fetch recent videos for a bilibili channel (mid).
     ///
-    /// Uses the `seasons_series_list` API which returns videos organized
-    /// into seasons/series, sorted by creation time. This endpoint does
-    /// not require WBI signing or cookies.
+    /// Primary: `wbi/arc/search` (returns all uploads, requires WBI signing).
+    /// Fallback: `seasons_series_list` (only returns season/series videos).
     func fetchFeed(channelID: String) async throws -> [FeedVideo] {
+        do {
+            return try await fetchArcSearchFeed(channelID: channelID)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch is DecodingError {
+            throw FeedError.feedFetchFailed
+        } catch {
+            return try await fetchSeasonsFeed(channelID: channelID)
+        }
+    }
+
+    private func fetchArcSearchFeed(channelID: String, retryOnAuth: Bool = true) async throws -> [FeedVideo] {
+        let keys = try await getWBIKeys()
+        let keysTimestamp = wbiKeysFetchedAt
+        let mixinKey = Self.generateMixinKey(imgKey: keys.imgKey, subKey: keys.subKey)
+
+        let baseParams: [String: String] = [
+            "mid": channelID,
+            "ps": "15",
+            "tid": "0",
+            "pn": "1",
+            "order": "pubdate",
+        ]
+        let signed = Self.signParams(baseParams, mixinKey: mixinKey)
+
+        let query = signed.sorted { $0.key < $1.key }
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: "&")
+        let data = try await curlFetch(url: "\(Self.arcSearchURL)?\(query)")
+
+        let response = try JSONDecoder().decode(BilibiliArcSearchResponse.self, from: data)
+
+        if response.code == -403, retryOnAuth {
+            // Only invalidate if no other request already refreshed the keys
+            if wbiKeysFetchedAt == keysTimestamp {
+                invalidateWBIKeys()
+            }
+            return try await fetchArcSearchFeed(channelID: channelID, retryOnAuth: false)
+        }
+        guard response.code == 0 else { throw FeedError.feedFetchFailed }
+
+        return parseArcSearchResponse(response)
+    }
+
+    private func fetchSeasonsFeed(channelID: String) async throws -> [FeedVideo] {
         let data = try await curlFetch(
             url: "\(Self.seasonsURL)?mid=\(channelID)&page_num=1&page_size=20"
         )
@@ -159,6 +295,21 @@ actor BilibiliFeedService {
 
     // MARK: - Response parsing
 
+    func parseArcSearchResponse(_ response: BilibiliArcSearchResponse) -> [FeedVideo] {
+        guard let vlist = response.data?.list?.vlist else { return [] }
+        return vlist.prefix(15).map { item in
+            let normalizedPic = Self.normalizePicURL(item.pic ?? "")
+            return FeedVideo(
+                videoID: item.bvid,
+                title: item.title,
+                channelName: item.author ?? "",
+                publishedDate: Date(timeIntervalSince1970: TimeInterval(item.created)),
+                url: "https://www.bilibili.com/video/\(item.bvid)",
+                thumbnailURL: normalizedPic
+            )
+        }
+    }
+
     /// Parse the `seasons_series_list` response into `[FeedVideo]`.
     ///
     /// Collects all archive entries across seasons and series, then sorts
@@ -187,15 +338,7 @@ actor BilibiliFeedService {
         // the channelID as a placeholder — the polling manager's
         // processNewVideos merges channelName from the subscription anyway.
         return top.map { archive in
-            let pic = archive.pic ?? ""
-            let normalizedPic: String = if pic.hasPrefix("//") {
-                "https:\(pic)"
-            } else if pic.hasPrefix("http://") {
-                pic.replacingOccurrences(of: "http://", with: "https://")
-            } else {
-                pic
-            }
-
+            let normalizedPic = Self.normalizePicURL(archive.pic ?? "")
             return FeedVideo(
                 videoID: archive.bvid,
                 title: archive.title,
@@ -206,6 +349,24 @@ actor BilibiliFeedService {
             )
         }
     }
+    private nonisolated static func normalizePicURL(_ pic: String) -> String {
+        if pic.hasPrefix("//") {
+            return "https:\(pic)"
+        } else if pic.hasPrefix("http://") {
+            return pic.replacingOccurrences(of: "http://", with: "https://")
+        }
+        return pic
+    }
+}
+
+// MARK: - CharacterSet extension
+
+private extension CharacterSet {
+    static let wbiAllowed: CharacterSet = {
+        var cs = CharacterSet.alphanumerics
+        cs.insert(charactersIn: "-._~")
+        return cs
+    }()
 }
 
 // MARK: - API response models
@@ -235,6 +396,50 @@ private struct BilibiliViewResponse: Decodable {
     struct Owner: Decodable {
         var mid: Int
         var name: String
+    }
+}
+
+private struct BilibiliNavResponse: Decodable {
+    var code: Int
+    var data: NavData?
+
+    struct NavData: Decodable {
+        var wbiImg: WBIImg?
+
+        enum CodingKeys: String, CodingKey {
+            case wbiImg = "wbi_img"
+        }
+    }
+
+    struct WBIImg: Decodable {
+        var imgURL: String?
+        var subURL: String?
+
+        enum CodingKeys: String, CodingKey {
+            case imgURL = "img_url"
+            case subURL = "sub_url"
+        }
+    }
+}
+
+struct BilibiliArcSearchResponse: Decodable {
+    var code: Int
+    var data: ArcSearchData?
+
+    struct ArcSearchData: Decodable {
+        var list: VList?
+    }
+
+    struct VList: Decodable {
+        var vlist: [VListItem]?
+    }
+
+    struct VListItem: Decodable {
+        var bvid: String
+        var title: String
+        var created: Int
+        var pic: String?
+        var author: String?
     }
 }
 

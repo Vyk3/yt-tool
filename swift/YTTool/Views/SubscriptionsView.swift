@@ -479,7 +479,7 @@ private struct SubscriptionDropDelegate: DropDelegate {
 
     func performDrop(info _: DropInfo) -> Bool {
         draggedItem = nil
-        store.save()
+        store.saveAsync()
         return true
     }
 

@@ -28,6 +28,7 @@ struct YouTubeFeedService {
             "--print", "channel",
             "--playlist-items", "1",
             "--no-warnings",
+            "--socket-timeout", "15",
             url,
         ]
 
@@ -65,20 +66,44 @@ struct YouTubeFeedService {
     // MARK: - Feed fetching
 
     /// Fetches the RSS feed for a channel and returns parsed video entries.
+    ///
+    /// YouTube's RSS endpoint is unreliable (frequent 404/500 responses).
+    /// Retries up to 2 times with a 2-second delay between attempts.
     func fetchFeed(channelID: String) async throws -> [FeedVideo] {
         let urlString = Self.feedBaseURL + channelID
         guard let url = URL(string: urlString) else {
             throw FeedError.invalidFeedURL
         }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
-        else {
+        let maxAttempts = 3
+        for attempt in 1 ... maxAttempts {
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await URLSession.shared.data(from: url)
+            } catch {
+                if attempt < maxAttempts {
+                    try await Task.sleep(nanoseconds: 2_000_000_000)
+                    continue
+                }
+                throw error
+            }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw FeedError.feedFetchFailed
+            }
+            if httpResponse.statusCode == 200 {
+                return parseFeed(data: data)
+            }
+            if (400 ..< 500).contains(httpResponse.statusCode) {
+                throw FeedError.feedFetchFailed
+            }
+            if attempt < maxAttempts {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+                continue
+            }
             throw FeedError.feedFetchFailed
         }
-
-        return parseFeed(data: data)
+        throw FeedError.feedFetchFailed
     }
 
     // MARK: - XML parsing
