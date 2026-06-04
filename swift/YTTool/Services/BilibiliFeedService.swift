@@ -189,8 +189,6 @@ actor BilibiliFeedService {
             return try await fetchArcSearchFeed(channelID: channelID)
         } catch is CancellationError {
             throw CancellationError()
-        } catch is DecodingError {
-            throw FeedError.feedFetchFailed
         } catch {
             return try await fetchSeasonsFeed(channelID: channelID)
         }
