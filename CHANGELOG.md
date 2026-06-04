@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### Fixed
+- **bilibili arc/search feed + WBI 签名**：新增 `wbi/arc/search` 端点，通过 mixin key 排列 + MD5 签名获取频道全部投稿（不再仅限合集/系列）；-403 时带 stampede 保护刷新密钥；DecodingError 正确回落到 seasons 链路。(#82)
+- **YouTube RSS 4xx 快速失败**：404 等客户端错误不再重试（省去 ~4s 无效等待），仅对 5xx / 网络错误重试。(#82)
+- **下载进程竞态**：每次下载创建新 `ProcessRunner` 并显式终止上一个，杜绝遗留 yt-dlp 进程。(#82)
+- **拖拽重排写入竞态**：`saveAsync()` 从 GCD 改为 `Task { @MainActor in save() }`，所有磁盘写入串行化，消除旧快照覆盖。(#82)
+- **频道解析超时**：yt-dlp channel ID 解析增加 `--socket-timeout 15`。(#82)
+
 ---
 
 ## [0.2.2] — 2026-06-03
