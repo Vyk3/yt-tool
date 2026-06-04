@@ -164,6 +164,118 @@ final class BilibiliFeedServiceTests: XCTestCase {
         XCTAssertEqual(videos[1].videoID, "BV1season")
     }
 
+    // MARK: - WBI signing
+
+    func testGenerateMixinKey() {
+        let imgKey = "7cd084941338484aae1ad9425b84077c"
+        let subKey = "4932caff0ff746eab6f01bf08b70ac45"
+        let mixinKey = BilibiliFeedService.generateMixinKey(imgKey: imgKey, subKey: subKey)
+        XCTAssertEqual(mixinKey.count, 32)
+        // Verify first few characters by manual mixin table application
+        let raw = Array(imgKey + subKey)
+        let expected0 = raw[46] // mixinTable[0] = 46
+        XCTAssertEqual(mixinKey.first, expected0)
+    }
+
+    func testSignParamsProducesWRid() {
+        let imgKey = "7cd084941338484aae1ad9425b84077c"
+        let subKey = "4932caff0ff746eab6f01bf08b70ac45"
+        let mixinKey = BilibiliFeedService.generateMixinKey(imgKey: imgKey, subKey: subKey)
+        let params: [String: String] = [
+            "mid": "24832017",
+            "ps": "15",
+            "tid": "0",
+            "pn": "1",
+            "order": "pubdate",
+        ]
+        let signed = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1_717_415_280)
+        XCTAssertNotNil(signed["w_rid"])
+        XCTAssertEqual(signed["w_rid"]?.count, 32)
+        XCTAssertEqual(signed["wts"], "1717415280")
+        // All original params preserved
+        XCTAssertEqual(signed["mid"], "24832017")
+        XCTAssertEqual(signed["order"], "pubdate")
+    }
+
+    func testSignParamsDeterministic() {
+        let mixinKey = "abcdefghijklmnopqrstuvwxyz012345"
+        let params = ["mid": "123", "pn": "1"]
+        let result1 = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1000)
+        let result2 = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1000)
+        XCTAssertEqual(result1["w_rid"], result2["w_rid"])
+    }
+
+    // MARK: - arc/search response parsing
+
+    func testParsesArcSearchResponse() async throws {
+        let json = """
+        {
+          "code": 0,
+          "data": {
+            "list": {
+              "vlist": [
+                {
+                  "bvid": "BV1NE796rECh",
+                  "title": "测试视频",
+                  "created": 1717415280,
+                  "pic": "//i2.hdslb.com/cover.jpg",
+                  "author": "空山鸟语"
+                },
+                {
+                  "bvid": "BV2test",
+                  "title": "第二个视频",
+                  "created": 1717400000,
+                  "pic": "https://i2.hdslb.com/cover2.jpg",
+                  "author": "空山鸟语"
+                }
+              ]
+            },
+            "page": { "pn": 1, "ps": 15, "count": 1151 }
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(BilibiliArcSearchResponse.self, from: Data(json.utf8))
+        let service = BilibiliFeedService()
+        let videos = await service.parseArcSearchResponse(response)
+
+        XCTAssertEqual(videos.count, 2)
+        XCTAssertEqual(videos[0].videoID, "BV1NE796rECh")
+        XCTAssertEqual(videos[0].title, "测试视频")
+        XCTAssertEqual(videos[0].channelName, "空山鸟语")
+        XCTAssertEqual(videos[0].thumbnailURL, "https://i2.hdslb.com/cover.jpg")
+        XCTAssertEqual(videos[0].publishedDate, Date(timeIntervalSince1970: 1_717_415_280))
+        XCTAssertEqual(videos[0].url, "https://www.bilibili.com/video/BV1NE796rECh")
+    }
+
+    func testParsesEmptyArcSearchResponse() async throws {
+        let json = """
+        {
+          "code": 0,
+          "data": {
+            "list": { "vlist": [] },
+            "page": { "pn": 1, "ps": 15, "count": 0 }
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(BilibiliArcSearchResponse.self, from: Data(json.utf8))
+        let service = BilibiliFeedService()
+        let videos = await service.parseArcSearchResponse(response)
+        XCTAssertTrue(videos.isEmpty)
+    }
+
+    func testArcSearchResponseNullVlist() async throws {
+        let json = """
+        {
+          "code": 0,
+          "data": { "list": {} }
+        }
+        """
+        let response = try JSONDecoder().decode(BilibiliArcSearchResponse.self, from: Data(json.utf8))
+        let service = BilibiliFeedService()
+        let videos = await service.parseArcSearchResponse(response)
+        XCTAssertTrue(videos.isEmpty)
+    }
+
     // MARK: - Platform detection
 
     func testIsBilibiliURL() {

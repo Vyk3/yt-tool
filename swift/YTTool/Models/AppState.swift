@@ -172,7 +172,7 @@ final class AppState: ObservableObject {
     // MARK: - Private
 
     private let probeService = YtDlpProbeService()
-    private let downloadRunner = ProcessRunner()
+    private var downloadRunner = ProcessRunner()
     private let defaults: UserDefaults
     private var probeTask: Task<Void, Never>?
     private var downloadTask: Task<Void, Never>?
@@ -381,6 +381,9 @@ final class AppState: ObservableObject {
         }
 
         downloadTask?.cancel()
+        let previousRunner = downloadRunner
+        Task { try? await previousRunner.cancel() }
+        downloadRunner = ProcessRunner()
         let attemptID = beginDownloadAttempt()
         downloadState = .idle
 
