@@ -52,12 +52,21 @@ struct ContentView: View {
                 language: state.language,
                 newChannelURL: $state.subscriptionInputURL,
                 onAddToQueue: { url in
-                    state.addSingleURLToQueue(url)
-                    state.appMode = .queue
+                    if state.addSingleURLToQueue(url) {
+                        state.appMode = .queue
+                    }
                 }
             )
             .frame(maxWidth: 600)
             .frame(maxWidth: .infinity, alignment: .center)
+
+            if state.appMode == .subscriptions, let error = state.queueError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: 600)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
 
         case .settings:
             #if canImport(Sparkle)

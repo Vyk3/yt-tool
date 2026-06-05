@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Fixed
+- **Playlist 下拉中文本地化**：6 个 playlist picker 从硬编码 `.title` 改为 `Loc` 本地化函数，中文模式下正确显示中文选项。(#83)
+- **Retry 下载状态重置**：`retryDownload()` 现在先取消旧任务、作废旧 attemptID、重建 `ProcessRunner`，防止重试后进度卡住。(#83)
+- **add-to-queue 失败不切 tab**：订阅页点加入队列失败时保持在当前 tab 并就地显示错误，不再无条件跳转到队列 tab。(#83)
 - **bilibili arc/search feed + WBI 签名**：新增 `wbi/arc/search` 端点，通过 mixin key 排列 + MD5 签名获取频道全部投稿（不再仅限合集/系列）；-403 时带 stampede 保护刷新密钥；DecodingError 正确回落到 seasons 链路。(#82)
 - **YouTube RSS 4xx 快速失败**：404 等客户端错误不再重试（省去 ~4s 无效等待），仅对 5xx / 网络错误重试。(#82)
 - **下载进程竞态**：每次下载创建新 `ProcessRunner` 并显式终止上一个，杜绝遗留 yt-dlp 进程。(#82)

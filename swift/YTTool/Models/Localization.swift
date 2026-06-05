@@ -1027,6 +1027,66 @@ enum Loc {
         l == .chinese ? "已加入下载队列" : "Added to download queue"
     }
 
+    // MARK: Playlist enum titles
+
+    static func playlistModeTitle(_ mode: PlaylistMode, _ l: AppLanguage) -> String {
+        switch (mode, l) {
+        case (.onlyFirstItem, .chinese): "仅第一个"
+        case (.onlyFirstItem, .english): "Only first item"
+        case (.wholePlaylistBestVideo, .chinese): "整个播放列表：最佳视频"
+        case (.wholePlaylistBestVideo, .english): "Whole playlist: best video"
+        case (.wholePlaylistBestAudio, .chinese): "整个播放列表：最佳音频"
+        case (.wholePlaylistBestAudio, .english): "Whole playlist: best audio"
+        }
+    }
+
+    static func playlistVideoQualityTitle(_ s: PlaylistVideoQualityStrategy, _ l: AppLanguage) -> String {
+        switch (s, l) {
+        case (.bestCompatibility, .chinese): "最佳兼容性"
+        case (.bestCompatibility, .english): "Best compatibility"
+        case (.preferHigherQuality, .chinese): "偏好高画质"
+        case (.preferHigherQuality, .english): "Prefer higher quality"
+        }
+    }
+
+    static func playlistAudioQualityTitle(_ s: PlaylistAudioQualityStrategy, _ l: AppLanguage) -> String {
+        switch (s, l) {
+        case (.moreCompatible, .chinese): "更高兼容性"
+        case (.moreCompatible, .english): "More compatible"
+        case (.higherQuality, .chinese): "更高音质"
+        case (.higherQuality, .english): "Higher quality"
+        }
+    }
+
+    static func playlistSubtitleModeTitle(_ mode: PlaylistSubtitleMode, _ l: AppLanguage) -> String {
+        switch (mode, l) {
+        case (.none, .chinese): "无字幕"
+        case (.none, .english): "No subtitles"
+        case (.manual, .chinese): "手动字幕"
+        case (.manual, .english): "Manual subtitles"
+        case (.auto, .chinese): "自动字幕"
+        case (.auto, .english): "Auto subtitles"
+        }
+    }
+
+    static func playlistSegmentModeTitle(_ mode: PlaylistSegmentMode, _ l: AppLanguage) -> String {
+        switch (mode, l) {
+        case (.fullItem, .chinese): "完整项目"
+        case (.fullItem, .english): "Full item"
+        case (.fixedRange, .chinese): "固定时间范围"
+        case (.fixedRange, .english): "Fixed time range"
+        }
+    }
+
+    static func playlistFormatModeTitle(_ mode: PlaylistFormatMode, _ l: AppLanguage) -> String {
+        switch (mode, l) {
+        case (.unifiedStrategy, .chinese): "统一策略"
+        case (.unifiedStrategy, .english): "Unified strategy"
+        case (.perItemMapping, .chinese): "逐项映射"
+        case (.perItemMapping, .english): "Per-item mapping"
+        }
+    }
+
     // MARK: Format picker column headers (#6)
 
     static func colRes(_ l: AppLanguage) -> String {
