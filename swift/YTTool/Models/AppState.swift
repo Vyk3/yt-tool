@@ -616,9 +616,10 @@ final class AppState: ObservableObject {
         downloadTask?.cancel()
         invalidateDownloadAttempt()
         downloadTask = nil
+        // download() creates its own fresh ProcessRunner, so just cancel
+        // the current one — no need to allocate an intermediate runner.
         let previousRunner = downloadRunner
         Task { try? await previousRunner.cancel() }
-        downloadRunner = ProcessRunner()
         downloadState = .idle
         download()
     }

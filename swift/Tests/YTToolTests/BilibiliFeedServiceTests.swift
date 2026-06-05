@@ -188,13 +188,16 @@ final class BilibiliFeedServiceTests: XCTestCase {
             "pn": "1",
             "order": "pubdate",
         ]
-        let signed = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1_717_415_280)
-        XCTAssertNotNil(signed["w_rid"])
-        XCTAssertEqual(signed["w_rid"]?.count, 32)
-        XCTAssertEqual(signed["wts"], "1717415280")
+        let query = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1_717_415_280)
+        // Returns a complete query string with w_rid appended
+        XCTAssertTrue(query.contains("w_rid="))
+        // w_rid is 32 hex chars
+        let wRid = query.components(separatedBy: "w_rid=").last?.components(separatedBy: "&").first
+        XCTAssertEqual(wRid?.count, 32)
+        XCTAssertTrue(query.contains("wts=1717415280"))
         // All original params preserved
-        XCTAssertEqual(signed["mid"], "24832017")
-        XCTAssertEqual(signed["order"], "pubdate")
+        XCTAssertTrue(query.contains("mid=24832017"))
+        XCTAssertTrue(query.contains("order=pubdate"))
     }
 
     func testSignParamsDeterministic() {
@@ -202,7 +205,7 @@ final class BilibiliFeedServiceTests: XCTestCase {
         let params = ["mid": "123", "pn": "1"]
         let result1 = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1000)
         let result2 = BilibiliFeedService.signParams(params, mixinKey: mixinKey, timestamp: 1000)
-        XCTAssertEqual(result1["w_rid"], result2["w_rid"])
+        XCTAssertEqual(result1, result2)
     }
 
     // MARK: - arc/search response parsing

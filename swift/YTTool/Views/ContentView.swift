@@ -109,6 +109,7 @@ struct ContentView: View {
                         t.disablesAnimations = true
                         withTransaction(t) {
                             state.appMode = mode
+                            state.queueError = nil
                         }
                     } label: {
                         HStack(spacing: 4) {
