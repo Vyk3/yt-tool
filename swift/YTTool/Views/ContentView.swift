@@ -52,9 +52,8 @@ struct ContentView: View {
                 language: state.language,
                 newChannelURL: $state.subscriptionInputURL,
                 onAddToQueue: { url in
-                    if state.addSingleURLToQueue(url) {
-                        state.appMode = .queue
-                    }
+                    state.addSingleURLToQueue(url)
+                    state.appMode = .queue
                 }
             )
             .frame(maxWidth: 600)
