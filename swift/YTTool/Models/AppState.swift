@@ -613,6 +613,12 @@ final class AppState: ObservableObject {
     }
 
     func retryDownload() {
+        downloadTask?.cancel()
+        invalidateDownloadAttempt()
+        downloadTask = nil
+        let previousRunner = downloadRunner
+        Task { try? await previousRunner.cancel() }
+        downloadRunner = ProcessRunner()
         downloadState = .idle
         download()
     }
