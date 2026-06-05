@@ -10,8 +10,18 @@ Low / Medium / High
 
 ## 验证结果
 
+### PR / 普通 CI
+
 - [ ] `swift test --disable-sandbox --package-path swift` 通过
 - [ ] 其他验证（按需填写）:
+
+### Release / 发布验收（仅发版或发布演练时填写）
+
+- [ ] Release workflow 终态成功
+- [ ] `swift/dist/YTTool.app` bundle smoke test 通过
+- [ ] `YTTool.zip` / `YTTool.dmg` 已上传
+- [ ] 如更新 Sparkle：appcast 签名 PR 已创建或已合入
+- [ ] 未声称 Apple Developer ID 签名或 Apple 公证通过
 
 ## 文档影响
 

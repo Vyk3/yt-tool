@@ -26,6 +26,14 @@
 - macOS on Apple Silicon（M1 或更新）
 -->
 
+## 分发与验收
+
+<!--
+- 当前发布包为 ad-hoc signed，不是 Apple Developer ID signed，也未 Apple-notarized。
+- Gatekeeper 首次打开提示是预期行为；不要把 Sparkle Ed25519 签名写成 Apple 公证。
+- Release workflow 成功、ZIP/DMG 上传、appcast 更新只代表当前未公证分发链路通过。
+-->
+
 ## 已知问题（如有）
 
 <!--
