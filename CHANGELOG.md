@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### Changed
+- **macOS ad-hoc release hardening**：Release workflow 运行现有 bundle smoke test；yt-dlp 运行时更新在替换前校验 GitHub release asset SHA256 digest；文档明确当前产物为 ad-hoc signed、非 Developer ID signed、非 Apple notarized。
+
 ---
 
 ## [0.2.2] — 2026-06-03
