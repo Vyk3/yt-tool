@@ -1027,6 +1027,32 @@ enum Loc {
         l == .chinese ? "已加入下载队列" : "Added to download queue"
     }
 
+    // MARK: Playlist enum titles
+
+    static func playlistModeTitle(_ mode: PlaylistMode, _ l: AppLanguage) -> String {
+        mode.title(l)
+    }
+
+    static func playlistVideoQualityTitle(_ s: PlaylistVideoQualityStrategy, _ l: AppLanguage) -> String {
+        s.title(l)
+    }
+
+    static func playlistAudioQualityTitle(_ s: PlaylistAudioQualityStrategy, _ l: AppLanguage) -> String {
+        s.title(l)
+    }
+
+    static func playlistSubtitleModeTitle(_ mode: PlaylistSubtitleMode, _ l: AppLanguage) -> String {
+        mode.title(l)
+    }
+
+    static func playlistSegmentModeTitle(_ mode: PlaylistSegmentMode, _ l: AppLanguage) -> String {
+        mode.title(l)
+    }
+
+    static func playlistFormatModeTitle(_ mode: PlaylistFormatMode, _ l: AppLanguage) -> String {
+        mode.title(l)
+    }
+
     // MARK: Format picker column headers (#6)
 
     static func colRes(_ l: AppLanguage) -> String {

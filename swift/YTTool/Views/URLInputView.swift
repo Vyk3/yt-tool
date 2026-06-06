@@ -65,7 +65,7 @@ struct URLInputView: View {
 
                         Picker(Loc.playlistMode(language), selection: $playlistConfig.mode) {
                             ForEach(PlaylistMode.allCases) { mode in
-                                Text(mode.title).tag(mode)
+                                Text(Loc.playlistModeTitle(mode, language)).tag(mode)
                             }
                         }
                         .labelsHidden()
@@ -83,7 +83,7 @@ struct URLInputView: View {
                         ) {
                             Picker(Loc.videoQuality(language), selection: $playlistConfig.videoQualityStrategy) {
                                 ForEach(PlaylistVideoQualityStrategy.allCases) { strategy in
-                                    Text(strategy.title).tag(strategy)
+                                    Text(Loc.playlistVideoQualityTitle(strategy, language)).tag(strategy)
                                 }
                             }
                             .labelsHidden()
@@ -98,7 +98,7 @@ struct URLInputView: View {
                         ) {
                             Picker(Loc.audioQuality(language), selection: $playlistConfig.audioQualityStrategy) {
                                 ForEach(PlaylistAudioQualityStrategy.allCases) { strategy in
-                                    Text(strategy.title).tag(strategy)
+                                    Text(Loc.playlistAudioQualityTitle(strategy, language)).tag(strategy)
                                 }
                             }
                             .labelsHidden()
@@ -113,7 +113,7 @@ struct URLInputView: View {
                         ) {
                             Picker(Loc.playlistFormats(language), selection: $playlistConfig.formatMode) {
                                 ForEach(PlaylistFormatMode.allCases) { mode in
-                                    Text(mode.title).tag(mode)
+                                    Text(Loc.playlistFormatModeTitle(mode, language)).tag(mode)
                                 }
                             }
                             .labelsHidden()
@@ -135,7 +135,7 @@ struct URLInputView: View {
                         ) {
                             Picker(Loc.playlistSubtitles(language), selection: $playlistConfig.subtitleMode) {
                                 ForEach(PlaylistSubtitleMode.allCases) { mode in
-                                    Text(mode.title).tag(mode)
+                                    Text(Loc.playlistSubtitleModeTitle(mode, language)).tag(mode)
                                 }
                             }
                             .labelsHidden()
@@ -157,7 +157,7 @@ struct URLInputView: View {
                         ) {
                             Picker(Loc.playlistSegments(language), selection: $playlistConfig.segmentMode) {
                                 ForEach(PlaylistSegmentMode.allCases) { mode in
-                                    Text(mode.title).tag(mode)
+                                    Text(Loc.playlistSegmentModeTitle(mode, language)).tag(mode)
                                 }
                             }
                             .labelsHidden()

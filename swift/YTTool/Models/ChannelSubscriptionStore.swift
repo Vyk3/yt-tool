@@ -103,4 +103,10 @@ final class ChannelSubscriptionStore: ObservableObject {
             try? data.write(to: url, options: .atomic)
         }
     }
+
+    func saveAsync() {
+        Task { @MainActor in
+            save()
+        }
+    }
 }
