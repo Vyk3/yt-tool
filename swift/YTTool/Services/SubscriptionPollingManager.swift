@@ -172,9 +172,10 @@ final class SubscriptionPollingManager: ObservableObject {
         let previousLastVideoID = subscription.lastVideoID
         let previousLastCheckedDate = subscription.lastCheckedDate
 
-        store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
-
-        guard let previousLastVideoID else { return }
+        guard let previousLastVideoID else {
+            store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
+            return
+        }
         guard latest.videoID != previousLastVideoID else { return }
 
         let existingIDs = Set(newVideos.map(\.videoID))
@@ -190,7 +191,12 @@ final class SubscriptionPollingManager: ObservableObject {
             freshVideos[i].channelName = subscription.channelName
         }
 
-        guard !freshVideos.isEmpty else { return }
+        if freshVideos.isEmpty {
+            store.updateLastChecked(id: subscription.id, date: now, lastVideoID: previousLastVideoID)
+            return
+        }
+
+        store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
         newVideos.append(contentsOf: freshVideos)
         saveNewVideos()
 
