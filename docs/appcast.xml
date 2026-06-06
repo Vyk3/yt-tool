@@ -5,6 +5,45 @@
     <link>https://vyk3.github.io/yt-tool/appcast.xml</link>
     <language>en</language>
     <item>
+      <title>v0.2.3</title>
+      <pubDate>Fri, 06 Jun 2026 03:26:33 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.2.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>v0.2.3</h2>
+      ]]></description>
+      <enclosure
+        url="https://github.com/Vyk3/yt-tool/releases/download/v0.2.3/YTTool.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="PENDING"
+        length="81938948"
+      />
+    </item>
+    <item>
+      <title>v0.2.2</title>
+      <pubDate>Tue, 03 Jun 2026 13:42:29 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.2.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>v0.2.2</h2>
+        <h3>Added</h3>
+        <ul>
+          <li>bilibili subscription support — subscribe tab supports bilibili channels, auto-parse UP name and poll for new videos</li>
+          <li>Platform enum with .youtube / .bilibili platform identifier</li>
+          <li>BilibiliFeedService with curl subprocess for TLS fingerprint bypass</li>
+          <li>API fallback chain for UP name resolution</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/Vyk3/yt-tool/releases/download/v0.2.2/YTTool.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="PENDING"
+        length="81913513"
+      />
+    </item>
+    <item>
       <title>v0.2.1</title>
       <pubDate>Mon, 02 Jun 2026 18:00:00 +0000</pubDate>
       <sparkle:version>4</sparkle:version>

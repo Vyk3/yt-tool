@@ -40,8 +40,7 @@ jobs:
         run: |
           zsh scripts/build/swift/build.sh \
             --release \
-            --channel "${{ github.event.inputs.channel || 'stable' }}" \
-            --skip-test
+            --channel "${{ github.event.inputs.channel || 'stable' }}"
 
       - name: Sign ZIP with Sparkle Ed25519
         id: sign

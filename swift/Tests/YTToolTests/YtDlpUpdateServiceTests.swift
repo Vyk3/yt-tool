@@ -9,9 +9,21 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         {
             "tag_name": "2025.03.31",
             "assets": [
-                {"name": "yt-dlp", "browser_download_url": "https://example.com/yt-dlp"},
-                {"name": "yt-dlp_macos", "browser_download_url": "https://example.com/yt-dlp_macos"},
-                {"name": "yt-dlp_macos.zip", "browser_download_url": "https://example.com/yt-dlp_macos.zip"}
+                {
+                    "name": "yt-dlp",
+                    "browser_download_url": "https://example.com/yt-dlp",
+                    "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                },
+                {
+                    "name": "yt-dlp_macos",
+                    "browser_download_url": "https://example.com/yt-dlp_macos",
+                    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                    "name": "yt-dlp_macos.zip",
+                    "browser_download_url": "https://example.com/yt-dlp_macos.zip",
+                    "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
             ]
         }
         """.data(using: .utf8)!
@@ -19,6 +31,7 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         let info = try YtDlpUpdateService.parseRelease(from: json)
         XCTAssertEqual(info.version, "2025.03.31")
         XCTAssertEqual(info.downloadURL.absoluteString, "https://example.com/yt-dlp")
+        XCTAssertEqual(info.sha256, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
     }
 
     func testParseNightlyRelease() throws {
@@ -26,13 +39,18 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         {
             "tag_name": "2025.03.31.123456",
             "assets": [
-                {"name": "yt-dlp", "browser_download_url": "https://example.com/nightly/yt-dlp"}
+                {
+                    "name": "yt-dlp",
+                    "browser_download_url": "https://example.com/nightly/yt-dlp",
+                    "digest": "sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+                }
             ]
         }
         """.data(using: .utf8)!
 
         let info = try YtDlpUpdateService.parseRelease(from: json)
         XCTAssertEqual(info.version, "2025.03.31.123456")
+        XCTAssertEqual(info.sha256, "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
     }
 
     func testParseMissingMacOSAssetThrows() {
@@ -40,7 +58,11 @@ final class YtDlpUpdateServiceTests: XCTestCase {
         {
             "tag_name": "2025.03.31",
             "assets": [
-                {"name": "yt-dlp_linux", "browser_download_url": "https://example.com/yt-dlp_linux"}
+                {
+                    "name": "yt-dlp_linux",
+                    "browser_download_url": "https://example.com/yt-dlp_linux",
+                    "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                }
             ]
         }
         """.data(using: .utf8)!
@@ -49,6 +71,93 @@ final class YtDlpUpdateServiceTests: XCTestCase {
             let appError = error as? AppError
             XCTAssertNotNil(appError)
             XCTAssertTrue(appError?.recoverySuggestion?.contains("No yt-dlp zipapp") ?? false)
+        }
+    }
+
+    func testParseMissingDigestThrows() {
+        let json = """
+        {
+            "tag_name": "2025.03.31",
+            "assets": [
+                {"name": "yt-dlp", "browser_download_url": "https://example.com/yt-dlp"}
+            ]
+        }
+        """.data(using: .utf8)!
+
+        XCTAssertThrowsError(try YtDlpUpdateService.parseRelease(from: json)) { error in
+            let appError = error as? AppError
+            XCTAssertNotNil(appError)
+            XCTAssertTrue(appError?.recoverySuggestion?.contains("digest unavailable") ?? false)
+        }
+    }
+
+    func testParseUnsupportedDigestThrows() {
+        let json = """
+        {
+            "tag_name": "2025.03.31",
+            "assets": [
+                {
+                    "name": "yt-dlp",
+                    "browser_download_url": "https://example.com/yt-dlp",
+                    "digest": "sha512:0123"
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        XCTAssertThrowsError(try YtDlpUpdateService.parseRelease(from: json)) { error in
+            let appError = error as? AppError
+            XCTAssertNotNil(appError)
+            XCTAssertTrue(appError?.recoverySuggestion?.contains("Unsupported") ?? false)
+        }
+    }
+
+    func testParseInvalidSHA256DigestThrows() {
+        let json = """
+        {
+            "tag_name": "2025.03.31",
+            "assets": [
+                {
+                    "name": "yt-dlp",
+                    "browser_download_url": "https://example.com/yt-dlp",
+                    "digest": "sha256:not-a-valid-digest"
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        XCTAssertThrowsError(try YtDlpUpdateService.parseRelease(from: json)) { error in
+            let appError = error as? AppError
+            XCTAssertNotNil(appError)
+            XCTAssertTrue(appError?.recoverySuggestion?.contains("Invalid") ?? false)
+        }
+    }
+
+    func testVerifySHA256MatchesFileContents() throws {
+        let tempFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: false)
+        try Data("hello".utf8).write(to: tempFile)
+        defer { try? FileManager.default.removeItem(at: tempFile) }
+
+        try YtDlpUpdateService.verifySHA256(
+            of: tempFile,
+            expected: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        )
+    }
+
+    func testVerifySHA256RejectsMismatch() throws {
+        let tempFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: false)
+        try Data("hello".utf8).write(to: tempFile)
+        defer { try? FileManager.default.removeItem(at: tempFile) }
+
+        XCTAssertThrowsError(try YtDlpUpdateService.verifySHA256(
+            of: tempFile,
+            expected: "0000000000000000000000000000000000000000000000000000000000000000"
+        )) { error in
+            let appError = error as? AppError
+            XCTAssertNotNil(appError)
+            XCTAssertTrue(appError?.recoverySuggestion?.contains("SHA256 mismatch") ?? false)
         }
     }
 

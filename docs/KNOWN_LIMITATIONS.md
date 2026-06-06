@@ -31,7 +31,7 @@ Intel Mac 不在当前打包发布版的支持范围内。从源码构建不受�
 ## 3. macOS Gatekeeper / 分发签名（Apple 公证未完成）
 
 ### 现状
-`scripts/build/swift/build.sh` 使用 ad-hoc 签名（`codesign --sign -`）。
+`scripts/build/swift/build.sh` 使用 ad-hoc 签名（`codesign --sign -`），不是 Apple Developer ID 签名，也未通过 Apple 公证。Sparkle Ed25519 签名仅用于更新 ZIP 的完整性校验，不能替代 Apple Developer ID / notarization 信任链。
 
 ### 影响
 用户首次启动会看到"未经验证的开发者"弹窗；需右键点击 → 打开 绕过。
@@ -42,7 +42,20 @@ App 可正常运行，不会被系统实际阻断。
 
 ---
 
-## 4. 磁盘空间预检是 best-effort
+## 4. Hardened Runtime Library Validation 例外仍保留
+
+### 现状
+`YTTool.entitlements` 当前保留 `com.apple.security.cs.disable-library-validation`。应用会捆绑并执行 yt-dlp、ffmpeg、ffprobe 和嵌入式 Python runtime；在当前 ad-hoc 分发阶段，先保留该例外，避免误收窄导致运行时加载或执行路径回归。
+
+### 影响
+这是 Hardened Runtime 的运行时例外，安全边界比默认 Library Validation 更宽。当前发布验收只证明 ad-hoc bundle 完整性和应用可运行，不代表 Apple Developer ID / notarization 级别的分发信任。
+
+### 后续建议
+等准备 Apple Developer ID 签名和公证时，再拆分验证 app、内置二进制、嵌入式 Python Mach-O 的 entitlements，评估是否可以移除或收窄该例外。
+
+---
+
+## 5. 磁盘空间预检是 best-effort
 
 ### 现状
 下载前对可估大小的候选格式做磁盘空间预检。仅对能从 probe 数据中读取到预估大小的格式生效；无法预估大小的格式（如部分直播回放）不做预检。
@@ -52,7 +65,7 @@ App 可正常运行，不会被系统实际阻断。
 
 ---
 
-## 5. `live_chat` 轨道不是常规字幕
+## 6. `live_chat` 轨道不是常规字幕
 
 ### 现状
 对于直播回放等内容，`yt-dlp` 返回的某些"字幕"轨道其实是 `live_chat`。当前版本在字幕列表中会标记该轨道类型。
@@ -62,7 +75,7 @@ App 可正常运行，不会被系统实际阻断。
 
 ---
 
-## 6. Sparkle 更新弹窗语言需重启生效
+## 7. Sparkle 更新弹窗语言需重启生效
 
 ### 现状
 Sparkle 2.x 的本地化在进程启动时通过 `NSBundle.preferredLocalizations` 解析，结果在进程生命周期内缓存。应用启动时会根据用户保存的语言设置注入 `AppleLanguages` UserDefaults，确保 Sparkle 弹窗语言与应用内设置一致。
