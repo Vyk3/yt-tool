@@ -103,7 +103,10 @@ final class AppState: ObservableObject {
     // MARK: - Subscriptions
 
     let subscriptionStore = ChannelSubscriptionStore()
-    private(set) lazy var pollingManager = SubscriptionPollingManager(store: subscriptionStore)
+    private(set) lazy var pollingManager = SubscriptionPollingManager(
+        store: subscriptionStore,
+        onBilibiliLog: makeServiceLogger(scope: .feed)
+    )
 
     // MARK: - Update
 

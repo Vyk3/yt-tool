@@ -1,12 +1,31 @@
 import CryptoKit
 @preconcurrency import Foundation
 
+// MARK: - Anti-crawl resilience notes
+//
+// bilibili blocks URLSession via TLS fingerprinting; curl's fingerprint
+// currently passes. If curl gets blocked too, known alternatives:
+//   1. Cookie-based auth: extract SESSDATA/bili_jct from a browser login,
+//      pass via `-b` / `--cookie` to curl. Most reliable but requires
+//      user-provided credentials and periodic refresh.
+//   2. User-Agent rotation: cycle through recent browser UA strings per
+//      request. Helps against simple UA-based blocking, ineffective
+//      against TLS fingerprinting.
+//   3. curl_cffi / impersonate: a Python library that impersonates
+//      specific browser TLS fingerprints. Would require shipping a
+//      helper script or bridging via subprocess.
+//   4. Proxy rotation: route requests through residential proxies to
+//      avoid IP-based rate limiting.
+
 actor BilibiliFeedService {
     private static let cardURL = "https://api.bilibili.com/x/web-interface/card"
     private static let viewURL = "https://api.bilibili.com/x/web-interface/view"
     private static let seasonsURL = "https://api.bilibili.com/x/polymer/web-space/seasons_series_list"
     private static let navURL = "https://api.bilibili.com/x/web-interface/nav"
     private static let arcSearchURL = "https://api.bilibili.com/x/space/wbi/arc/search"
+
+    private static let maxRetries = 3
+    private static let baseRetryDelay: TimeInterval = 1.0
 
     // MARK: - WBI signing
 
@@ -21,15 +40,42 @@ actor BilibiliFeedService {
     private var wbiKeysFetchedAt: Date?
     private static let wbiKeysTTL: TimeInterval = 3600
 
-    init() {}
+    private let log: @Sendable (ServiceLogKind, String) -> Void
+
+    init(onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }) {
+        self.log = onLog
+    }
 
     // MARK: - HTTP (via curl)
 
-    /// Fetch JSON data from a URL using `/usr/bin/curl`.
+    /// Fetch JSON data from a URL using `/usr/bin/curl` with retry.
     ///
     /// bilibili's anti-bot rejects requests from URLSession based on
     /// TLS fingerprinting. curl's TLS fingerprint passes their checks.
+    /// Retries up to `maxRetries` times with exponential backoff on
+    /// transport-level failures (curl exit != 0 or empty response).
     private nonisolated func curlFetch(url: String) async throws -> Data {
+        var lastError: Error = FeedError.feedFetchFailed
+        for attempt in 0..<Self.maxRetries {
+            try Task.checkCancellation()
+            if attempt > 0 {
+                let delay = Self.baseRetryDelay * pow(2.0, Double(attempt - 1))
+                log(.lifecycle, "Retry \(attempt)/\(Self.maxRetries - 1) after \(String(format: "%.0f", delay))s")
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+            do {
+                return try await curlFetchOnce(url: url)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                log(.lifecycle, "curl failed (attempt \(attempt + 1)/\(Self.maxRetries)): \(url)")
+            }
+        }
+        throw lastError
+    }
+
+    private nonisolated func curlFetchOnce(url: String) async throws -> Data {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
         process.arguments = [
@@ -196,12 +242,18 @@ actor BilibiliFeedService {
     /// Primary: `wbi/arc/search` (returns all uploads, requires WBI signing).
     /// Fallback: `seasons_series_list` (only returns season/series videos).
     func fetchFeed(channelID: String) async throws -> [FeedVideo] {
+        log(.lifecycle, "Fetching feed for mid=\(channelID)")
         do {
-            return try await fetchArcSearchFeed(channelID: channelID)
+            let videos = try await fetchArcSearchFeed(channelID: channelID)
+            log(.lifecycle, "arc/search returned \(videos.count) videos for mid=\(channelID)")
+            return videos
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            return try await fetchSeasonsFeed(channelID: channelID)
+            log(.lifecycle, "arc/search failed for mid=\(channelID), falling back to seasons: \(error.localizedDescription)")
+            let videos = try await fetchSeasonsFeed(channelID: channelID)
+            log(.lifecycle, "seasons fallback returned \(videos.count) videos for mid=\(channelID)")
+            return videos
         }
     }
 
@@ -222,8 +274,12 @@ actor BilibiliFeedService {
 
         let response = try JSONDecoder().decode(BilibiliArcSearchResponse.self, from: data)
 
+        if response.code != 0 {
+            log(.stderr, "arc/search response code=\(response.code) message=\(response.message ?? "nil") for mid=\(channelID)")
+        }
+
         if response.code == -403, retryOnAuth {
-            // Only invalidate if no other request already refreshed the keys
+            log(.lifecycle, "WBI auth rejected (-403), refreshing keys")
             if wbiKeysFetchedAt == keysTimestamp {
                 invalidateWBIKeys()
             }
@@ -238,7 +294,7 @@ actor BilibiliFeedService {
         let data = try await curlFetch(
             url: "\(Self.seasonsURL)?mid=\(channelID)&page_num=1&page_size=20"
         )
-        return try parseFeedResponse(data: data, channelID: channelID)
+        return try parseFeedResponse(data: data, channelID: channelID, logContext: "fetchSeasonsFeed")
     }
 
     // MARK: - Channel resolution helpers
@@ -256,12 +312,17 @@ actor BilibiliFeedService {
         if let name = try? await fetchUploaderName(mid: mid) {
             return name
         }
+        log(.lifecycle, "card API failed for mid=\(mid), falling back to seasons→view chain")
 
         // Fallback — seasons → view chain
         let seasonsData = try await curlFetch(
             url: "\(Self.seasonsURL)?mid=\(mid)&page_num=1&page_size=1"
         )
         let seasonsResponse = try JSONDecoder().decode(BilibiliSeasonsResponse.self, from: seasonsData)
+
+        if seasonsResponse.code != 0 {
+            log(.stderr, "seasons response code=\(seasonsResponse.code) for mid=\(mid)")
+        }
 
         let bvid = seasonsResponse.data?.itemsLists?.seasonsList?.first?.archives?.first?.bvid
             ?? seasonsResponse.data?.itemsLists?.seriesList?.first?.archives?.first?.bvid
@@ -278,6 +339,9 @@ actor BilibiliFeedService {
     private func fetchUploaderName(mid: String) async throws -> String {
         let data = try await curlFetch(url: "\(Self.cardURL)?mid=\(mid)")
         let response = try JSONDecoder().decode(BilibiliCardResponse.self, from: data)
+        if response.code != 0 {
+            log(.stderr, "card response code=\(response.code) for mid=\(mid)")
+        }
         guard response.code == 0,
               let name = response.data?.card?.name,
               !name.isEmpty
@@ -290,6 +354,9 @@ actor BilibiliFeedService {
     private func resolveFromVideoView(bvid: String) async throws -> (channelID: String, channelName: String) {
         let data = try await curlFetch(url: "\(Self.viewURL)?bvid=\(bvid)")
         let response = try JSONDecoder().decode(BilibiliViewResponse.self, from: data)
+        if response.code != 0 {
+            log(.stderr, "view response code=\(response.code) for bvid=\(bvid)")
+        }
         guard response.code == 0,
               let owner = response.data?.owner,
               !owner.name.isEmpty
@@ -329,8 +396,11 @@ actor BilibiliFeedService {
     ///
     /// Collects all archive entries across seasons and series, then sorts
     /// by creation time (newest first) and returns the most recent 15.
-    func parseFeedResponse(data: Data, channelID _: String) throws -> [FeedVideo] {
+    func parseFeedResponse(data: Data, channelID _: String, logContext: String = "") throws -> [FeedVideo] {
         let response = try JSONDecoder().decode(BilibiliSeasonsResponse.self, from: data)
+        if response.code != 0 {
+            log(.stderr, "seasons response code=\(response.code)\(logContext.isEmpty ? "" : " (\(logContext))")")
+        }
         guard response.code == 0 else { throw FeedError.feedFetchFailed }
 
         let itemsLists = response.data?.itemsLists
@@ -432,6 +502,7 @@ private struct BilibiliNavResponse: Decodable {
 
 struct BilibiliArcSearchResponse: Decodable {
     var code: Int
+    var message: String?
     var data: ArcSearchData?
 
     struct ArcSearchData: Decodable {

@@ -9,7 +9,7 @@ final class SubscriptionPollingManager: ObservableObject {
 
     private let store: ChannelSubscriptionStore
     private let youtubeFeedService = YouTubeFeedService()
-    private let bilibiliFeedService = BilibiliFeedService()
+    private let bilibiliFeedService: BilibiliFeedService
     private nonisolated(unsafe) var timer: Timer?
 
     /// Default poll interval in seconds (30 minutes).
@@ -28,8 +28,13 @@ final class SubscriptionPollingManager: ObservableObject {
         }
     }
 
-    init(store: ChannelSubscriptionStore, pollInterval: TimeInterval? = nil) {
+    init(
+        store: ChannelSubscriptionStore,
+        pollInterval: TimeInterval? = nil,
+        onBilibiliLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
+    ) {
         self.store = store
+        self.bilibiliFeedService = BilibiliFeedService(onLog: onBilibiliLog)
         let stored = UserDefaults.standard.double(forKey: Self.pollIntervalKey)
         self.pollInterval = pollInterval ?? (stored > 0 ? stored : Self.defaultPollInterval)
         newVideos = Self.loadNewVideos()
