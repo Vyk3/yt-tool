@@ -563,7 +563,7 @@ final class AppState: ObservableObject {
                 await MainActor.run {
                     guard isCurrentDownloadAttempt(attemptID) else { return }
                     downloadTask = nil
-                    let mappedError = mapDownloadError(error)
+                    let mappedError = mapDownloadError(error, url: url)
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
                     self.recordDownloadResult(
@@ -580,7 +580,7 @@ final class AppState: ObservableObject {
                     let mappedError = mapDownloadError(AppError(
                         message: "Download failed.",
                         recoverySuggestion: error.localizedDescription
-                    ))
+                    ), url: url)
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
                     self.recordDownloadResult(
@@ -1131,7 +1131,7 @@ final class AppState: ObservableObject {
         "cookies are not valid", "unable to log in",
     ]
 
-    private func mapDownloadError(_ error: AppError) -> AppError {
+    private func mapDownloadError(_ error: AppError, url: String) -> AppError {
         let haystack = [error.message, error.recoverySuggestion]
             .compactMap { $0?.lowercased() }
             .joined(separator: "\n")
@@ -1146,7 +1146,7 @@ final class AppState: ObservableObject {
             )
         }
 
-        if isBilibiliURL(trimmedInputURL),
+        if isBilibiliURL(url),
            Self.cookieExpiryPatterns.contains(where: { haystack.contains($0) })
         {
             return AppError(
