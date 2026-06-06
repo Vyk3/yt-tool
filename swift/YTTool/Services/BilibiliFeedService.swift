@@ -107,30 +107,41 @@ actor BilibiliFeedService {
 
     nonisolated static func generateMixinKey(imgKey: String, subKey: String) -> String {
         let raw = Array(imgKey + subKey)
-        let mixed = mixinTable.compactMap { i -> Character? in
-            i < raw.count ? raw[i] : nil
+        guard raw.count >= mixinTable.count else {
+            // WBI keys too short — return what we can; signParams will
+            // produce a weak hash but callers already handle -403 retry.
+            let mixed = mixinTable.compactMap { i -> Character? in
+                i < raw.count ? raw[i] : nil
+            }
+            return String(mixed.prefix(32))
         }
+        let mixed = mixinTable.map { raw[$0] }
         return String(mixed.prefix(32))
     }
 
+    /// Sign parameters with WBI and return the complete percent-encoded query string.
+    ///
+    /// The returned string is ready to append after `?` — every value is
+    /// cleaned, percent-encoded, and the `w_rid` digest matches the encoded form.
     nonisolated static func signParams(
         _ params: [String: String],
         mixinKey: String,
         timestamp: Int? = nil
-    ) -> [String: String] {
+    ) -> String {
         var params = params
         params["wts"] = String(timestamp ?? Int(Date().timeIntervalSince1970))
 
         let sorted = params.sorted { $0.key < $1.key }
-        let query = sorted.map { key, value in
+        let encodedPairs = sorted.map { key, value in
             let cleaned = Self.wbiCleanValue(value)
             let encoded = cleaned.addingPercentEncoding(withAllowedCharacters: .wbiAllowed) ?? cleaned
-            return "\(key)=\(encoded)"
-        }.joined(separator: "&")
+            return (key, encoded)
+        }
+        let query = encodedPairs.map { "\($0.0)=\($0.1)" }.joined(separator: "&")
 
         let digest = Insecure.MD5.hash(data: Data((query + mixinKey).utf8))
-        params["w_rid"] = digest.map { String(format: "%02x", $0) }.joined()
-        return params
+        let wRid = digest.map { String(format: "%02x", $0) }.joined()
+        return "\(query)&w_rid=\(wRid)"
     }
 
     private nonisolated static func wbiCleanValue(_ value: String) -> String {
@@ -206,11 +217,7 @@ actor BilibiliFeedService {
             "pn": "1",
             "order": "pubdate",
         ]
-        let signed = Self.signParams(baseParams, mixinKey: mixinKey)
-
-        let query = signed.sorted { $0.key < $1.key }
-            .map { "\($0.key)=\($0.value)" }
-            .joined(separator: "&")
+        let query = Self.signParams(baseParams, mixinKey: mixinKey)
         let data = try await curlFetch(url: "\(Self.arcSearchURL)?\(query)")
 
         let response = try JSONDecoder().decode(BilibiliArcSearchResponse.self, from: data)
@@ -293,17 +300,27 @@ actor BilibiliFeedService {
 
     // MARK: - Response parsing
 
+    private nonisolated static func makeFeedVideo(
+        bvid: String, title: String, channelName: String,
+        timestamp: Int, pic: String?
+    ) -> FeedVideo {
+        FeedVideo(
+            videoID: bvid,
+            title: title,
+            channelName: channelName,
+            publishedDate: Date(timeIntervalSince1970: TimeInterval(timestamp)),
+            url: "https://www.bilibili.com/video/\(bvid)",
+            thumbnailURL: normalizePicURL(pic ?? "")
+        )
+    }
+
     func parseArcSearchResponse(_ response: BilibiliArcSearchResponse) -> [FeedVideo] {
         guard let vlist = response.data?.list?.vlist else { return [] }
         return vlist.prefix(15).map { item in
-            let normalizedPic = Self.normalizePicURL(item.pic ?? "")
-            return FeedVideo(
-                videoID: item.bvid,
-                title: item.title,
+            Self.makeFeedVideo(
+                bvid: item.bvid, title: item.title,
                 channelName: item.author ?? "",
-                publishedDate: Date(timeIntervalSince1970: TimeInterval(item.created)),
-                url: "https://www.bilibili.com/video/\(item.bvid)",
-                thumbnailURL: normalizedPic
+                timestamp: item.created, pic: item.pic
             )
         }
     }
@@ -330,20 +347,13 @@ actor BilibiliFeedService {
         allArchives.sort { $0.ctime > $1.ctime }
         let top = allArchives.prefix(15)
 
-        // We need the uploader name; archives don't carry it.
-        // The channelName will be set by SubscriptionPollingManager from the
-        // stored subscription, or resolved during channel add. For now use
-        // the channelID as a placeholder — the polling manager's
-        // processNewVideos merges channelName from the subscription anyway.
+        // Archives don't carry the uploader name. SubscriptionPollingManager
+        // merges channelName from the stored subscription anyway.
         return top.map { archive in
-            let normalizedPic = Self.normalizePicURL(archive.pic ?? "")
-            return FeedVideo(
-                videoID: archive.bvid,
-                title: archive.title,
+            Self.makeFeedVideo(
+                bvid: archive.bvid, title: archive.title,
                 channelName: "",
-                publishedDate: Date(timeIntervalSince1970: TimeInterval(archive.ctime)),
-                url: "https://www.bilibili.com/video/\(archive.bvid)",
-                thumbnailURL: normalizedPic
+                timestamp: archive.ctime, pic: archive.pic
             )
         }
     }

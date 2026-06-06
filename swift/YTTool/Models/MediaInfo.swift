@@ -5,18 +5,16 @@ enum PlaylistMode: String, CaseIterable, Codable, Equatable, Identifiable {
     case wholePlaylistBestVideo
     case wholePlaylistBestAudio
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .onlyFirstItem:
-            "Only first item"
-        case .wholePlaylistBestVideo:
-            "Whole playlist: best video"
-        case .wholePlaylistBestAudio:
-            "Whole playlist: best audio"
+    func title(_ l: AppLanguage) -> String {
+        switch (self, l) {
+        case (.onlyFirstItem, .chinese): "仅第一个"
+        case (.onlyFirstItem, .english): "Only first item"
+        case (.wholePlaylistBestVideo, .chinese): "整个播放列表：最佳视频"
+        case (.wholePlaylistBestVideo, .english): "Whole playlist: best video"
+        case (.wholePlaylistBestAudio, .chinese): "整个播放列表：最佳音频"
+        case (.wholePlaylistBestAudio, .english): "Whole playlist: best audio"
         }
     }
 
@@ -29,16 +27,14 @@ enum PlaylistVideoQualityStrategy: String, CaseIterable, Codable, Equatable, Ide
     case bestCompatibility
     case preferHigherQuality
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .bestCompatibility:
-            "Best compatibility"
-        case .preferHigherQuality:
-            "Prefer higher quality"
+    func title(_ l: AppLanguage) -> String {
+        switch (self, l) {
+        case (.bestCompatibility, .chinese): "最佳兼容性"
+        case (.bestCompatibility, .english): "Best compatibility"
+        case (.preferHigherQuality, .chinese): "偏好高画质"
+        case (.preferHigherQuality, .english): "Prefer higher quality"
         }
     }
 }
@@ -47,16 +43,14 @@ enum PlaylistAudioQualityStrategy: String, CaseIterable, Codable, Equatable, Ide
     case moreCompatible
     case higherQuality
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .moreCompatible:
-            "More compatible"
-        case .higherQuality:
-            "Higher quality"
+    func title(_ l: AppLanguage) -> String {
+        switch (self, l) {
+        case (.moreCompatible, .chinese): "更高兼容性"
+        case (.moreCompatible, .english): "More compatible"
+        case (.higherQuality, .chinese): "更高音质"
+        case (.higherQuality, .english): "Higher quality"
         }
     }
 }
@@ -66,18 +60,16 @@ enum PlaylistSubtitleMode: String, CaseIterable, Codable, Equatable, Identifiabl
     case manual
     case auto
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .none:
-            "No subtitles"
-        case .manual:
-            "Manual subtitles"
-        case .auto:
-            "Auto subtitles"
+    func title(_ l: AppLanguage) -> String {
+        switch (self, l) {
+        case (.none, .chinese): "无字幕"
+        case (.none, .english): "No subtitles"
+        case (.manual, .chinese): "手动字幕"
+        case (.manual, .english): "Manual subtitles"
+        case (.auto, .chinese): "自动字幕"
+        case (.auto, .english): "Auto subtitles"
         }
     }
 }
@@ -86,16 +78,14 @@ enum PlaylistSegmentMode: String, CaseIterable, Codable, Equatable, Identifiable
     case fullItem
     case fixedRange
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .fullItem:
-            "Full item"
-        case .fixedRange:
-            "Fixed time range"
+    func title(_ l: AppLanguage) -> String {
+        switch (self, l) {
+        case (.fullItem, .chinese): "完整项目"
+        case (.fullItem, .english): "Full item"
+        case (.fixedRange, .chinese): "固定时间范围"
+        case (.fixedRange, .english): "Fixed time range"
         }
     }
 }
@@ -104,16 +94,14 @@ enum PlaylistFormatMode: String, CaseIterable, Codable, Equatable, Identifiable 
     case unifiedStrategy
     case perItemMapping
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .unifiedStrategy:
-            "Unified strategy"
-        case .perItemMapping:
-            "Per-item mapping"
+    func title(_ l: AppLanguage) -> String {
+        switch (self, l) {
+        case (.unifiedStrategy, .chinese): "统一策略"
+        case (.unifiedStrategy, .english): "Unified strategy"
+        case (.perItemMapping, .chinese): "逐项映射"
+        case (.perItemMapping, .english): "Per-item mapping"
         }
     }
 }
