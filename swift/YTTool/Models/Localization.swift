@@ -1103,6 +1103,20 @@ enum Loc {
         l == .chinese ? "文件已保存" : "File saved successfully"
     }
 
+    // MARK: Cookie expiry (#84)
+
+    static func cookieExpiredMessage(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "Cookies 可能已过期或失效。"
+            : "Cookies may be expired or invalid."
+    }
+
+    static func cookieExpiredSuggestion(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "请重新导出 cookies 文件并更新路径，然后重试。"
+            : "Re-export your cookies file, update the path, and try again."
+    }
+
     // MARK: Paste URL (#13)
 
     static func pasteURLHelp(_ l: AppLanguage) -> String {
