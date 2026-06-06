@@ -4,6 +4,7 @@ struct AppError: Error, Codable, Equatable {
     enum Kind: String, Codable, Equatable {
         case general
         case unsupportedURL
+        case cookieExpired
     }
 
     var kind: Kind

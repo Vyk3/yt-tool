@@ -955,6 +955,16 @@ final class AppState: ObservableObject {
         if queueUnsupportedCount > 0, queueError != nil {
             queueError = Loc.queueUnsupportedURLs(queueUnsupportedCount, language)
         }
+        // Cookie expiry error
+        if case let .failed(error) = downloadState,
+           error.kind == .cookieExpired
+        {
+            downloadState = .failed(AppError(
+                kind: .cookieExpired,
+                message: Loc.cookieExpiredMessage(language),
+                recoverySuggestion: Loc.cookieExpiredSuggestion(language)
+            ))
+        }
     }
 
     func applyAppearance() {
@@ -1116,6 +1126,11 @@ final class AppState: ObservableObject {
         return nil
     }
 
+    private static let cookieExpiryPatterns = [
+        "cookie", "sessdata", "expired", "login required",
+        "cookies are not valid", "unable to log in",
+    ]
+
     private func mapDownloadError(_ error: AppError) -> AppError {
         let haystack = [error.message, error.recoverySuggestion]
             .compactMap { $0?.lowercased() }
@@ -1128,6 +1143,16 @@ final class AppState: ObservableObject {
             return AppError(
                 message: "Insufficient disk space.",
                 recoverySuggestion: "Free up disk space or choose another output folder, then try again."
+            )
+        }
+
+        if isBilibiliURL(trimmedInputURL),
+           Self.cookieExpiryPatterns.contains(where: { haystack.contains($0) })
+        {
+            return AppError(
+                kind: .cookieExpired,
+                message: Loc.cookieExpiredMessage(language),
+                recoverySuggestion: Loc.cookieExpiredSuggestion(language)
             )
         }
 
