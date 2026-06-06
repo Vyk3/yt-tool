@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### Added
+- **bilibili 反爬韧性**：`curlFetch` 新增最多 3 次指数退避重试（1s/2s/4s），不再立即抛错；所有 bilibili API 响应码输出到 Session Log（`FEED` scope），便于调试反爬状态；文件顶部文档化 4 种 TLS 指纹被封后的替代方案。(#85)
+
 ### Changed
 - **macOS ad-hoc release hardening**：Release workflow 运行现有 bundle smoke test；yt-dlp 运行时更新在替换前校验 GitHub release asset SHA256 digest；文档明确当前产物为 ad-hoc signed、非 Developer ID signed、非 Apple notarized。
 
