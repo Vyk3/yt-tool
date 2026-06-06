@@ -1,8 +1,10 @@
+import CryptoKit
 import Foundation
 
 struct YtDlpReleaseInfo: Equatable {
     let version: String
     let downloadURL: URL
+    let sha256: String
 }
 
 struct YtDlpUpdateService {
@@ -68,7 +70,14 @@ struct YtDlpUpdateService {
         guard let downloadURL = URL(string: asset.browserDownloadURL) else {
             throw AppError(message: "Update check failed.", recoverySuggestion: "Invalid download URL.")
         }
-        return YtDlpReleaseInfo(version: release.tagName, downloadURL: downloadURL)
+        guard let digest = asset.digest else {
+            throw AppError(
+                message: "Update check failed.",
+                recoverySuggestion: "GitHub release asset digest unavailable for release \(release.tagName)."
+            )
+        }
+        let sha256 = try parseSHA256Digest(digest, version: release.tagName)
+        return YtDlpReleaseInfo(version: release.tagName, downloadURL: downloadURL, sha256: sha256)
     }
 
     // MARK: - Install
@@ -82,6 +91,8 @@ struct YtDlpUpdateService {
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
         onVerifying()
+
+        try Self.verifySHA256(of: tempURL, expected: release.sha256)
 
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o755],
@@ -176,6 +187,44 @@ struct YtDlpUpdateService {
             var request = URLRequest(url: url)
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
             session.downloadTask(with: request).resume()
+        }
+    }
+
+    static func parseSHA256Digest(_ digest: String, version: String) throws -> String {
+        let prefix = "sha256:"
+        guard digest.lowercased().hasPrefix(prefix) else {
+            throw AppError(
+                message: "Update check failed.",
+                recoverySuggestion: "Unsupported release asset digest for release \(version)."
+            )
+        }
+
+        let value = String(digest.dropFirst(prefix.count)).lowercased()
+        let isHex = value.count == 64 && value.allSatisfy { character in
+            character.isNumber || ("a" ... "f").contains(character)
+        }
+        guard isHex else {
+            throw AppError(
+                message: "Update check failed.",
+                recoverySuggestion: "Invalid release asset SHA256 digest for release \(version)."
+            )
+        }
+        return value
+    }
+
+    static func sha256Hex(of url: URL) throws -> String {
+        let data = try Data(contentsOf: url)
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func verifySHA256(of url: URL, expected: String) throws {
+        let actual = try sha256Hex(of: url)
+        guard actual == expected.lowercased() else {
+            throw AppError(
+                message: "Update verification failed.",
+                recoverySuggestion: "Downloaded yt-dlp SHA256 mismatch."
+            )
         }
     }
 
@@ -283,10 +332,12 @@ struct GitHubRelease: Codable {
 struct GitHubAsset: Codable {
     let name: String
     let browserDownloadURL: String
+    let digest: String?
 
     enum CodingKeys: String, CodingKey {
         case name
         case browserDownloadURL = "browser_download_url"
+        case digest
     }
 }
 

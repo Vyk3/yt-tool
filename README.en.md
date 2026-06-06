@@ -32,7 +32,7 @@ Alternatively, download `YTTool.zip`, extract it, and drag `YTTool.app` to Appli
 
 ### "Cannot verify developer" on first launch
 
-This is a common Gatekeeper prompt for unsigned apps. To allow it:
+Current release builds are ad-hoc signed, not Apple Developer ID signed, and not Apple-notarized. This Gatekeeper prompt is expected for this distribution model and does not mean the download is damaged. To allow it:
 
 - Right-click `YTTool.app` in Finder → Open → Confirm Open
 - System Settings → Privacy & Security → Open Anyway
