@@ -9,6 +9,9 @@
 ### Added
 - **bilibili 反爬韧性**：`curlFetch` 新增最多 3 次指数退避重试（1s/2s/4s），不再立即抛错；所有 bilibili API 响应码输出到 Session Log（`FEED` scope），便于调试反爬状态；文件顶部文档化 4 种 TLS 指纹被封后的替代方案。(#85)
 
+### Fixed
+- **bilibili 订阅误报旧视频为新**：`processNewVideos` 新增日期守卫，仅 `publishedDate > max(lastCheckedDate, now - 7天)` 的视频才视为新上传；锚点仅在有新视频展示给用户时才推进，防止 `seasons_series_list` 返回不稳定集合时永久丢失视频。(#95)
+
 ### Changed
 - **macOS ad-hoc release hardening**：Release workflow 运行现有 bundle smoke test；yt-dlp 运行时更新在替换前校验 GitHub release asset SHA256 digest；文档明确当前产物为 ad-hoc signed、非 Developer ID signed、非 Apple notarized。
 
