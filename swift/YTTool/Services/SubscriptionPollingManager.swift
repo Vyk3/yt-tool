@@ -34,7 +34,7 @@ final class SubscriptionPollingManager: ObservableObject {
         onBilibiliLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) {
         self.store = store
-        self.bilibiliFeedService = BilibiliFeedService(onLog: onBilibiliLog)
+        bilibiliFeedService = BilibiliFeedService(onLog: onBilibiliLog)
         let stored = UserDefaults.standard.double(forKey: Self.pollIntervalKey)
         self.pollInterval = pollInterval ?? (stored > 0 ? stored : Self.defaultPollInterval)
         newVideos = Self.loadNewVideos()
@@ -133,45 +133,73 @@ final class SubscriptionPollingManager: ObservableObject {
         }
     }
 
+    nonisolated static func filterFreshVideos(
+        from videos: [FeedVideo],
+        previousLastVideoID: String,
+        lastCheckedDate: Date?,
+        now: Date,
+        existingNewVideoIDs: Set<String>
+    ) -> [FeedVideo] {
+        let maxLookback: TimeInterval = 7 * 24 * 3600
+
+        var candidates: [FeedVideo] = []
+        for video in videos {
+            if video.videoID == previousLastVideoID { break }
+            candidates.append(video)
+        }
+
+        let cutoff = max(
+            lastCheckedDate ?? .distantPast,
+            now.addingTimeInterval(-maxLookback)
+        )
+        candidates = candidates.filter { video in
+            guard let pubDate = video.publishedDate else { return false }
+            return pubDate > cutoff
+        }
+
+        var seen = existingNewVideoIDs
+        return candidates.filter { seen.insert($0.videoID).inserted }
+    }
+
     private func processNewVideos(_ videos: [FeedVideo], for subscription: ChannelSubscription) {
         guard let latest = videos.first else { return }
 
-        // Update channel name if feed provides a fresher one.
         if !latest.channelName.isEmpty {
             store.updateChannelName(id: subscription.id, name: latest.channelName)
         }
 
         let now = Date()
         let previousLastVideoID = subscription.lastVideoID
+        let previousLastCheckedDate = subscription.lastCheckedDate
 
-        // Update bookmark to the newest video.
-        store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
-
-        // On first check (no previous bookmark), don't flood notifications.
-        guard let previousLastVideoID else { return }
+        guard let previousLastVideoID else {
+            store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
+            return
+        }
         guard latest.videoID != previousLastVideoID else { return }
 
-        // Collect all new videos (those published after the previously-seen one).
-        var freshVideos: [FeedVideo] = []
-        for video in videos {
-            if video.videoID == previousLastVideoID { break }
-            // Avoid duplicates in the newVideos list.
-            if !newVideos.contains(where: { $0.videoID == video.videoID }) {
-                var v = video
-                // Bilibili feed entries don't carry the author name;
-                // fill it from the stored subscription.
-                if v.channelName.isEmpty {
-                    v.channelName = subscription.channelName
-                }
-                freshVideos.append(v)
-            }
+        let existingIDs = Set(newVideos.map(\.videoID))
+        var freshVideos = Self.filterFreshVideos(
+            from: videos,
+            previousLastVideoID: previousLastVideoID,
+            lastCheckedDate: previousLastCheckedDate,
+            now: now,
+            existingNewVideoIDs: existingIDs
+        )
+
+        for i in freshVideos.indices where freshVideos[i].channelName.isEmpty {
+            freshVideos[i].channelName = subscription.channelName
         }
 
-        guard !freshVideos.isEmpty else { return }
+        if freshVideos.isEmpty {
+            store.updateLastChecked(id: subscription.id, date: now, lastVideoID: previousLastVideoID)
+            return
+        }
+
+        store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
         newVideos.append(contentsOf: freshVideos)
         saveNewVideos()
 
-        // Send a single notification summarizing new uploads.
         sendNotification(videos: freshVideos, channelName: subscription.channelName)
     }
 
