@@ -30,6 +30,7 @@
 # Local config (machine-specific, not for VCS)
 /.mcp.json
 /.claude/
+/.codegraph/
 
 # Local-only design notes
 /GUI_ARCHITECTURE.md
