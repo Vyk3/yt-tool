@@ -54,6 +54,7 @@
 /scripts/gen_allowlist.py
 /scripts/release/*
 !/scripts/release/extract_release_notes.py
+!/scripts/release/check_release_readiness.py
 !/scripts/release/update_appcast.py
 
 # Xcode per-user settings
