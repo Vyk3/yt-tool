@@ -4,16 +4,20 @@
 
 ---
 
-## [Unreleased]
+## [0.2.4] — 2026-06-19
 
 ### Added
 - **bilibili 反爬韧性**：`curlFetch` 新增最多 3 次指数退避重试（1s/2s/4s），不再立即抛错；所有 bilibili API 响应码输出到 Session Log（`FEED` scope），便于调试反爬状态；文件顶部文档化 4 种 TLS 指纹被封后的替代方案。(#85)
+- **bilibili cookie 过期检测**：针对 bilibili 下载，识别 cookie 过期/失效错误（匹配 `SESSDATA`、`expired`、`login required` 等模式）并给出本地化提示，引导用户重新导出 cookies 文件。(#84)
 
 ### Fixed
 - **bilibili 订阅误报旧视频为新**：`processNewVideos` 新增日期守卫，仅 `publishedDate > max(lastCheckedDate, now - 7天)` 的视频才视为新上传；锚点仅在有新视频展示给用户时才推进，防止 `seasons_series_list` 返回不稳定集合时永久丢失视频。(#95)
+- **cookie 过期检测使用已捕获 URL**：`mapDownloadError` 使用下载开始时捕获的 URL 而非当前输入框值，避免用户在下载中编辑 URL 导致判断偏移。(#91)
+- **appcast 自动创建缺失条目**：`update_appcast.py` 遇到版本条目不存在时自动生成新 `<item>`，不再报错退出。(#89)
 
 ### Changed
 - **macOS ad-hoc release hardening**：Release workflow 运行现有 bundle smoke test；yt-dlp 运行时更新在替换前校验 GitHub release asset SHA256 digest；文档明确当前产物为 ad-hoc signed、非 Developer ID signed、非 Apple notarized。
+- **Release readiness gate**：发版前自动检查 CHANGELOG 覆盖、appcast.xml 条目、tag 可达性；release workflow 集成 `check_release_readiness.py`，移除 fallback release notes。
 
 ---
 

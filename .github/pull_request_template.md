@@ -17,6 +17,7 @@ Low / Medium / High
 
 ### Release / 发布验收（仅发版或发布演练时填写）
 
+- [ ] `python3 scripts/release/check_release_readiness.py v<version> --tag-ref HEAD --main-ref main` 通过
 - [ ] Release workflow 终态成功
 - [ ] `swift/dist/YTTool.app` bundle smoke test 通过
 - [ ] `YTTool.zip` / `YTTool.dmg` 已上传
