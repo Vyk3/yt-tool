@@ -5,6 +5,22 @@
     <link>https://vyk3.github.io/yt-tool/appcast.xml</link>
     <language>en</language>
     <item>
+      <title>v0.2.4</title>
+      <pubDate>Thu, 18 Jun 2026 17:18:12 GMT</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.2.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h2>v0.2.4</h2>
+      ]]></description>
+      <enclosure
+        url="https://github.com/Vyk3/yt-tool/releases/download/v0.2.4/YTTool.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="WUIAeYBlCV2AZmPGl5A0TmakiB/cB2HsLG4Tc1DOY9NMJXOmJZ19a12JoLbZjg3ouLcZ7Li+FpU4Ey5kSYgMBQ=="
+        length="81948828"
+      />
+    </item>
+    <item>
       <title>v0.2.3</title>
       <pubDate>Fri, 06 Jun 2026 03:26:33 +0000</pubDate>
       <sparkle:version>4</sparkle:version>
