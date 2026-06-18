@@ -120,8 +120,12 @@ def validate(args: argparse.Namespace) -> list[Issue]:
         if issue:
             issues.append(issue)
 
-    for check in (check_changelog, check_appcast):
-        issue = check(repo_root, version)
+    issue = check_changelog(repo_root, version)
+    if issue:
+        issues.append(issue)
+
+    if not args.skip_appcast_check:
+        issue = check_appcast(repo_root, version)
         if issue:
             issues.append(issue)
 
@@ -153,6 +157,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--skip-git-ref-check",
         action="store_true",
         help="Only validate CHANGELOG.md and docs/appcast.xml.",
+    )
+    parser.add_argument(
+        "--skip-appcast-check",
+        action="store_true",
+        help="Skip appcast.xml check (appcast entry is a post-build artifact).",
     )
     return parser.parse_args(argv[1:])
 

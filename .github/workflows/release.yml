@@ -36,7 +36,8 @@ jobs:
           python3 scripts/release/check_release_readiness.py \
             "${{ github.ref_name }}" \
             --tag-ref "$GITHUB_SHA" \
-            --main-ref FETCH_HEAD
+            --main-ref FETCH_HEAD \
+            --skip-appcast-check
 
       - name: Build release app
         run: |
