@@ -16,8 +16,8 @@ FIXTURES_DIR="$SCRIPT_DIR/fixtures"
   cd "$FIXTURES_DIR"
   shasum -a 256 -c SHA256SUMS || { echo "FATAL: fixture SHA mismatch" >&2; exit 1; }
   UNLISTED="$(comm -23 \
-    <(find . -type f ! -name 'GENERATION.md' ! -name 'SHA256SUMS' ! -name '.*' | sed 's|^\./||' | sort) \
-    <(sed 's/^[0-9a-f]*  //' SHA256SUMS | sort))"
+    <(find . -type f ! -name 'GENERATION.md' ! -name 'SHA256SUMS' ! -name '.*' | sed 's|^\./||' | LC_ALL=C sort) \
+    <(sed 's/^[0-9a-f]*  //' SHA256SUMS | LC_ALL=C sort))"
   [[ -z "$UNLISTED" ]] || { echo "FATAL: unlisted fixtures: $UNLISTED" >&2; exit 1; }
 ) || exit 1
 

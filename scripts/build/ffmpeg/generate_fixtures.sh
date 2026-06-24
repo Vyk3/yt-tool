@@ -130,7 +130,7 @@ mv hls/seg0_enc.ts hls/seg0.ts
 
 # Regenerate SHA256SUMS
 find . -type f ! -name 'GENERATION.md' ! -name 'SHA256SUMS' ! -name '.*' \
-  | sed 's|^\./||' | sort | while read -r f; do
+  | sed 's|^\./||' | LC_ALL=C sort | while read -r f; do
   shasum -a 256 "$f"
 done > SHA256SUMS
 
