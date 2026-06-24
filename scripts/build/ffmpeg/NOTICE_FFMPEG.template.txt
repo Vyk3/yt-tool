@@ -1,0 +1,24 @@
+NOTICE: This application includes ffmpeg and ffprobe, built from FFmpeg
+${FFMPEG_VERSION} (LGPL 2.1+) with libmp3lame from LAME ${LAME_VERSION}
+(LGPL 2.0).
+
+These binaries are statically linked. Under the LGPL, you may modify
+and replace them. To rebuild:
+
+1. Download the source tarballs from the corresponding dependency release
+   or directly from:
+   - FFmpeg: https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz
+   - LAME: https://sourceforge.net/projects/lame/files/lame/${LAME_VERSION}/lame-${LAME_VERSION}.tar.gz
+
+2. Run scripts/build/ffmpeg/build_minimal.sh from the yt-tool repository.
+
+3. Replace the binaries in the app bundle:
+   cp ffmpeg  YTTool.app/Contents/Resources/Binaries/ffmpeg
+   cp ffprobe YTTool.app/Contents/Resources/Binaries/ffprobe
+
+4. Re-sign the app:
+   codesign --force --sign - YTTool.app/Contents/Resources/Binaries/ffmpeg
+   codesign --force --sign - YTTool.app/Contents/Resources/Binaries/ffprobe
+   codesign --force --deep --sign - YTTool.app
+
+See LICENSE_LGPL.txt and LICENSE_LAME.txt for full license texts.

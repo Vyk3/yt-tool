@@ -1,29 +1,37 @@
-FFmpeg License Notice
-=====================
+FFmpeg / ffprobe — Minimal LGPL Static Build for yt-tool
 
-This project may bundle FFmpeg/FFprobe binaries in release artifacts.
+This application includes custom-built ffmpeg and ffprobe binaries.
 
-The bundled FFmpeg binaries are downloaded from pinned source URLs and
-verified with SHA256 checksums during the build process.
+Components:
+  - FFmpeg 8.1.1 — LGPL 2.1+ (https://ffmpeg.org)
+  - LAME 3.100   — LGPL 2.0  (https://lame.sourceforge.io)
 
-License responsibility
-----------------------
+License:
+  FFmpeg is licensed under the GNU Lesser General Public License version
+  2.1 or later (LGPL 2.1+). This build does NOT enable --enable-gpl or
+  --enable-nonfree; all included components are LGPL-compatible.
 
-- FFmpeg is an independent upstream project.
-- Its licensing terms are defined by upstream FFmpeg and the specific
-  binary build provider used for distribution.
-- Maintainers must ensure the selected binary build is compatible with the
-  intended distribution policy (for example LGPL-focused builds), and must
-  preserve required attribution and license notices.
+  LAME (libmp3lame) is licensed under the GNU Library General Public
+  License version 2 (LGPL 2.0). It is statically linked into the ffmpeg
+  binary.
 
-References
-----------
+Full license texts:
+  - scripts/build/ffmpeg/licenses/LICENSE_LGPL.txt (FFmpeg, LGPL 2.1)
+  - scripts/build/ffmpeg/licenses/LICENSE_LAME.txt (LAME, LGPL 2.0)
 
-- FFmpeg project: https://ffmpeg.org/
-- FFmpeg legal overview: https://ffmpeg.org/legal.html
+Source availability:
+  Exact corresponding source tarballs are provided alongside the binary
+  in the dependency release (tag: ffmpeg-8.1.1-minimal-rN). You may also
+  download them directly:
+  - FFmpeg: https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz
+  - LAME:   https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz
 
-Practical note
---------------
+Rebuilding and replacing:
+  Under the LGPL you may modify and replace the statically linked
+  libraries. See scripts/build/ffmpeg/build_minimal.sh and the NOTICE
+  file in the app bundle for instructions.
 
-If your release process changes FFmpeg source/provider, update this notice
-and accompanying release documentation accordingly.
+Build configuration:
+  See scripts/build/ffmpeg/build_minimal.sh for the exact configure
+  flags used. The build uses --disable-everything + explicit --enable-*
+  for only the codecs, formats, and protocols required by yt-tool.
