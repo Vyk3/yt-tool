@@ -29,7 +29,7 @@ struct YtDlpProbeService {
     func probe(
         url: String,
         cookiesFilePath: String? = nil,
-        extraArguments: [String] = [],
+        extraOptions: [ParsedExtraOption] = [],
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) async throws -> MediaInfo {
         let ytDlp = try locator.locate(.ytDlp)
@@ -39,7 +39,7 @@ struct YtDlpProbeService {
             arguments: buildProbeArguments(
                 url: url,
                 cookiesFilePath: cookiesFilePath,
-                extraArguments: extraArguments
+                extraOptions: extraOptions
             )
         )
         onLog(.command, config.redactedCommandLine.joined(separator: " "))

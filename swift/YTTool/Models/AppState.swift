@@ -79,7 +79,11 @@ final class AppState: ObservableObject {
     @Published var selectedSubtitle: SubtitleTrack?
     @Published var audioTranscodeFormat: AudioTranscodeFormat = .original
     @Published var cookiesFilePath: String = ""
-    @Published var extraYtDlpArguments: String = ""
+    @Published var extraYtDlpArguments: String = "" {
+        didSet { cachedParsedExtraOptions = Result { try parseExtraOptions(extraYtDlpArguments) } }
+    }
+
+    private(set) var cachedParsedExtraOptions: Result<[ParsedExtraOption], Error> = .success([])
     @Published var downloaderPreference: DownloaderPreference = .native {
         didSet { defaults.set(downloaderPreference.rawValue, forKey: StorageKey.downloaderPreference) }
     }
@@ -267,11 +271,11 @@ final class AppState: ObservableObject {
         probeTask = Task {
             do {
                 let normalizedCookiesFilePath = try normalizedCookiesFilePathOrThrow()
-                let parsedExtraArguments = try parseExtraYtDlpArgumentsOrThrow()
+                let parsedOptions = try parsedExtraOptionsOrThrow()
                 let info = try await probeService.probe(
                     url: url,
                     cookiesFilePath: normalizedCookiesFilePath,
-                    extraArguments: parsedExtraArguments,
+                    extraOptions: parsedOptions,
                     onLog: makeServiceLogger(scope: .probe)
                 )
                 await MainActor.run {
@@ -394,14 +398,15 @@ final class AppState: ObservableObject {
         let audioId = isWholePlaylistDownload ? nil : selectedAudioFormat?.id
         let subtitleTrack: SubtitleTrack?
         let cookiesPath: String
-        let passthroughArgs: [String]
+        let parsedOptions: [ParsedExtraOption]
+        let managedArgs: [String]
         do {
             subtitleTrack = try isWholePlaylistDownload
                 ? wholePlaylistSubtitleTrackOrThrow()
                 : selectedSubtitle
             cookiesPath = try normalizedCookiesFilePathOrThrow() ?? ""
-            passthroughArgs = try parseExtraYtDlpArgumentsOrThrow()
-                + (isWholePlaylistDownload ? wholePlaylistArgumentsOrThrow() : [])
+            parsedOptions = try parsedExtraOptionsOrThrow()
+            managedArgs = try isWholePlaylistDownload ? wholePlaylistArgumentsOrThrow() : []
         } catch let error as AppError {
             downloadState = .failed(error)
             appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
@@ -442,7 +447,8 @@ final class AppState: ObservableObject {
             subtitleTrack: subtitleTrack,
             audioTranscodeFormat: effectiveTranscode,
             cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
-            extraArguments: passthroughArgs,
+            extraOptions: parsedOptions,
+            managedArguments: managedArgs,
             playlistMode: playlistConfig.mode,
             playlistVideoQualityStrategy: playlistConfig.videoQualityStrategy,
             playlistAudioQualityStrategy: playlistConfig.audioQualityStrategy,
@@ -470,7 +476,7 @@ final class AppState: ObservableObject {
                     for item in perItemSelections {
                         guard isCurrentDownloadAttempt(attemptID) else { return }
                         appendLog(scope: .download, level: .info, message: "Downloading playlist item \(item.index) with format \(item.formatSelector)")
-                        let itemArgs = passthroughArgs + ["--playlist-items", "\(item.index)"]
+                        let itemManagedArgs = managedArgs + ["--playlist-items", "\(item.index)"]
                         let perItemTranscode = effectivePerItemAudioTranscodeFormat(
                             formatSelector: item.formatSelector,
                             selectedFormat: effectiveTranscode
@@ -483,7 +489,8 @@ final class AppState: ObservableObject {
                             includeNoPlaylistOverride: false,
                             audioTranscodeFormat: perItemTranscode,
                             cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
-                            extraArguments: itemArgs,
+                            extraOptions: parsedOptions,
+                            managedArguments: itemManagedArgs,
                             subtitleTrack: subtitleTrack,
                             outputDirectory: outputDir,
                             playlistMode: .onlyFirstItem,
@@ -521,7 +528,8 @@ final class AppState: ObservableObject {
                         audioFormatId: audioId,
                         audioTranscodeFormat: effectiveTranscode,
                         cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
-                        extraArguments: passthroughArgs,
+                        extraOptions: parsedOptions,
+                        managedArguments: managedArgs,
                         subtitleTrack: subtitleTrack,
                         outputDirectory: outputDir,
                         playlistMode: playlistConfig.mode,
@@ -654,10 +662,10 @@ final class AppState: ObservableObject {
         }
 
         let normalizedCookies: String?
-        let parsedExtra: [String]
+        let parsedExtra: [ParsedExtraOption]
         do {
             normalizedCookies = try normalizedCookiesFilePathOrThrow()
-            parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
+            parsedExtra = try parsedExtraOptionsOrThrow()
         } catch let error as AppError {
             queueError = joinedErrorMessage(error)
             appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
@@ -671,7 +679,7 @@ final class AppState: ObservableObject {
         let config = QueueItemConfig(
             outputDirectory: outputDir,
             cookiesFilePath: normalizedCookies,
-            extraArguments: parsedExtra,
+            extraOptions: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
             qualityStrategy: queueQualityStrategy
@@ -706,10 +714,10 @@ final class AppState: ObservableObject {
         }
 
         let normalizedCookies: String?
-        let parsedExtra: [String]
+        let parsedExtra: [ParsedExtraOption]
         do {
             normalizedCookies = try normalizedCookiesFilePathOrThrow()
-            parsedExtra = try parseShellLikeArguments(extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines))
+            parsedExtra = try parsedExtraOptionsOrThrow()
         } catch let error as AppError {
             queueError = joinedErrorMessage(error)
             appendLog(scope: .download, level: .error, message: joinedErrorMessage(error))
@@ -723,7 +731,7 @@ final class AppState: ObservableObject {
         let config = QueueItemConfig(
             outputDirectory: outputDir,
             cookiesFilePath: normalizedCookies,
-            extraArguments: parsedExtra,
+            extraOptions: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
             qualityStrategy: queueQualityStrategy
@@ -1182,7 +1190,8 @@ final class AppState: ObservableObject {
         subtitleTrack: SubtitleTrack?,
         audioTranscodeFormat: AudioTranscodeFormat?,
         cookiesFilePath: String?,
-        extraArguments: [String],
+        extraOptions: [ParsedExtraOption],
+        managedArguments: [String],
         playlistMode: PlaylistMode,
         playlistVideoQualityStrategy: PlaylistVideoQualityStrategy,
         playlistAudioQualityStrategy: PlaylistAudioQualityStrategy,
@@ -1203,7 +1212,8 @@ final class AppState: ObservableObject {
         }
         let cookiesFlags = (cookiesFilePath?.isEmpty == false) ? " --cookies \"<cookies-file>\"" : ""
         let transcodeFlags = audioTranscodeFormat?.ytDlpAudioFormat.map { " -x --audio-format \($0)" } ?? ""
-        let extraFlags = extraArguments.isEmpty ? "" : " " + extraArguments.joined(separator: " ")
+        let rendered = renderExtraOptions(extraOptions, for: .download) + managedArguments
+        let extraFlags = rendered.isEmpty ? "" : " " + rendered.joined(separator: " ")
         let target = title ?? "playlist items"
         return "yt-dlp -f \(format)\(playlistFlag)\(subtitleFlags)\(cookiesFlags)\(transcodeFlags)\(extraFlags) -o \"\(outputDir.lastPathComponent)/%(title)s [%(resolution)s].%(ext)s\" …  # \(target)"
     }
@@ -1260,10 +1270,8 @@ final class AppState: ObservableObject {
         return normalized
     }
 
-    private func parseExtraYtDlpArgumentsOrThrow() throws -> [String] {
-        let raw = extraYtDlpArguments.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return [] }
-        return try parseShellLikeArguments(raw)
+    private func parsedExtraOptionsOrThrow() throws -> [ParsedExtraOption] {
+        try cachedParsedExtraOptions.get()
     }
 
     func wholePlaylistSubtitleTrackOrThrow() throws -> SubtitleTrack? {

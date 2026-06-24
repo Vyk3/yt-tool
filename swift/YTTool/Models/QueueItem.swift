@@ -32,7 +32,7 @@ enum QueueQualityStrategy: String, CaseIterable, Identifiable {
 struct QueueItemConfig: Equatable {
     let outputDirectory: URL
     let cookiesFilePath: String?
-    let extraArguments: [String]
+    let extraOptions: [ParsedExtraOption]
     let audioTranscodeFormat: AudioTranscodeFormat
     let downloaderPreference: DownloaderPreference
     let qualityStrategy: QueueQualityStrategy

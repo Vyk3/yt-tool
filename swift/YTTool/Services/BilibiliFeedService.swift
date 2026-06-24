@@ -2,6 +2,7 @@ import CryptoKit
 @preconcurrency import Foundation
 
 // MARK: - Anti-crawl resilience notes
+
 //
 // bilibili blocks URLSession via TLS fingerprinting; curl's fingerprint
 // currently passes. If curl gets blocked too, known alternatives:
@@ -43,7 +44,7 @@ actor BilibiliFeedService {
     private let log: @Sendable (ServiceLogKind, String) -> Void
 
     init(onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }) {
-        self.log = onLog
+        log = onLog
     }
 
     // MARK: - HTTP (via curl)
@@ -56,7 +57,7 @@ actor BilibiliFeedService {
     /// transport-level failures (curl exit != 0 or empty response).
     private nonisolated func curlFetch(url: String) async throws -> Data {
         var lastError: Error = FeedError.feedFetchFailed
-        for attempt in 0..<Self.maxRetries {
+        for attempt in 0 ..< Self.maxRetries {
             try Task.checkCancellation()
             if attempt > 0 {
                 let delay = Self.baseRetryDelay * pow(2.0, Double(attempt - 1))
@@ -427,6 +428,7 @@ actor BilibiliFeedService {
             )
         }
     }
+
     private nonisolated static func normalizePicURL(_ pic: String) -> String {
         if pic.hasPrefix("//") {
             return "https:\(pic)"

@@ -4,6 +4,19 @@
 
 ---
 
+## [0.2.5] — 2026-06-25
+
+### Changed
+- **额外参数 allowlist**：用户输入的额外 yt-dlp 参数从无限制模式改为 allowlist 模式。仅允许 18 个经过审核的选项（`--proxy`、`--limit-rate`、`--download-sections`、`--merge-output-format` 等），每个参数有独立的值校验。不在列表中的参数、短选项、`--` 分隔符均被拒绝。
+- **typed parse/render 数据流**：`parseExtraOptions()` 返回 `[ParsedExtraOption]` typed 结构，`renderExtraOptions()` 按 context（probe/download）过滤输出。probe 调用仅传递网络路由类参数（`--proxy`、`--force-ipv4/6`、`--retries`），download 调用传递全部参数。
+- **`--proxy` 日志脱敏**：命令行日志中 `--proxy` 的值自动脱敏为 `scheme://host:port`，移除 path/query/userinfo。
+- **cookies 引导文案更新**：移除不再支持的 `--cookies-from-browser chrome` 示例，改为引导用户使用浏览器扩展导出 cookies 文件。
+
+### Removed
+- **不再支持的额外参数**：`--extractor-args`、`--write-thumbnail`、`--no-write-thumbnail`、`--geo-bypass` 系列、`--user-agent`、`--referer`、`--cookies-from-browser`、`--remux-video`、`--recode-video`、`--audio-format`（已由 UI 控制）等参数不再被额外参数字段接受。
+
+---
+
 ## [0.2.4] — 2026-06-19
 
 ### Added

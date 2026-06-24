@@ -171,11 +171,31 @@ struct ProcessConfiguration {
             } else if result[index].hasPrefix("--cookies=") {
                 result[index] = "--cookies=<cookies-file>"
                 index += 1
+            } else if result[index] == "--proxy", result.indices.contains(index + 1) {
+                result[index + 1] = Self.redactProxyValue(result[index + 1])
+                index += 2
+            } else if result[index].hasPrefix("--proxy=") {
+                let value = String(result[index].dropFirst("--proxy=".count))
+                result[index] = "--proxy=\(Self.redactProxyValue(value))"
+                index += 1
             } else {
                 index += 1
             }
         }
         return result
+    }
+
+    private static func redactProxyValue(_ value: String) -> String {
+        guard let url = URL(string: value),
+              let scheme = url.scheme,
+              let host = url.host
+        else {
+            return "<proxy>"
+        }
+        if let port = url.port {
+            return "\(scheme)://\(host):\(port)"
+        }
+        return "\(scheme)://\(host)"
     }
 }
 

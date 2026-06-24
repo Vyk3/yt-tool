@@ -331,7 +331,7 @@ final class YtDlpDownloadServiceTests: XCTestCase {
             audioFormatId: "140",
             audioTranscodeFormat: .mp3,
             cookiesFilePath: "/tmp/cookies.txt",
-            extraArguments: ["--playlist-items", "1"],
+            managedArguments: ["--playlist-items", "1"],
             outputDirectory: outputDirectory,
             onLog: { kind, message in
                 if kind == .command { commandSink.value = message }
@@ -363,7 +363,7 @@ final class YtDlpDownloadServiceTests: XCTestCase {
             audioFormatId: nil,
             formatSelectorOverride: "137+140",
             includeNoPlaylistOverride: false,
-            extraArguments: ["--playlist-items", "2"],
+            managedArguments: ["--playlist-items", "2"],
             outputDirectory: outputDirectory,
             playlistMode: .onlyFirstItem,
             onLog: { kind, message in

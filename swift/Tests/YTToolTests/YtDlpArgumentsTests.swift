@@ -105,7 +105,8 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssertFalse(args.contains("--sleep-subtitles"))
     }
 
-    func testDownloadArgumentsAddsCookiesTranscodeAndExtraArgs() {
+    func testDownloadArgumentsAddsCookiesTranscodeAndExtraOptions() {
+        let sections = ParsedExtraOption(name: .downloadSections, value: "*0:00:00-0:00:30")
         let args = buildDownloadArguments(
             url: "https://example.com/video",
             formatSelector: "140",
@@ -113,7 +114,7 @@ final class YtDlpArgumentsTests: XCTestCase {
             ffmpegLocation: "/usr/local/bin/ffmpeg",
             audioTranscodeFormat: .mp3,
             cookiesFilePath: "/tmp/cookies.txt",
-            extraArguments: ["--download-sections", "*00:00-00:30"]
+            extraOptions: [sections]
         )
         XCTAssertTrue(args.contains("--cookies"))
         XCTAssertTrue(args.contains("/tmp/cookies.txt"))
@@ -121,20 +122,36 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssertTrue(args.contains("--audio-format"))
         XCTAssertTrue(args.contains("mp3"))
         XCTAssertTrue(args.contains("--download-sections"))
-        XCTAssertTrue(args.contains("*00:00-00:30"))
+        XCTAssertTrue(args.contains("*0:00:00-0:00:30"))
     }
 
-    func testProbeArgumentsAddsCookiesAndExtraArgs() {
+    func testDownloadArgumentsIncludesManagedArguments() throws {
+        let args = buildDownloadArguments(
+            url: "https://example.com/video",
+            formatSelector: "137+251",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            managedArguments: ["--playlist-items", "1"]
+        )
+        XCTAssertTrue(args.contains("--playlist-items"))
+        XCTAssertTrue(args.contains("1"))
+        let urlIndex = try XCTUnwrap(args.firstIndex(of: "https://example.com/video"))
+        let itemsIndex = try XCTUnwrap(args.firstIndex(of: "--playlist-items"))
+        XCTAssertTrue(itemsIndex < urlIndex)
+    }
+
+    func testProbeArgumentsAddsCookiesAndExtraOptions() {
         let url = "https://example.com/video"
+        let proxy = ParsedExtraOption(name: .proxy, value: "http://proxy.local:8080")
         let args = buildProbeArguments(
             url: url,
             cookiesFilePath: "/tmp/cookies.txt",
-            extraArguments: ["--playlist-items", "1"]
+            extraOptions: [proxy]
         )
         XCTAssertTrue(args.contains("--cookies"))
         XCTAssertTrue(args.contains("/tmp/cookies.txt"))
-        XCTAssertTrue(args.contains("--playlist-items"))
-        XCTAssertTrue(args.contains("1"))
+        XCTAssertTrue(args.contains("--proxy"))
+        XCTAssertTrue(args.contains("http://proxy.local:8080"))
     }
 
     func testParseShellLikeArgumentsSupportsQuotedValues() throws {

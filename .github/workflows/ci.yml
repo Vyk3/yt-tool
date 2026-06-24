@@ -36,3 +36,34 @@ jobs:
             ENABLE_HARDENED_RUNTIME=YES \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             build
+
+  option-contract-check:
+    name: option contract (${{ matrix.channel }})
+    runs-on: macos-15
+    strategy:
+      matrix:
+        channel: [stable, nightly]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download and verify yt-dlp
+        run: bash scripts/build/ffmpeg/download_pinned_ytdlp.sh "${{ matrix.channel }}" /tmp/ytdlp-bin
+
+      - name: Capture yt-dlp help output
+        run: /tmp/ytdlp-bin/yt-dlp --help > /tmp/ytdlp-help.txt
+
+      - name: Run option contract test
+        run: bash scripts/test/swift_test.sh --filter ExtraOptionContractTests
+        env:
+          YT_DLP_HELP_FILE: /tmp/ytdlp-help.txt
+          REQUIRE_YTDLP_OPTION_CONTRACT: "1"
+
+  option-contract-gate:
+    needs: [option-contract-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ "${{ needs.option-contract-check.result }}" != "success" ]]; then
+            echo "FATAL: option contract check failed" >&2; exit 1
+          fi

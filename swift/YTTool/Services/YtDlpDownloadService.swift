@@ -81,7 +81,8 @@ struct YtDlpDownloadService {
         includeNoPlaylistOverride: Bool? = nil,
         audioTranscodeFormat: AudioTranscodeFormat? = nil,
         cookiesFilePath: String? = nil,
-        extraArguments: [String] = [],
+        extraOptions: [ParsedExtraOption] = [],
+        managedArguments: [String] = [],
         subtitleTrack: SubtitleTrack? = nil,
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
@@ -121,7 +122,8 @@ struct YtDlpDownloadService {
                             includeNoPlaylist: includeNoPlaylist,
                             audioTranscodeFormat: audioTranscodeFormat,
                             cookiesFilePath: cookiesFilePath,
-                            extraArguments: extraArguments,
+                            extraOptions: extraOptions,
+                            managedArguments: managedArguments,
                             aria2cPath: aria2cPath
                         ),
                         terminationGracePeriod: .seconds(3)
