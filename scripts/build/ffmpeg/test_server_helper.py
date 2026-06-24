@@ -51,7 +51,7 @@ def main():
     os.rename(tmp, args.port_file)
 
     def shutdown(signum, frame):
-        server.shutdown()
+        threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGTERM, shutdown)
 
