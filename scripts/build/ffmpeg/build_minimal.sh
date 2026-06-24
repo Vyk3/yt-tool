@@ -384,7 +384,7 @@ NOTICE_FFMPEG.txt
 configure.txt
 ffmpeg
 ffprobe"
-ACTUAL_MEMBERS="$(zipinfo -1 "$OUTPUT_DIR/${ARCHIVE_NAME}" | sort)"
+ACTUAL_MEMBERS="$(zipinfo -1 "$OUTPUT_DIR/${ARCHIVE_NAME}" | LC_ALL=C sort)"
 [[ "$ACTUAL_MEMBERS" == "$EXPECTED_MEMBERS" ]] || \
   { echo "FATAL: ZIP member mismatch"; echo "expected:"; echo "$EXPECTED_MEMBERS"; echo "actual:"; echo "$ACTUAL_MEMBERS"; exit 1; } >&2
 
