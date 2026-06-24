@@ -258,8 +258,8 @@ enum Loc {
 
     static func cookiesGuideAdvanced(_ l: AppLanguage) -> String {
         l == .chinese
-            ? "进阶：也可在「额外 yt-dlp 参数」中输入 --cookies-from-browser chrome，无需导出文件。"
-            : "Advanced: enter --cookies-from-browser chrome in \"Extra yt-dlp arguments\" — no file needed."
+            ? "进阶：使用浏览器扩展导出 cookies.txt 文件，然后在上方指定路径。"
+            : "Advanced: export a cookies.txt file using a browser extension, then specify its path above."
     }
 
     // MARK: Privacy
@@ -292,7 +292,9 @@ enum Loc {
     }
 
     static func extraArgsDescription(_ l: AppLanguage) -> String {
-        l == .chinese ? "可选。会追加到 yt-dlp 命令中。" : "Optional. Appended to the yt-dlp command."
+        l == .chinese
+            ? "可选。仅支持 --limit-rate、--proxy 等特定参数，如 --limit-rate 5M"
+            : "Optional. Only specific options are allowed, e.g. --limit-rate 5M"
     }
 
     static func checkInterval(_ l: AppLanguage) -> String {

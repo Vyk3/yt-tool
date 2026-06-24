@@ -1,5 +1,284 @@
 import Foundation
 
+// MARK: - Option Schema
+
+enum OptionContext {
+    case probe
+    case download
+}
+
+enum ExtraOptionName: String, CaseIterable, Equatable {
+    case proxy = "--proxy"
+    case forceIPv4 = "--force-ipv4"
+    case forceIPv6 = "--force-ipv6"
+    case retries = "--retries"
+    case limitRate = "--limit-rate"
+    case fragmentRetries = "--fragment-retries"
+    case sleepInterval = "--sleep-interval"
+    case maxSleepInterval = "--max-sleep-interval"
+    case mergeOutputFormat = "--merge-output-format"
+    case downloadSections = "--download-sections"
+    case subFormat = "--sub-format"
+    case restrictFilenames = "--restrict-filenames"
+    case noMtime = "--no-mtime"
+    case noOverwrites = "--no-overwrites"
+    case noPart = "--no-part"
+    case ignoreErrors = "--ignore-errors"
+    case noAbortOnError = "--no-abort-on-error"
+    case bufferSize = "--buffer-size"
+
+    enum Arity { case flag, value }
+
+    var arity: Arity {
+        switch self {
+        case .proxy, .retries, .limitRate, .fragmentRetries,
+             .sleepInterval, .maxSleepInterval, .mergeOutputFormat,
+             .downloadSections, .subFormat, .bufferSize:
+            .value
+        case .forceIPv4, .forceIPv6, .restrictFilenames, .noMtime,
+             .noOverwrites, .noPart, .ignoreErrors, .noAbortOnError:
+            .flag
+        }
+    }
+
+    var context: OptionContext {
+        switch self {
+        case .proxy, .forceIPv4, .forceIPv6, .retries:
+            .probe
+        default:
+            .download
+        }
+    }
+
+    var allowsRepeat: Bool {
+        self == .downloadSections
+    }
+
+    func validate(_ value: String) -> Bool {
+        switch self {
+        case .proxy:
+            ExtraOptionValidation.isHTTPProxyURL(value)
+        case .retries, .fragmentRetries:
+            value == "infinite" || ExtraOptionValidation.isNonNegativeInt(value)
+        case .limitRate, .bufferSize:
+            ExtraOptionValidation.isRateLiteral(value)
+        case .sleepInterval, .maxSleepInterval:
+            ExtraOptionValidation.isFiniteNonNegativeDouble(value)
+        case .mergeOutputFormat:
+            ["mp4", "mkv", "webm"].contains(value)
+        case .downloadSections:
+            ExtraOptionValidation.isValidDownloadSection(value)
+        case .subFormat:
+            !value.isEmpty
+        case .forceIPv4, .forceIPv6, .restrictFilenames, .noMtime,
+             .noOverwrites, .noPart, .ignoreErrors, .noAbortOnError:
+            true
+        }
+    }
+
+    var passesToProbe: Bool {
+        context == .probe
+    }
+
+    var passesToDownload: Bool {
+        true
+    }
+}
+
+struct ParsedExtraOption: Equatable {
+    let name: ExtraOptionName
+    let value: String?
+}
+
+enum ExtraOptionValidation {
+    static func isNonNegativeInt(_ s: String) -> Bool {
+        guard let v = Int(s) else { return false }
+        return v >= 0
+    }
+
+    static func isFiniteNonNegativeDouble(_ s: String) -> Bool {
+        guard let v = Double(s) else { return false }
+        return v >= 0 && v.isFinite
+    }
+
+    static func isRateLiteral(_ s: String) -> Bool {
+        let pattern = #"^\d+[KMG]?$"#
+        return s.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    static func isHTTPProxyURL(_ s: String) -> Bool {
+        guard let url = URL(string: s),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host, !host.isEmpty else { return false }
+        if url.user != nil || url.password != nil { return false }
+        if let port = url.port, port < 1 || port > 65535 { return false }
+        return true
+    }
+
+    static func isValidDownloadSection(_ s: String) -> Bool {
+        let pattern = #"^\*(\d{1,2}):(\d{2}):(\d{2})-(\d{1,2}):(\d{2}):(\d{2})$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)),
+              match.numberOfRanges == 7
+        else {
+            return false
+        }
+        func capture(_ i: Int) -> Int {
+            Int(s[Range(match.range(at: i), in: s)!])!
+        }
+        let sh = capture(1), sm = capture(2), ss = capture(3)
+        let eh = capture(4), em = capture(5), es = capture(6)
+        guard sm < 60, ss < 60, em < 60, es < 60 else { return false }
+        let startTotal = sh * 3600 + sm * 60 + ss
+        let endTotal = eh * 3600 + em * 60 + es
+        return endTotal > startTotal
+    }
+}
+
+enum OptionParseError: LocalizedError, Equatable {
+    case unknownOption(String)
+    case shortOption(String)
+    case doubleDashSeparator
+    case missingValue(ExtraOptionName)
+    case flagWithValue(ExtraOptionName)
+    case duplicateOption(ExtraOptionName)
+    case invalidValue(ExtraOptionName, String)
+    case mutuallyExclusive(ExtraOptionName, ExtraOptionName)
+    case barePositional(String)
+    case shellParseError(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .unknownOption(opt):
+            "Unknown option: \(opt). Only allowlisted options are accepted."
+        case let .shortOption(opt):
+            "Short options are not allowed: \(opt)"
+        case .doubleDashSeparator:
+            "The -- separator is not allowed."
+        case let .missingValue(opt):
+            "\(opt.rawValue) requires a value."
+        case let .flagWithValue(opt):
+            "\(opt.rawValue) is a flag and does not accept a value."
+        case let .duplicateOption(opt):
+            "\(opt.rawValue) cannot be specified more than once."
+        case let .invalidValue(opt, val):
+            "Invalid value for \(opt.rawValue): \(val)"
+        case let .mutuallyExclusive(a, b):
+            "\(a.rawValue) and \(b.rawValue) cannot be used together."
+        case let .barePositional(token):
+            "Unexpected argument: \(token)"
+        case let .shellParseError(msg):
+            msg
+        }
+    }
+}
+
+func parseExtraOptions(_ input: String) throws -> [ParsedExtraOption] {
+    let raw = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !raw.isEmpty else { return [] }
+
+    let tokens: [String]
+    do {
+        tokens = try parseShellLikeArguments(raw)
+    } catch {
+        throw OptionParseError.shellParseError(error.localizedDescription)
+    }
+
+    var result: [ParsedExtraOption] = []
+    var seen = Set<ExtraOptionName>()
+    var i = 0
+
+    while i < tokens.count {
+        let token = tokens[i]
+
+        if token == "--" {
+            throw OptionParseError.doubleDashSeparator
+        }
+
+        guard token.hasPrefix("-") else {
+            throw OptionParseError.barePositional(token)
+        }
+
+        if token.hasPrefix("-"), !token.hasPrefix("--") {
+            throw OptionParseError.shortOption(token)
+        }
+
+        var optionName: String
+        var inlineValue: String?
+
+        if let eqIndex = token.firstIndex(of: "=") {
+            optionName = String(token[..<eqIndex])
+            inlineValue = String(token[token.index(after: eqIndex)...])
+        } else {
+            optionName = token
+            inlineValue = nil
+        }
+
+        guard let name = ExtraOptionName(rawValue: optionName) else {
+            throw OptionParseError.unknownOption(optionName)
+        }
+
+        switch name.arity {
+        case .flag:
+            if inlineValue != nil {
+                throw OptionParseError.flagWithValue(name)
+            }
+            if seen.contains(name), !name.allowsRepeat {
+                throw OptionParseError.duplicateOption(name)
+            }
+            seen.insert(name)
+            result.append(ParsedExtraOption(name: name, value: nil))
+            i += 1
+
+        case .value:
+            let value: String
+            if let inline = inlineValue {
+                value = inline
+            } else {
+                guard i + 1 < tokens.count else {
+                    throw OptionParseError.missingValue(name)
+                }
+                i += 1
+                value = tokens[i]
+            }
+            if !name.allowsRepeat, seen.contains(name) {
+                throw OptionParseError.duplicateOption(name)
+            }
+            guard name.validate(value) else {
+                throw OptionParseError.invalidValue(name, value)
+            }
+            seen.insert(name)
+            result.append(ParsedExtraOption(name: name, value: value))
+            i += 1
+        }
+    }
+
+    if seen.contains(.forceIPv4), seen.contains(.forceIPv6) {
+        throw OptionParseError.mutuallyExclusive(.forceIPv4, .forceIPv6)
+    }
+
+    return result
+}
+
+func renderExtraOptions(_ options: [ParsedExtraOption], for context: OptionContext) -> [String] {
+    var result: [String] = []
+    for option in options {
+        let include = switch context {
+        case .probe: option.name.passesToProbe
+        case .download: option.name.passesToDownload
+        }
+        guard include else { continue }
+        result.append(option.name.rawValue)
+        if let value = option.value {
+            result.append(value)
+        }
+    }
+    return result
+}
+
+// MARK: - URL Helpers
+
 func isYouTubeURL(_ url: String) -> Bool {
     guard let host = URLComponents(string: url)?.host?.lowercased() else { return false }
     return host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be"
@@ -48,19 +327,19 @@ func isSupportedVideoHost(_ url: String) -> Bool {
 }
 
 func buildProbeArguments(url: String) -> [String] {
-    buildProbeArguments(url: url, cookiesFilePath: nil, extraArguments: [])
+    buildProbeArguments(url: url, cookiesFilePath: nil, extraOptions: [])
 }
 
 func buildProbeArguments(
     url: String,
     cookiesFilePath: String?,
-    extraArguments: [String]
+    extraOptions: [ParsedExtraOption]
 ) -> [String] {
     var args = ["--dump-single-json", "--no-playlist"]
     if let cookiesFilePath, !cookiesFilePath.isEmpty {
         args += ["--cookies", cookiesFilePath]
     }
-    args += extraArguments
+    args += renderExtraOptions(extraOptions, for: .probe)
     if isYouTubeURL(url) { args += ["--extractor-args", "youtube:player_client=default"] }
     args.append(url)
     return args
@@ -75,7 +354,8 @@ func buildDownloadArguments(
     includeNoPlaylist: Bool = true,
     audioTranscodeFormat: AudioTranscodeFormat? = nil,
     cookiesFilePath: String? = nil,
-    extraArguments: [String] = [],
+    extraOptions: [ParsedExtraOption] = [],
+    managedArguments: [String] = [],
     aria2cPath: String? = nil
 ) -> [String] {
     var args = [
@@ -102,7 +382,7 @@ func buildDownloadArguments(
     if let format = audioTranscodeFormat?.ytDlpAudioFormat {
         args += ["-x", "--audio-format", format]
     }
-    args += extraArguments
+    args += renderExtraOptions(extraOptions, for: .download)
     if isYouTubeURL(url) {
         if subtitleTrack?.isAuto == true {
             args += ["--sleep-subtitles", "60"]
@@ -118,6 +398,7 @@ func buildDownloadArguments(
             args += ["--concurrent-fragments", "4"]
         }
     }
+    args += managedArguments
     args.append(url)
     return args
 }

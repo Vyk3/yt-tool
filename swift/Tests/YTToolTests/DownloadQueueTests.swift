@@ -11,7 +11,7 @@ final class DownloadQueueTests: XCTestCase {
         QueueItemConfig(
             outputDirectory: outputDirectory,
             cookiesFilePath: nil,
-            extraArguments: [],
+            extraOptions: [],
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
             qualityStrategy: .bestQuality
@@ -111,7 +111,7 @@ final class DownloadQueueTests: XCTestCase {
         let config = QueueItemConfig(
             outputDirectory: dir,
             cookiesFilePath: "/tmp/cookies.txt",
-            extraArguments: ["--playlist-items", "1"],
+            extraOptions: [ParsedExtraOption(name: .retries, value: "5")],
             audioTranscodeFormat: .mp3,
             downloaderPreference: .aria2c,
             qualityStrategy: .max1080p
@@ -119,7 +119,7 @@ final class DownloadQueueTests: XCTestCase {
         let item = QueueItem(url: "https://example.com", config: config)
         XCTAssertEqual(item.config.outputDirectory, dir)
         XCTAssertEqual(item.config.cookiesFilePath, "/tmp/cookies.txt")
-        XCTAssertEqual(item.config.extraArguments, ["--playlist-items", "1"])
+        XCTAssertEqual(item.config.extraOptions, [ParsedExtraOption(name: .retries, value: "5")])
         XCTAssertEqual(item.config.audioTranscodeFormat, .mp3)
         XCTAssertEqual(item.config.downloaderPreference, .aria2c)
     }

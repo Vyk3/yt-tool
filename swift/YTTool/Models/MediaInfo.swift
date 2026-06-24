@@ -5,7 +5,9 @@ enum PlaylistMode: String, CaseIterable, Codable, Equatable, Identifiable {
     case wholePlaylistBestVideo
     case wholePlaylistBestAudio
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     func title(_ l: AppLanguage) -> String {
         switch (self, l) {
@@ -27,7 +29,9 @@ enum PlaylistVideoQualityStrategy: String, CaseIterable, Codable, Equatable, Ide
     case bestCompatibility
     case preferHigherQuality
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     func title(_ l: AppLanguage) -> String {
         switch (self, l) {
@@ -43,7 +47,9 @@ enum PlaylistAudioQualityStrategy: String, CaseIterable, Codable, Equatable, Ide
     case moreCompatible
     case higherQuality
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     func title(_ l: AppLanguage) -> String {
         switch (self, l) {
@@ -60,7 +66,9 @@ enum PlaylistSubtitleMode: String, CaseIterable, Codable, Equatable, Identifiabl
     case manual
     case auto
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     func title(_ l: AppLanguage) -> String {
         switch (self, l) {
@@ -78,7 +86,9 @@ enum PlaylistSegmentMode: String, CaseIterable, Codable, Equatable, Identifiable
     case fullItem
     case fixedRange
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     func title(_ l: AppLanguage) -> String {
         switch (self, l) {
@@ -94,7 +104,9 @@ enum PlaylistFormatMode: String, CaseIterable, Codable, Equatable, Identifiable 
     case unifiedStrategy
     case perItemMapping
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     func title(_ l: AppLanguage) -> String {
         switch (self, l) {

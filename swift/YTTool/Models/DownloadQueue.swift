@@ -147,7 +147,7 @@ final class DownloadQueue: ObservableObject {
                 includeNoPlaylistOverride: isPlaylist ? false : nil,
                 audioTranscodeFormat: effectiveTranscode,
                 cookiesFilePath: item.config.cookiesFilePath,
-                extraArguments: item.config.extraArguments,
+                extraOptions: item.config.extraOptions,
                 outputDirectory: item.config.outputDirectory,
                 aria2cPath: aria2cPath,
                 onLog: { [weak self] kind, message in
