@@ -46,7 +46,11 @@ for channel in stable nightly; do
   if [[ -s "$TMPOUT/sections.mp4" ]]; then
     DURATION="$("$FFMPEG_DIR/ffprobe" -v error -show_entries format=duration \
       -of csv=p=0 "$TMPOUT/sections.mp4" 2>/dev/null)"
-    if [[ -z "$DURATION" ]] || ! awk -v d="$DURATION" 'BEGIN{exit !(d+0 == d+0)}'; then
+    if [[ -z "$DURATION" || "$DURATION" == "N/A" ]]; then
+      DURATION="$("$FFMPEG_DIR/ffprobe" -v error -select_streams v:0 \
+        -show_entries stream=duration -of csv=p=0 "$TMPOUT/sections.mp4" 2>/dev/null)"
+    fi
+    if [[ -z "$DURATION" || "$DURATION" == "N/A" ]] || ! awk -v d="$DURATION" 'BEGIN{exit !(d ~ /^[0-9]/)}'; then
       echo "FAIL: I1 duration not numeric: '${DURATION:-empty}'" >&2; FAIL=$((FAIL + 1))
     elif awk -v d="$DURATION" 'BEGIN{exit !(d > 0 && d <= 1.5)}'; then
       if grep -qF "ffmpeg command line: $FFMPEG_DIR/ffmpeg" "$TMPOUT/sections.log"; then
