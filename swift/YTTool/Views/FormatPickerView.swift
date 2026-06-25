@@ -194,8 +194,12 @@ struct FormatPickerView: View {
     @ViewBuilder
     private func formatColumns(mediaInfo: MediaInfo) -> some View {
         let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
-        let videoFormats = showAllFormats ? mediaInfo.videoFormats : Self.filterVideoFormats(mediaInfo.videoFormats)
-        let audioFormats = showAllFormats ? mediaInfo.audioFormats : Self.filterAudioFormats(mediaInfo.audioFormats)
+        let videoFormats = showAllFormats
+            ? mediaInfo.videoFormats
+            : filterVideoFormats(mediaInfo.videoFormats, excludeHLS: true)
+        let audioFormats = showAllFormats
+            ? mediaInfo.audioFormats
+            : filterAudioFormats(mediaInfo.audioFormats, excludeHLS: true)
         let subCount = mediaInfo.subtitleTracks.count + mediaInfo.autoSubtitleTracks.count
         let areaHeight = effectiveFormatHeight(
             videoCount: videoFormats.count,
@@ -229,67 +233,6 @@ struct FormatPickerView: View {
             }
         } else {
             columns
-        }
-    }
-
-    // MARK: - Format filtering
-
-    /// Keep one video format per resolution — prefer: H.264 > VP9 > AV1, higher bitrate.
-    private static func filterVideoFormats(_ formats: [VideoFormat]) -> [VideoFormat] {
-        var bestByRes: [String: VideoFormat] = [:]
-        var resOrder: [String] = []
-        for fmt in formats {
-            if bestByRes[fmt.resolution] == nil {
-                resOrder.append(fmt.resolution)
-                bestByRes[fmt.resolution] = fmt
-            } else {
-                let existing = bestByRes[fmt.resolution]!
-                if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
-                    bestByRes[fmt.resolution] = fmt
-                } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
-                          (fmt.bitrateKbps ?? 0) > (existing.bitrateKbps ?? 0)
-                {
-                    bestByRes[fmt.resolution] = fmt
-                }
-            }
-        }
-        return resOrder.compactMap { bestByRes[$0] }
-    }
-
-    /// Keep one audio format per quality tier — prefer: higher bitrate, AAC > Opus.
-    private static func filterAudioFormats(_ formats: [AudioFormat]) -> [AudioFormat] {
-        // Group into tiers: Standard (>=96k) and Basic (<96k)
-        var standard: AudioFormat?
-        var basic: AudioFormat?
-        for fmt in formats {
-            let bitrate = fmt.bitrateKbps ?? 0
-            if bitrate >= 96 {
-                if let existing = standard {
-                    // Prefer AAC, then higher bitrate
-                    if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
-                        standard = fmt
-                    } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
-                              bitrate > (existing.bitrateKbps ?? 0)
-                    {
-                        standard = fmt
-                    }
-                } else {
-                    standard = fmt
-                }
-            } else {
-                if basic == nil { basic = fmt }
-            }
-        }
-        return [standard, basic].compactMap { $0 }
-    }
-
-    /// Lower = higher priority. H.264/AAC > VP9/Opus > AV1.
-    private static func codecPriority(_ codec: String) -> Int {
-        switch codec.lowercased() {
-        case "h.264", "aac": 0
-        case "vp9", "opus": 1
-        case "av1": 2
-        default: 3
         }
     }
 

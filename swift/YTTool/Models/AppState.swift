@@ -282,6 +282,7 @@ final class AppState: ObservableObject {
                     guard isCurrentProbeAttempt(attemptID) else { return }
                     probeTask = nil
                     probeState = .success(info)
+                    autoSelectFormats(from: info)
                     appendLog(
                         scope: .probe,
                         level: .success,
@@ -953,6 +954,20 @@ final class AppState: ObservableObject {
     /// lexicographic comparison is correct for these fixed-width date-based formats.
     nonisolated static func isVersionNewer(_ latest: String, than current: String) -> Bool {
         latest > current
+    }
+
+    // MARK: - Auto-select
+
+    private func autoSelectFormats(from info: MediaInfo) {
+        let videos = filterVideoFormats(info.videoFormats, excludeHLS: true)
+        let audios = filterAudioFormats(info.audioFormats, excludeHLS: true)
+
+        let fallbackVideos = videos.isEmpty ? filterVideoFormats(info.videoFormats) : videos
+        let fallbackAudios = audios.isEmpty ? filterAudioFormats(info.audioFormats) : audios
+
+        selectedVideoFormat = fallbackVideos.first(where: { $0.resolution == "1080p" })
+            ?? fallbackVideos.first
+        selectedAudioFormat = fallbackAudios.first
     }
 
     // MARK: - Helpers
