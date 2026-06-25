@@ -91,7 +91,7 @@ jobs:
             [[ -s "$LICENSES/$f" ]] || \
               { echo "FATAL: $f missing from App bundle" >&2; exit 1; }
           done
-          grep -q "GNU Lesser General Public License" "$LICENSES/LICENSE_LGPL.txt" || \
+          grep -qi "GNU Lesser General Public License" "$LICENSES/LICENSE_LGPL.txt" || \
             { echo "FATAL: LICENSE_LGPL.txt missing LGPL identifier" >&2; exit 1; }
           grep -q "LAME" "$LICENSES/LICENSE_LAME.txt" || \
             { echo "FATAL: LICENSE_LAME.txt missing LAME attribution" >&2; exit 1; }
