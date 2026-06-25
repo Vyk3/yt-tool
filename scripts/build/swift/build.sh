@@ -94,20 +94,21 @@ if [[ "$MODE" == "release" ]]; then
     if [[ "$CHANNEL" == "nightly" && -z "$YTDLP_SHA256" ]]; then
         die "YTDLP_NIGHTLY_SHA256 is empty. Pin the nightly release before using --channel nightly in release mode."
     fi
-    for var in YTDLP_URL YTDLP_SHA256 FFMPEG_URL FFMPEG_SHA256 FFPROBE_URL FFPROBE_SHA256; do
+    for var in YTDLP_URL YTDLP_SHA256 FFMPEG_URL FFMPEG_ARCHIVE_SHA256 FFMPEG_BIN_SHA256 FFPROBE_BIN_SHA256; do
         val="${(P)var}"
         [[ -n "$val" ]] || die "$var is empty. Fill in pinned_versions.sh (run compute_shas.sh)."
     done
     [[ "$(uname -m)" == "arm64" ]] || die "Release builds are arm64-only and must run on Apple Silicon."
-    # Release always passes --clean so that any stale dev binaries (e.g. from
-    # dev_install_binaries.sh) are replaced by the pinned, SHA-verified versions.
-    # This prevents a prior dev run from silently defeating supply-chain checks.
+    LICENSES_DIR="$PROJECT_DIR/swift/YTTool/Resources/Licenses"
     python3 "$SCRIPT_DIR/prepare_binaries.py" \
         --vendor-bin-dir "$BINARIES_SRC" \
         --clean \
-        --ytdlp-url     "$YTDLP_URL"     --ytdlp-sha256   "$YTDLP_SHA256" \
-        --ffmpeg-url    "$FFMPEG_URL"    --ffmpeg-sha256  "$FFMPEG_SHA256" \
-        --ffprobe-url   "$FFPROBE_URL"   --ffprobe-sha256 "$FFPROBE_SHA256"
+        --ytdlp-url              "$YTDLP_URL"              --ytdlp-sha256   "$YTDLP_SHA256" \
+        --ffmpeg-url             "$FFMPEG_URL" \
+        --ffmpeg-archive-sha256  "$FFMPEG_ARCHIVE_SHA256" \
+        --ffmpeg-sha256          "$FFMPEG_BIN_SHA256" \
+        --ffprobe-sha256         "$FFPROBE_BIN_SHA256" \
+        --licenses-dir           "$LICENSES_DIR"
 else
     current_ytdlp="$BINARIES_SRC/yt-dlp"
     [[ -e "$current_ytdlp" ]] || die "yt-dlp not found: $current_ytdlp\nRun: scripts/build/swift/dev_install_binaries.sh --channel $CHANNEL"

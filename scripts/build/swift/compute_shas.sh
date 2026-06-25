@@ -37,5 +37,12 @@ compute_zip_member() {
 }
 
 compute "YTDLP" "$YTDLP_URL"
-compute_zip_member "FFMPEG" "$FFMPEG_URL" "ffmpeg"
-compute_zip_member "FFPROBE" "$FFPROBE_URL" "ffprobe"
+
+# Single ZIP → 3 SHAs: archive + ffmpeg member + ffprobe member
+echo "Downloading ffmpeg archive..."
+FFMPEG_TMP="$(mktemp)"
+curl -fsSL -o "$FFMPEG_TMP" "$FFMPEG_URL"
+echo "FFMPEG_ARCHIVE_SHA256=\"$(shasum -a 256 "$FFMPEG_TMP" | cut -d' ' -f1)\""
+echo "FFMPEG_BIN_SHA256=\"$(unzip -p "$FFMPEG_TMP" ffmpeg | shasum -a 256 | cut -d' ' -f1)\""
+echo "FFPROBE_BIN_SHA256=\"$(unzip -p "$FFMPEG_TMP" ffprobe | shasum -a 256 | cut -d' ' -f1)\""
+rm -f "$FFMPEG_TMP"

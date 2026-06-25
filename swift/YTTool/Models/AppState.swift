@@ -491,6 +491,7 @@ final class AppState: ObservableObject {
                             cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
                             extraOptions: parsedOptions,
                             managedArguments: itemManagedArgs,
+                            selectedProtocols: [],
                             subtitleTrack: subtitleTrack,
                             outputDirectory: outputDir,
                             playlistMode: .onlyFirstItem,
@@ -522,6 +523,11 @@ final class AppState: ObservableObject {
                         )
                     }
                 } else {
+                    var protocols: [String?] = []
+                    if !isWholePlaylistDownload {
+                        if let vf = selectedVideoFormat { protocols.append(vf.transportProtocol) }
+                        if let af = selectedAudioFormat { protocols.append(af.transportProtocol) }
+                    }
                     for try await event in service.download(
                         url: url,
                         videoFormatId: videoId,
@@ -530,6 +536,7 @@ final class AppState: ObservableObject {
                         cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
                         extraOptions: parsedOptions,
                         managedArguments: managedArgs,
+                        selectedProtocols: protocols,
                         subtitleTrack: subtitleTrack,
                         outputDirectory: outputDir,
                         playlistMode: playlistConfig.mode,

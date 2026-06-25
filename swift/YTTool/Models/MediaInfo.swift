@@ -155,6 +155,7 @@ struct VideoFormat: Codable, Equatable, Identifiable {
     var bitrateKbps: Double?
     var fileSizeBytes: Int64?
     var note: String
+    var transportProtocol: String? = nil
 
     var friendlyCodec: String {
         mapCodecName(codec)
@@ -179,6 +180,7 @@ struct AudioFormat: Codable, Equatable, Identifiable {
     var bitrateKbps: Double?
     var fileSizeBytes: Int64?
     var note: String
+    var transportProtocol: String? = nil
 
     var friendlyCodec: String {
         mapCodecName(codec)

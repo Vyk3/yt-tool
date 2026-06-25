@@ -67,3 +67,50 @@ jobs:
           if [[ "${{ needs.option-contract-check.result }}" != "success" ]]; then
             echo "FATAL: option contract check failed" >&2; exit 1
           fi
+
+  release-build-check:
+    name: release build (${{ matrix.channel }})
+    runs-on: macos-15
+    strategy:
+      matrix:
+        channel: [stable, nightly]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Release build
+        run: |
+          zsh scripts/build/swift/build.sh \
+            --release --channel ${{ matrix.channel }} \
+            --output /tmp/yt-tool-${{ matrix.channel }}
+
+      - name: Verify licenses in App bundle
+        run: |
+          APP="/tmp/yt-tool-${{ matrix.channel }}/YTTool.app"
+          LICENSES="$APP/Contents/Resources/Licenses"
+          for f in LICENSE_LGPL.txt LICENSE_LAME.txt NOTICE_FFMPEG.txt; do
+            [[ -s "$LICENSES/$f" ]] || \
+              { echo "FATAL: $f missing from App bundle" >&2; exit 1; }
+          done
+          grep -q "GNU Lesser General Public License" "$LICENSES/LICENSE_LGPL.txt" || \
+            { echo "FATAL: LICENSE_LGPL.txt missing LGPL identifier" >&2; exit 1; }
+          grep -q "LAME" "$LICENSES/LICENSE_LAME.txt" || \
+            { echo "FATAL: LICENSE_LAME.txt missing LAME attribution" >&2; exit 1; }
+          grep -q "GNU LIBRARY GENERAL PUBLIC LICENSE" "$LICENSES/LICENSE_LAME.txt" || \
+            { echo "FATAL: LICENSE_LAME.txt missing verbatim license title" >&2; exit 1; }
+          grep -q "rebuild and replace" "$LICENSES/NOTICE_FFMPEG.txt" || \
+            { echo "FATAL: NOTICE_FFMPEG.txt missing replacement notice" >&2; exit 1; }
+
+      - name: Verify codesign
+        run: |
+          codesign --verify --deep --strict \
+            "/tmp/yt-tool-${{ matrix.channel }}/YTTool.app"
+
+  release-build-gate:
+    needs: [release-build-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ "${{ needs.release-build-check.result }}" != "success" ]]; then
+            echo "FATAL: release build check failed" >&2; exit 1
+          fi
