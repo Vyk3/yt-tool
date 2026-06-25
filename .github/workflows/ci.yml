@@ -97,7 +97,7 @@ jobs:
             { echo "FATAL: LICENSE_LAME.txt missing LAME attribution" >&2; exit 1; }
           grep -q "GNU LIBRARY GENERAL PUBLIC LICENSE" "$LICENSES/LICENSE_LAME.txt" || \
             { echo "FATAL: LICENSE_LAME.txt missing verbatim license title" >&2; exit 1; }
-          grep -q "modify and replace" "$LICENSES/NOTICE_FFMPEG.txt" || \
+          grep -q "you may modify" "$LICENSES/NOTICE_FFMPEG.txt" || \
             { echo "FATAL: NOTICE_FFMPEG.txt missing replacement notice" >&2; exit 1; }
 
       - name: Verify codesign
