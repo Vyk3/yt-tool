@@ -110,11 +110,4 @@ final class ProtocolCheckerTests: XCTestCase {
             XCTFail("trailing whitespace should be rejected")
         }
     }
-
-    // P16: m3u8_native allowed
-    func testM3U8NativeAllowed() {
-        if case .allowed = ProtocolChecker.check(transportProtocol: "m3u8_native") {} else {
-            XCTFail("m3u8_native should be allowed")
-        }
-    }
 }

@@ -1077,6 +1077,10 @@ enum Loc {
         l == .chinese ? "备注" : "Note"
     }
 
+    static func colProtocol(_ l: AppLanguage) -> String {
+        l == .chinese ? "协议" : "Proto"
+    }
+
     // MARK: Log error badge (#8)
 
     static func errorBadge(_ n: Int, _ l: AppLanguage) -> String {

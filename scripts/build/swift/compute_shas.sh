@@ -22,19 +22,6 @@ compute() {
     rm -f "$tmp"
 }
 
-compute_zip_member() {
-    local label="$1"
-    local url="$2"
-    local member="$3"
-    local tmp
-    tmp="$(mktemp)"
-    echo "Downloading $label..."
-    curl -fsSL -o "$tmp" "$url"
-    local sha
-    sha="$(unzip -p "$tmp" "$member" | shasum -a 256 | cut -d' ' -f1)"
-    echo "${label}_SHA256=\"${sha}\""
-    rm -f "$tmp"
-}
 
 compute "YTDLP" "$YTDLP_URL"
 

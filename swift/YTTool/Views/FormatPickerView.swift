@@ -10,6 +10,7 @@ private enum VideoCol {
     static let fps: CGFloat = 38
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
+    static let proto: CGFloat = 40
     static let note: CGFloat = 66
 }
 
@@ -18,6 +19,7 @@ private enum AudioCol {
     static let codec: CGFloat = 44
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
+    static let proto: CGFloat = 40
     static let note: CGFloat = 66
 }
 
@@ -75,8 +77,8 @@ struct FormatPickerView: View {
     private var videoMinWidth: CGFloat {
         if showTechnicalDetails {
             let items = VideoCol.id + VideoCol.res + VideoCol.codec + VideoCol.fps
-                + VideoCol.bitrate + VideoCol.size + VideoCol.note
-            return items + 6 * 6 + 24 // 6 gaps + 12pt padding each side
+                + VideoCol.bitrate + VideoCol.size + VideoCol.proto + VideoCol.note
+            return items + 7 * 6 + 24 // 7 gaps + 12pt padding each side
         } else {
             let items = SimpleVideoCol.res + SimpleVideoCol.size + SimpleVideoCol.note
             return items + 2 * 6 + 24
@@ -87,8 +89,8 @@ struct FormatPickerView: View {
     private var audioMinWidth: CGFloat {
         if showTechnicalDetails {
             let items = AudioCol.id + AudioCol.codec + AudioCol.bitrate
-                + AudioCol.size + AudioCol.note
-            return items + 4 * 6 + 24
+                + AudioCol.size + AudioCol.proto + AudioCol.note
+            return items + 5 * 6 + 24
         } else {
             let items = SimpleAudioCol.codec + SimpleAudioCol.size + SimpleAudioCol.quality
             return items + 2 * 6 + 24
@@ -283,6 +285,7 @@ struct FormatPickerView: View {
                 Text("FPS").frame(width: VideoCol.fps, alignment: .leading)
                 Text(Loc.colBitrate(language)).frame(width: VideoCol.bitrate, alignment: .leading)
                 Text(Loc.colSize(language)).frame(width: VideoCol.size, alignment: .leading)
+                Text(Loc.colProtocol(language)).frame(width: VideoCol.proto, alignment: .leading)
                 Text(Loc.colNote(language)).frame(width: VideoCol.note, alignment: .leading)
             }
             .font(.caption.monospaced())
@@ -310,6 +313,7 @@ struct FormatPickerView: View {
                     Text("\(fmt.fps)fps").lineLimit(1).frame(width: VideoCol.fps, alignment: .leading)
                     Text(fmt.formattedBitrate).lineLimit(1).frame(width: VideoCol.bitrate, alignment: .leading)
                     Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size, alignment: .leading)
+                    Text(fmt.protocolLabel).lineLimit(1).frame(width: VideoCol.proto, alignment: .leading)
                     Text(Loc.videoNote(fmt.note, language)).lineLimit(1).frame(width: VideoCol.note, alignment: .leading)
                 }
             } else {
@@ -356,6 +360,7 @@ struct FormatPickerView: View {
                 Text(Loc.colCodec(language)).frame(width: AudioCol.codec, alignment: .leading)
                 Text(Loc.colBitrate(language)).frame(width: AudioCol.bitrate, alignment: .leading)
                 Text(Loc.colSize(language)).frame(width: AudioCol.size, alignment: .leading)
+                Text(Loc.colProtocol(language)).frame(width: AudioCol.proto, alignment: .leading)
                 Text(Loc.colNote(language)).frame(width: AudioCol.note, alignment: .leading)
             }
             .font(.caption.monospaced())
@@ -381,6 +386,7 @@ struct FormatPickerView: View {
                     Text(fmt.friendlyCodec).lineLimit(1).frame(width: AudioCol.codec, alignment: .leading)
                     Text(fmt.formattedBitrate).lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
                     Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size, alignment: .leading)
+                    Text(fmt.protocolLabel).lineLimit(1).frame(width: AudioCol.proto, alignment: .leading)
                     Text(Loc.audioNote(fmt.note, language)).lineLimit(1).frame(width: AudioCol.note, alignment: .leading)
                 }
             } else {

@@ -211,11 +211,23 @@ extension VideoFormat {
     var isHLS: Bool {
         isHLSProtocol(transportProtocol)
     }
+
+    var protocolLabel: String {
+        if isHLS { return "HLS" }
+        if transportProtocol != nil { return "DASH" }
+        return "—"
+    }
 }
 
 extension AudioFormat {
     var isHLS: Bool {
         isHLSProtocol(transportProtocol)
+    }
+
+    var protocolLabel: String {
+        if isHLS { return "HLS" }
+        if transportProtocol != nil { return "DASH" }
+        return "—"
     }
 }
 

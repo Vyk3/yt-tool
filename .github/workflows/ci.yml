@@ -71,6 +71,8 @@ jobs:
   release-build-check:
     name: release build (${{ matrix.channel }})
     runs-on: macos-15
+    permissions:
+      contents: read
     strategy:
       matrix:
         channel: [stable, nightly]
