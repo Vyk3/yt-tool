@@ -182,8 +182,11 @@ final class YtDlpArgumentsTests: XCTestCase {
         )
         XCTAssertTrue(args.contains("--downloader"))
         XCTAssertTrue(args.contains("/opt/homebrew/bin/aria2c"))
+        XCTAssertTrue(args.contains("m3u8:native"))
         XCTAssertTrue(args.contains("--downloader-args"))
         XCTAssertTrue(args.contains("aria2c:-x 16 -s 16 -k 1M"))
+        XCTAssertTrue(args.contains("-N"))
+        XCTAssertTrue(args.contains("4"))
         XCTAssertFalse(args.contains("--downloader-path"))
     }
 
@@ -208,6 +211,7 @@ final class YtDlpArgumentsTests: XCTestCase {
             aria2cPath: "/opt/homebrew/bin/aria2c"
         )
         XCTAssertFalse(args.contains("--concurrent-fragments"))
+        XCTAssertTrue(args.contains("-N"))
         XCTAssertTrue(args.contains("--downloader"))
         XCTAssertTrue(args.contains("--embed-thumbnail"))
     }
