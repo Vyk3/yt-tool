@@ -56,11 +56,11 @@ func buildFormatSelector(
 
 struct YtDlpDownloadService {
     var locator: BundledToolLocator
-    var runner: ProcessRunner
+    var runner: any ProcessRunning
 
     init(
         locator: BundledToolLocator = BundledToolLocator(),
-        runner: ProcessRunner = ProcessRunner()
+        runner: any ProcessRunning = ProcessRunner()
     ) {
         self.locator = locator
         self.runner = runner
@@ -83,6 +83,7 @@ struct YtDlpDownloadService {
         cookiesFilePath: String? = nil,
         extraOptions: [ParsedExtraOption] = [],
         managedArguments: [String] = [],
+        selectedProtocols: [String?] = [],
         subtitleTrack: SubtitleTrack? = nil,
         outputDirectory: URL,
         playlistMode: PlaylistMode = .onlyFirstItem,
@@ -95,9 +96,27 @@ struct YtDlpDownloadService {
             Task {
                 do {
                     let ytDlp = try locator.locate(.ytDlp)
-                    // P1 fix: always pass the bundled ffmpeg so muxing works on
-                    // machines where ffmpeg is not installed in PATH.
                     let ffmpeg = try locator.locate(.ffmpeg)
+
+                    let renderedExtra = renderExtraOptions(extraOptions, for: .download)
+                    let allExtraArgv = renderedExtra + managedArguments
+                    let hasDownloadSections = allExtraArgv.contains("--download-sections")
+
+                    if hasDownloadSections {
+                        if selectedProtocols.isEmpty {
+                            onLog(.warning, "download-sections without format metadata: relying on compiled protocol restriction")
+                        } else {
+                            for proto in selectedProtocols {
+                                let result = ProtocolChecker.check(transportProtocol: proto)
+                                if case let .rejected(reason) = result {
+                                    throw AppError(
+                                        message: "Protocol rejected for remote FFmpeg path.",
+                                        recoverySuggestion: reason
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     let formatSelector = formatSelectorOverride ?? YTTool.buildFormatSelector(
                         videoId: videoFormatId,

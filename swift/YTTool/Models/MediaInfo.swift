@@ -155,6 +155,7 @@ struct VideoFormat: Codable, Equatable, Identifiable {
     var bitrateKbps: Double?
     var fileSizeBytes: Int64?
     var note: String
+    var transportProtocol: String? = nil
 
     var friendlyCodec: String {
         mapCodecName(codec)
@@ -179,6 +180,7 @@ struct AudioFormat: Codable, Equatable, Identifiable {
     var bitrateKbps: Double?
     var fileSizeBytes: Int64?
     var note: String
+    var transportProtocol: String? = nil
 
     var friendlyCodec: String {
         mapCodecName(codec)
@@ -195,6 +197,111 @@ struct AudioFormat: Codable, Equatable, Identifiable {
     var displayLine: String {
         "\(id)  \(friendlyCodec)  \(formattedBitrate)  \(formattedFileSize)  \(note)"
     }
+}
+
+// MARK: - HLS Detection
+
+func isHLSProtocol(_ proto: String?) -> Bool {
+    guard let proto = proto?.lowercased() else { return false }
+    return proto.split(separator: "+")
+        .contains(where: { $0 == "m3u8" || $0 == "m3u8_native" })
+}
+
+func isDASHProtocol(_ proto: String?) -> Bool {
+    guard let proto = proto?.lowercased() else { return false }
+    return proto.contains("dash")
+}
+
+func classifyProtocol(_ proto: String?) -> String {
+    if isHLSProtocol(proto) { return "HLS" }
+    if isDASHProtocol(proto) { return "DASH" }
+    guard let proto else { return "—" }
+    let lower = proto.lowercased()
+    if lower == "https" || lower == "http" { return "HTTP" }
+    return proto.uppercased()
+}
+
+extension VideoFormat {
+    var isHLS: Bool {
+        isHLSProtocol(transportProtocol)
+    }
+
+    var protocolLabel: String {
+        classifyProtocol(transportProtocol)
+    }
+}
+
+extension AudioFormat {
+    var isHLS: Bool {
+        isHLSProtocol(transportProtocol)
+    }
+
+    var protocolLabel: String {
+        classifyProtocol(transportProtocol)
+    }
+}
+
+// MARK: - Format Filtering
+
+/// Lower = higher priority. H.264/AAC > VP9/Opus > AV1.
+func codecPriority(_ codec: String) -> Int {
+    switch codec.lowercased() {
+    case "h.264", "aac": 0
+    case "vp9", "opus": 1
+    case "av1": 2
+    default: 3
+    }
+}
+
+/// Keep one video format per resolution — prefer: H.264 > VP9 > AV1, higher bitrate.
+/// When `excludeHLS` is true, filters out HLS (m3u8) formats first.
+func filterVideoFormats(_ formats: [VideoFormat], excludeHLS: Bool = false) -> [VideoFormat] {
+    let source = excludeHLS ? formats.filter { !$0.isHLS } : formats
+    var bestByRes: [String: VideoFormat] = [:]
+    var resOrder: [String] = []
+    for fmt in source {
+        if bestByRes[fmt.resolution] == nil {
+            resOrder.append(fmt.resolution)
+            bestByRes[fmt.resolution] = fmt
+        } else {
+            let existing = bestByRes[fmt.resolution]!
+            if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
+                bestByRes[fmt.resolution] = fmt
+            } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
+                      (fmt.bitrateKbps ?? 0) > (existing.bitrateKbps ?? 0)
+            {
+                bestByRes[fmt.resolution] = fmt
+            }
+        }
+    }
+    return resOrder.compactMap { bestByRes[$0] }
+}
+
+/// Keep one audio format per quality tier — prefer: higher bitrate, AAC > Opus.
+/// When `excludeHLS` is true, filters out HLS (m3u8) formats first.
+func filterAudioFormats(_ formats: [AudioFormat], excludeHLS: Bool = false) -> [AudioFormat] {
+    let source = excludeHLS ? formats.filter { !$0.isHLS } : formats
+    var standard: AudioFormat?
+    var basic: AudioFormat?
+    for fmt in source {
+        let bitrate = fmt.bitrateKbps ?? 0
+        if bitrate >= 96 {
+            if let existing = standard {
+                if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
+                    standard = fmt
+                } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
+                          bitrate > (existing.bitrateKbps ?? 0)
+                {
+                    standard = fmt
+                }
+            } else {
+                standard = fmt
+            }
+        } else {
+            if basic == nil { basic = fmt }
+        }
+    }
+    return [standard, basic].compactMap { $0 }
 }
 
 // MARK: - Helpers

@@ -369,7 +369,9 @@ func buildDownloadArguments(
     if let aria2cPath {
         args += [
             "--downloader", aria2cPath,
+            "--downloader", "m3u8:native",
             "--downloader-args", "aria2c:-x 16 -s 16 -k 1M",
+            "-N", "4",
         ]
     }
     if let cookiesFilePath, !cookiesFilePath.isEmpty {
@@ -393,7 +395,6 @@ func buildDownloadArguments(
             "--embed-chapters",
             "--embed-metadata",
         ]
-        // aria2c handles its own multi-connection; --concurrent-fragments is redundant
         if aria2cPath == nil {
             args += ["--concurrent-fragments", "4"]
         }

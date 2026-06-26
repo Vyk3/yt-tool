@@ -4,6 +4,24 @@
 
 ---
 
+## [0.2.6] — 2026-06-25
+
+### Changed
+- **FFmpeg 来源切换**：`ffmpeg` / `ffprobe` 从 osxexperts.net 全功能 GPL 构建（v8.1）切换为自建 minimal LGPL 构建（v8.1.1）。单一 ZIP 包含两个二进制 + LGPL 许可证文件，三重 SHA256 校验（archive + ffmpeg member + ffprobe member）。
+- **LGPL 许可证材料**：App bundle 内新增 `Resources/Licenses/` 目录，含 `LICENSE_LGPL.txt`、`LICENSE_LAME.txt` 和 `NOTICE_FFMPEG.txt`，由 release build 自动从 dependency ZIP 提取。
+- **Protocol fail-closed gate**：含 `--download-sections` 的下载在启动 yt-dlp 前检查 format transport protocol，仅允许 `http`/`https`/`m3u8`/`m3u8_native`。未知或不支持的 protocol 被拒绝；无 format metadata 时依赖 compiled protocol 限制作为 defense-in-depth。
+
+### Added
+- **`ProtocolChecker`**：新增 transport protocol 校验工具，支持 compound protocol 拆分（`+` 分隔）、大小写/空白规范化校验。
+- **`ProcessRunning` protocol**：从 `ProcessRunner` 抽取协议，支持下载服务测试注入 stub runner。
+- **`ServiceLogKind.warning`**：新增 warning 日志级别，用于 defense-in-depth 路径的运行时提示。
+- **CI `release-build-check`**：新增 CI job，在 stable/nightly 两个 channel 执行完整 release build 并验证许可证文件和 codesign。
+- **协议标签**：技术详情模式下视频/音频格式表格新增「协议」列，显示 DASH / HLS / HTTP 标签，帮助用户区分格式的传输协议。
+- **DASH 格式自动选择**：探测完成后自动选中最佳 DASH 视频+音频格式组合；简化模式下隐藏 HLS 格式（可通过「显示全部格式」恢复）。
+- **HLS 下载优化**：HLS 流强制使用 yt-dlp 原生下载器（而非 aria2c），配合 `-N 4` 并行片段下载，避免 aria2c 对小片段的连接开销。
+
+---
+
 ## [0.2.5] — 2026-06-25
 
 ### Changed

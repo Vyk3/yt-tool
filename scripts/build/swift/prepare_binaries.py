@@ -138,27 +138,40 @@ def _prepare_ytdlp(
     print(f"yt-dlp wrapper: {wrapper_out}")
 
 
+_LICENSE_FILES = ["LICENSE_LGPL.txt", "LICENSE_LAME.txt", "NOTICE_FFMPEG.txt"]
+
+
+def _extract_license_files(archive: Path, licenses_dir: Path) -> None:
+    with zipfile.ZipFile(archive) as zf:
+        for name in _LICENSE_FILES:
+            matches = [n for n in zf.namelist() if n.rsplit("/", 1)[-1] == name]
+            if not matches:
+                _die(f"License file not found in archive: {name}")
+            with zf.open(matches[0]) as src, (licenses_dir / name).open("wb") as dst:
+                shutil.copyfileobj(src, dst)
+            print(f"  Extracted license: {name}")
+
+
 def _prepare_ffmpeg(
     *,
     vendor_bin_dir: Path,
     clean: bool,
     ffmpeg_url: str,
-    ffmpeg_sha256: str,
-    ffprobe_url: str,
-    ffprobe_sha256: str,
+    ffmpeg_archive_sha256: str,
+    ffmpeg_bin_sha256: str,
+    ffprobe_bin_sha256: str,
+    licenses_dir: Path | None,
 ) -> None:
     if not ffmpeg_url:
         _die("Missing ffmpeg URL. Set --ffmpeg-url.")
-    if not ffmpeg_sha256:
-        _die("Missing ffmpeg SHA256. Set --ffmpeg-sha256.")
-    if not ffprobe_url:
-        _die("Missing ffprobe URL. Set --ffprobe-url.")
-    if not ffprobe_sha256:
-        _die("Missing ffprobe SHA256. Set --ffprobe-sha256.")
+    if not ffmpeg_archive_sha256:
+        _die("Missing ffmpeg archive SHA256. Set --ffmpeg-archive-sha256.")
+    if not ffmpeg_bin_sha256:
+        _die("Missing ffmpeg binary SHA256. Set --ffmpeg-sha256.")
+    if not ffprobe_bin_sha256:
+        _die("Missing ffprobe binary SHA256. Set --ffprobe-sha256.")
     if _is_mutable_url(ffmpeg_url):
         _die(f"Refuse mutable ffmpeg URL: {ffmpeg_url}")
-    if _is_mutable_url(ffprobe_url):
-        _die(f"Refuse mutable ffprobe URL: {ffprobe_url}")
 
     ffmpeg_bin = vendor_bin_dir / "ffmpeg"
     ffprobe_bin = vendor_bin_dir / "ffprobe"
@@ -173,26 +186,24 @@ def _prepare_ffmpeg(
         print("Downloading ffmpeg archive...")
         ffmpeg_archive = tmp_dir / "ffmpeg.zip"
         _download(ffmpeg_url, ffmpeg_archive)
+        _verify_sha256(ffmpeg_archive, ffmpeg_archive_sha256,
+                       source_url=ffmpeg_url, label="ffmpeg archive")
 
-        _extract_named_member(ffmpeg_archive, ["ffmpeg"], ffmpeg_bin)
-        # Attempt to pull ffprobe from the same archive (some bundles ship both).
-        _extract_named_member(ffmpeg_archive, ["ffprobe"], ffprobe_bin)
+        if not _extract_named_member(ffmpeg_archive, ["ffmpeg"], ffmpeg_bin):
+            _die(f"ffmpeg archive does not contain ffmpeg member: {ffmpeg_url}")
+        if not _extract_named_member(ffmpeg_archive, ["ffprobe"], ffprobe_bin):
+            _die(f"ffmpeg archive does not contain ffprobe member: {ffmpeg_url}")
 
-        # Always download and verify the dedicated ffprobe archive so that:
-        # - sources that ship ffprobe separately (e.g. evermeet.cx) are handled, and
-        # - a stale ffprobe from a previous dev/release run is never reused without
-        #   SHA verification, even when ffmpeg came from the same archive.
-        print("Downloading ffprobe archive...")
-        ffprobe_archive = tmp_dir / "ffprobe.zip"
-        _download(ffprobe_url, ffprobe_archive)
-        _extract_named_member(ffprobe_archive, ["ffprobe"], ffprobe_bin)
+        if licenses_dir is not None:
+            licenses_dir.mkdir(parents=True, exist_ok=True)
+            _extract_license_files(ffmpeg_archive, licenses_dir)
 
     if not ffmpeg_bin.exists():
         _die(f"ffmpeg archive does not contain ffmpeg: {ffmpeg_url}")
     if not ffprobe_bin.exists():
-        _die(f"ffprobe archive does not contain ffprobe: {ffprobe_url}")
-    _verify_sha256(ffmpeg_bin, ffmpeg_sha256, source_url=ffmpeg_url, label="ffmpeg binary")
-    _verify_sha256(ffprobe_bin, ffprobe_sha256, source_url=ffprobe_url, label="ffprobe binary")
+        _die(f"ffmpeg archive does not contain ffprobe: {ffmpeg_url}")
+    _verify_sha256(ffmpeg_bin, ffmpeg_bin_sha256, source_url=ffmpeg_url, label="ffmpeg binary")
+    _verify_sha256(ffprobe_bin, ffprobe_bin_sha256, source_url=ffmpeg_url, label="ffprobe binary")
     _ensure_executable(ffmpeg_bin)
     _ensure_executable(ffprobe_bin)
     print(f"ffmpeg binary: {ffmpeg_bin}")
@@ -206,9 +217,10 @@ def main() -> int:
     parser.add_argument("--ytdlp-url", default="", help="Pinned yt-dlp download URL.")
     parser.add_argument("--ytdlp-sha256", default="", help="Expected SHA256 of the yt-dlp binary.")
     parser.add_argument("--ffmpeg-url", default="", help="Pinned ffmpeg archive URL.")
+    parser.add_argument("--ffmpeg-archive-sha256", default="", help="Expected SHA256 of the ZIP archive.")
     parser.add_argument("--ffmpeg-sha256", default="", help="Expected SHA256 of extracted ffmpeg binary.")
-    parser.add_argument("--ffprobe-url", default="", help="Pinned ffprobe archive URL.")
     parser.add_argument("--ffprobe-sha256", default="", help="Expected SHA256 of extracted ffprobe binary.")
+    parser.add_argument("--licenses-dir", default=None, help="Directory to extract license files into.")
     parser.add_argument(
         "--skip",
         choices=["ytdlp", "ffmpeg"],
@@ -236,9 +248,10 @@ def main() -> int:
             vendor_bin_dir=vendor_bin_dir,
             clean=args.clean,
             ffmpeg_url=args.ffmpeg_url,
-            ffmpeg_sha256=args.ffmpeg_sha256,
-            ffprobe_url=args.ffprobe_url,
-            ffprobe_sha256=args.ffprobe_sha256,
+            ffmpeg_archive_sha256=args.ffmpeg_archive_sha256,
+            ffmpeg_bin_sha256=args.ffmpeg_sha256,
+            ffprobe_bin_sha256=args.ffprobe_sha256,
+            licenses_dir=Path(args.licenses_dir) if args.licenses_dir else None,
         )
 
     return 0

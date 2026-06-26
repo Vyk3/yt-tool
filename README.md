@@ -17,7 +17,7 @@
 ## License
 
 - 项目代码采用 `MIT` 许可证，见 [LICENSE](LICENSE)。
-- 发布产物中捆绑的 `ffmpeg` / `ffprobe` 第三方许可证见 [LICENSE_FFMPEG.txt](LICENSE_FFMPEG.txt)。
+- 发布产物中捆绑的 `ffmpeg` / `ffprobe` 为自建 minimal LGPL 静态构建（FFmpeg 8.1.1 + LAME 3.100），第三方许可证见 [LICENSE_FFMPEG.txt](LICENSE_FFMPEG.txt)。
 
 ## 系统要求
 

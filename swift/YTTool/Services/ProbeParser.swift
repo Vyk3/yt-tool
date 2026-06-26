@@ -97,7 +97,8 @@ struct ProbeParser {
             fps: Int((raw.fps ?? 0).rounded()),
             bitrateKbps: raw.tbr,
             fileSizeBytes: fileSize,
-            note: hasAudio ? "w/ audio" : "no audio"
+            note: hasAudio ? "w/ audio" : "no audio",
+            transportProtocol: raw.protocol
         )
     }
 
@@ -113,7 +114,8 @@ struct ProbeParser {
             codec: acodec,
             bitrateKbps: raw.abr,
             fileSizeBytes: fileSize,
-            note: raw.formatNote ?? raw.ext ?? ""
+            note: raw.formatNote ?? raw.ext ?? "",
+            transportProtocol: raw.protocol
         )
     }
 
@@ -187,6 +189,7 @@ private struct RawFormat: Decodable {
     var formatNote: String?
     var filesize: Int64?
     var filesizeApprox: Int64?
+    var `protocol`: String?
 
     enum CodingKeys: String, CodingKey {
         case formatID = "format_id"
@@ -200,5 +203,6 @@ private struct RawFormat: Decodable {
         case formatNote = "format_note"
         case filesize
         case filesizeApprox = "filesize_approx"
+        case `protocol`
     }
 }

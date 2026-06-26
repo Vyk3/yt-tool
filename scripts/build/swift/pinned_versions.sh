@@ -29,19 +29,18 @@ YTDLP_VERSION="$YTDLP_STABLE_VERSION"
 YTDLP_URL="$YTDLP_STABLE_URL"
 YTDLP_SHA256="$YTDLP_STABLE_SHA256"
 
-# ffmpeg/ffprobe static macOS builds.
+# ffmpeg/ffprobe — self-built minimal LGPL static builds (arm64 only).
 #
-# Current release target: Apple Silicon (arm64) only.
-# Source: OSXExperts.NET static builds. Their published SHA256 values are for
-# the extracted ffmpeg/ffprobe binaries, not the zip archives.
+# Single ZIP ships both ffmpeg and ffprobe plus LGPL license materials.
+# Three SHAs: archive (ZIP), ffmpeg member, ffprobe member.
 # Dev mode always copies local Homebrew binaries/wrappers.
 
-FFMPEG_VERSION="8.1"
-FFMPEG_URL="https://www.osxexperts.net/ffmpeg81arm.zip"
-FFMPEG_SHA256="9a08d61f9328e8164ba560ee7a79958e357307fcfeea6fe626b7d66cdc287028"
-
-FFPROBE_URL="https://www.osxexperts.net/ffprobe81arm.zip"
-FFPROBE_SHA256="aab17ac7379c1178aaf400c3ef36cdb67db0b75b1a23eeef2cb9f658be8844e6"
+FFMPEG_VERSION="8.1.1"
+FFMPEG_MINIMAL_REVISION="r1"
+FFMPEG_URL="https://github.com/Vyk3/yt-tool/releases/download/ffmpeg-${FFMPEG_VERSION}-minimal-${FFMPEG_MINIMAL_REVISION}/ffmpeg-${FFMPEG_VERSION}-minimal-${FFMPEG_MINIMAL_REVISION}.zip"
+FFMPEG_ARCHIVE_SHA256="33e0f5fb22dc9580867afeddcc904c6f4d3786856788f98ae550a97252c733e3"
+FFMPEG_BIN_SHA256="55f61fcc0ce3211ebdd70026e911b371865bd3e26f0e59c34e0d1df8cd528325"
+FFPROBE_BIN_SHA256="2ecbbe89201221df04ef74f5781fb1c13eeaf8f88521501a398917492e0a988d"
 
 normalize_ytdlp_channel() {
   local channel="${1:-stable}"

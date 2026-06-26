@@ -5,11 +5,12 @@ enum ServiceLogKind {
     case stdout
     case stderr
     case lifecycle
+    case warning
 
     var appLogLevel: AppLogLevel {
         switch self {
         case .command, .lifecycle, .stdout: .info
-        case .stderr: .warning
+        case .stderr, .warning: .warning
         }
     }
 }

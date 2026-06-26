@@ -199,7 +199,18 @@ struct ProcessConfiguration {
     }
 }
 
-final class ProcessRunner: @unchecked Sendable {
+protocol ProcessRunning: Sendable {
+    func stream(_ configuration: ProcessConfiguration) -> AsyncThrowingStream<ProcessEvent, Error>
+    func cancel(gracePeriod: Duration) async throws
+}
+
+extension ProcessRunning {
+    func cancel() async throws {
+        try await cancel(gracePeriod: .seconds(2))
+    }
+}
+
+final class ProcessRunner: ProcessRunning, @unchecked Sendable {
     private var activeProcess: Process?
     private let lock = NSLock()
 
@@ -336,7 +347,7 @@ final class ProcessRunner: @unchecked Sendable {
         }
     }
 
-    func cancel(gracePeriod: Duration = .seconds(2)) async throws {
+    func cancel(gracePeriod: Duration) async throws {
         guard let process = currentActiveProcess() else {
             return
         }

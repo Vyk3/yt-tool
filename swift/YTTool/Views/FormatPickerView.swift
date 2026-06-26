@@ -10,6 +10,7 @@ private enum VideoCol {
     static let fps: CGFloat = 38
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
+    static let proto: CGFloat = 40
     static let note: CGFloat = 66
 }
 
@@ -18,6 +19,7 @@ private enum AudioCol {
     static let codec: CGFloat = 44
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
+    static let proto: CGFloat = 40
     static let note: CGFloat = 66
 }
 
@@ -75,8 +77,8 @@ struct FormatPickerView: View {
     private var videoMinWidth: CGFloat {
         if showTechnicalDetails {
             let items = VideoCol.id + VideoCol.res + VideoCol.codec + VideoCol.fps
-                + VideoCol.bitrate + VideoCol.size + VideoCol.note
-            return items + 6 * 6 + 24 // 6 gaps + 12pt padding each side
+                + VideoCol.bitrate + VideoCol.size + VideoCol.proto + VideoCol.note
+            return items + 7 * 6 + 24 // 7 gaps + 12pt padding each side
         } else {
             let items = SimpleVideoCol.res + SimpleVideoCol.size + SimpleVideoCol.note
             return items + 2 * 6 + 24
@@ -87,8 +89,8 @@ struct FormatPickerView: View {
     private var audioMinWidth: CGFloat {
         if showTechnicalDetails {
             let items = AudioCol.id + AudioCol.codec + AudioCol.bitrate
-                + AudioCol.size + AudioCol.note
-            return items + 4 * 6 + 24
+                + AudioCol.size + AudioCol.proto + AudioCol.note
+            return items + 5 * 6 + 24
         } else {
             let items = SimpleAudioCol.codec + SimpleAudioCol.size + SimpleAudioCol.quality
             return items + 2 * 6 + 24
@@ -194,8 +196,14 @@ struct FormatPickerView: View {
     @ViewBuilder
     private func formatColumns(mediaInfo: MediaInfo) -> some View {
         let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
-        let videoFormats = showAllFormats ? mediaInfo.videoFormats : Self.filterVideoFormats(mediaInfo.videoFormats)
-        let audioFormats = showAllFormats ? mediaInfo.audioFormats : Self.filterAudioFormats(mediaInfo.audioFormats)
+        let filteredV = filterVideoFormats(mediaInfo.videoFormats, excludeHLS: true)
+        let filteredA = filterAudioFormats(mediaInfo.audioFormats, excludeHLS: true)
+        let videoFormats = showAllFormats
+            ? mediaInfo.videoFormats
+            : (filteredV.isEmpty ? filterVideoFormats(mediaInfo.videoFormats) : filteredV)
+        let audioFormats = showAllFormats
+            ? mediaInfo.audioFormats
+            : (filteredA.isEmpty ? filterAudioFormats(mediaInfo.audioFormats) : filteredA)
         let subCount = mediaInfo.subtitleTracks.count + mediaInfo.autoSubtitleTracks.count
         let areaHeight = effectiveFormatHeight(
             videoCount: videoFormats.count,
@@ -229,67 +237,6 @@ struct FormatPickerView: View {
             }
         } else {
             columns
-        }
-    }
-
-    // MARK: - Format filtering
-
-    /// Keep one video format per resolution — prefer: H.264 > VP9 > AV1, higher bitrate.
-    private static func filterVideoFormats(_ formats: [VideoFormat]) -> [VideoFormat] {
-        var bestByRes: [String: VideoFormat] = [:]
-        var resOrder: [String] = []
-        for fmt in formats {
-            if bestByRes[fmt.resolution] == nil {
-                resOrder.append(fmt.resolution)
-                bestByRes[fmt.resolution] = fmt
-            } else {
-                let existing = bestByRes[fmt.resolution]!
-                if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
-                    bestByRes[fmt.resolution] = fmt
-                } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
-                          (fmt.bitrateKbps ?? 0) > (existing.bitrateKbps ?? 0)
-                {
-                    bestByRes[fmt.resolution] = fmt
-                }
-            }
-        }
-        return resOrder.compactMap { bestByRes[$0] }
-    }
-
-    /// Keep one audio format per quality tier — prefer: higher bitrate, AAC > Opus.
-    private static func filterAudioFormats(_ formats: [AudioFormat]) -> [AudioFormat] {
-        // Group into tiers: Standard (>=96k) and Basic (<96k)
-        var standard: AudioFormat?
-        var basic: AudioFormat?
-        for fmt in formats {
-            let bitrate = fmt.bitrateKbps ?? 0
-            if bitrate >= 96 {
-                if let existing = standard {
-                    // Prefer AAC, then higher bitrate
-                    if codecPriority(fmt.friendlyCodec) < codecPriority(existing.friendlyCodec) {
-                        standard = fmt
-                    } else if codecPriority(fmt.friendlyCodec) == codecPriority(existing.friendlyCodec),
-                              bitrate > (existing.bitrateKbps ?? 0)
-                    {
-                        standard = fmt
-                    }
-                } else {
-                    standard = fmt
-                }
-            } else {
-                if basic == nil { basic = fmt }
-            }
-        }
-        return [standard, basic].compactMap { $0 }
-    }
-
-    /// Lower = higher priority. H.264/AAC > VP9/Opus > AV1.
-    private static func codecPriority(_ codec: String) -> Int {
-        switch codec.lowercased() {
-        case "h.264", "aac": 0
-        case "vp9", "opus": 1
-        case "av1": 2
-        default: 3
         }
     }
 
@@ -340,6 +287,7 @@ struct FormatPickerView: View {
                 Text("FPS").frame(width: VideoCol.fps, alignment: .leading)
                 Text(Loc.colBitrate(language)).frame(width: VideoCol.bitrate, alignment: .leading)
                 Text(Loc.colSize(language)).frame(width: VideoCol.size, alignment: .leading)
+                Text(Loc.colProtocol(language)).frame(width: VideoCol.proto, alignment: .leading)
                 Text(Loc.colNote(language)).frame(width: VideoCol.note, alignment: .leading)
             }
             .font(.caption.monospaced())
@@ -367,6 +315,7 @@ struct FormatPickerView: View {
                     Text("\(fmt.fps)fps").lineLimit(1).frame(width: VideoCol.fps, alignment: .leading)
                     Text(fmt.formattedBitrate).lineLimit(1).frame(width: VideoCol.bitrate, alignment: .leading)
                     Text(fmt.formattedFileSize).lineLimit(1).frame(width: VideoCol.size, alignment: .leading)
+                    Text(fmt.protocolLabel).lineLimit(1).frame(width: VideoCol.proto, alignment: .leading)
                     Text(Loc.videoNote(fmt.note, language)).lineLimit(1).frame(width: VideoCol.note, alignment: .leading)
                 }
             } else {
@@ -413,6 +362,7 @@ struct FormatPickerView: View {
                 Text(Loc.colCodec(language)).frame(width: AudioCol.codec, alignment: .leading)
                 Text(Loc.colBitrate(language)).frame(width: AudioCol.bitrate, alignment: .leading)
                 Text(Loc.colSize(language)).frame(width: AudioCol.size, alignment: .leading)
+                Text(Loc.colProtocol(language)).frame(width: AudioCol.proto, alignment: .leading)
                 Text(Loc.colNote(language)).frame(width: AudioCol.note, alignment: .leading)
             }
             .font(.caption.monospaced())
@@ -438,6 +388,7 @@ struct FormatPickerView: View {
                     Text(fmt.friendlyCodec).lineLimit(1).frame(width: AudioCol.codec, alignment: .leading)
                     Text(fmt.formattedBitrate).lineLimit(1).frame(width: AudioCol.bitrate, alignment: .leading)
                     Text(fmt.formattedFileSize).lineLimit(1).frame(width: AudioCol.size, alignment: .leading)
+                    Text(fmt.protocolLabel).lineLimit(1).frame(width: AudioCol.proto, alignment: .leading)
                     Text(Loc.audioNote(fmt.note, language)).lineLimit(1).frame(width: AudioCol.note, alignment: .leading)
                 }
             } else {
