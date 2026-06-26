@@ -16,6 +16,9 @@
 - **`ProcessRunning` protocol**：从 `ProcessRunner` 抽取协议，支持下载服务测试注入 stub runner。
 - **`ServiceLogKind.warning`**：新增 warning 日志级别，用于 defense-in-depth 路径的运行时提示。
 - **CI `release-build-check`**：新增 CI job，在 stable/nightly 两个 channel 执行完整 release build 并验证许可证文件和 codesign。
+- **协议标签**：技术详情模式下视频/音频格式表格新增「协议」列，显示 DASH / HLS / HTTP 标签，帮助用户区分格式的传输协议。
+- **DASH 格式自动选择**：探测完成后自动选中最佳 DASH 视频+音频格式组合；简化模式下隐藏 HLS 格式（可通过「显示全部格式」恢复）。
+- **HLS 下载优化**：HLS 流强制使用 yt-dlp 原生下载器（而非 aria2c），配合 `-N 4` 并行片段下载，避免 aria2c 对小片段的连接开销。
 
 ---
 
