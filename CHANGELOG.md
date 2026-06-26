@@ -4,7 +4,7 @@
 
 ---
 
-## [0.2.6] — 2026-06-25
+## [0.2.6] — 2026-06-27
 
 ### Changed
 - **FFmpeg 来源切换**：`ffmpeg` / `ffprobe` 从 osxexperts.net 全功能 GPL 构建（v8.1）切换为自建 minimal LGPL 构建（v8.1.1）。单一 ZIP 包含两个二进制 + LGPL 许可证文件，三重 SHA256 校验（archive + ffmpeg member + ffprobe member）。
@@ -19,6 +19,10 @@
 - **协议标签**：技术详情模式下视频/音频格式表格新增「协议」列，显示 DASH / HLS / HTTP 标签，帮助用户区分格式的传输协议。
 - **DASH 格式自动选择**：探测完成后自动选中最佳 DASH 视频+音频格式组合；简化模式下隐藏 HLS 格式（可通过「显示全部格式」恢复）。
 - **HLS 下载优化**：HLS 流强制使用 yt-dlp 原生下载器（而非 aria2c），配合 `-N 4` 并行片段下载，避免 aria2c 对小片段的连接开销。
+
+### Fixed
+- **订阅检查时间戳统一**：所有频道共用同一个 `checkTime` 快照，消除逐频道 `Date()` 调用导致的时间戳漂移；所有提前返回路径（空 feed、无新视频）也更新 `lastCheckedDate`。(#108)
+- **格式 ID 列宽修复**：视频和音频格式 ID 列从 30pt/36pt 加宽至 50pt，修复较长格式 ID（如 Bilibili 5 位数 ID）被截断的问题。(#109)
 
 ---
 
