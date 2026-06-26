@@ -189,8 +189,10 @@ def _prepare_ffmpeg(
         _verify_sha256(ffmpeg_archive, ffmpeg_archive_sha256,
                        source_url=ffmpeg_url, label="ffmpeg archive")
 
-        _extract_named_member(ffmpeg_archive, ["ffmpeg"], ffmpeg_bin)
-        _extract_named_member(ffmpeg_archive, ["ffprobe"], ffprobe_bin)
+        if not _extract_named_member(ffmpeg_archive, ["ffmpeg"], ffmpeg_bin):
+            _die(f"ffmpeg archive does not contain ffmpeg member: {ffmpeg_url}")
+        if not _extract_named_member(ffmpeg_archive, ["ffprobe"], ffprobe_bin):
+            _die(f"ffmpeg archive does not contain ffprobe member: {ffmpeg_url}")
 
         if licenses_dir is not None:
             licenses_dir.mkdir(parents=True, exist_ok=True)
