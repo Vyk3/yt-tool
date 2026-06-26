@@ -196,12 +196,14 @@ struct FormatPickerView: View {
     @ViewBuilder
     private func formatColumns(mediaInfo: MediaInfo) -> some View {
         let hasSubs = !mediaInfo.subtitleTracks.isEmpty || !mediaInfo.autoSubtitleTracks.isEmpty
+        let filteredV = filterVideoFormats(mediaInfo.videoFormats, excludeHLS: true)
+        let filteredA = filterAudioFormats(mediaInfo.audioFormats, excludeHLS: true)
         let videoFormats = showAllFormats
             ? mediaInfo.videoFormats
-            : filterVideoFormats(mediaInfo.videoFormats, excludeHLS: true)
+            : (filteredV.isEmpty ? filterVideoFormats(mediaInfo.videoFormats) : filteredV)
         let audioFormats = showAllFormats
             ? mediaInfo.audioFormats
-            : filterAudioFormats(mediaInfo.audioFormats, excludeHLS: true)
+            : (filteredA.isEmpty ? filterAudioFormats(mediaInfo.audioFormats) : filteredA)
         let subCount = mediaInfo.subtitleTracks.count + mediaInfo.autoSubtitleTracks.count
         let areaHeight = effectiveFormatHeight(
             videoCount: videoFormats.count,
