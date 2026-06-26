@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Detailed mode: 7 video columns + 5 audio columns.
 private enum VideoCol {
-    static let id: CGFloat = 30
+    static let id: CGFloat = 50
     static let res: CGFloat = 44
     static let codec: CGFloat = 44
     static let fps: CGFloat = 38
@@ -14,7 +14,7 @@ private enum VideoCol {
 }
 
 private enum AudioCol {
-    static let id: CGFloat = 36
+    static let id: CGFloat = 50
     static let codec: CGFloat = 44
     static let bitrate: CGFloat = 50
     static let size: CGFloat = 60
