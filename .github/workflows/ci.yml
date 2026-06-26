@@ -70,12 +70,15 @@ jobs:
 
   release-build-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       needed: ${{ steps.check.outputs.needed }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: check
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
@@ -84,7 +87,7 @@ jobs:
           fi
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
-          if git diff --name-only "$BASE" "$HEAD" | \
+          if git diff --name-only "$BASE...$HEAD" | \
              grep -qE '^(swift/|scripts/build/|\.github/workflows/ci\.yml)'; then
             echo "needed=true" >> "$GITHUB_OUTPUT"
           else
