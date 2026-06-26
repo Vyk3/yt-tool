@@ -207,15 +207,27 @@ func isHLSProtocol(_ proto: String?) -> Bool {
         .contains(where: { $0 == "m3u8" || $0 == "m3u8_native" })
 }
 
+func isDASHProtocol(_ proto: String?) -> Bool {
+    guard let proto = proto?.lowercased() else { return false }
+    return proto.contains("dash")
+}
+
+func classifyProtocol(_ proto: String?) -> String {
+    if isHLSProtocol(proto) { return "HLS" }
+    if isDASHProtocol(proto) { return "DASH" }
+    guard let proto else { return "—" }
+    let lower = proto.lowercased()
+    if lower == "https" || lower == "http" { return "HTTP" }
+    return proto.uppercased()
+}
+
 extension VideoFormat {
     var isHLS: Bool {
         isHLSProtocol(transportProtocol)
     }
 
     var protocolLabel: String {
-        if isHLS { return "HLS" }
-        if transportProtocol != nil { return "DASH" }
-        return "—"
+        classifyProtocol(transportProtocol)
     }
 }
 
@@ -225,9 +237,7 @@ extension AudioFormat {
     }
 
     var protocolLabel: String {
-        if isHLS { return "HLS" }
-        if transportProtocol != nil { return "DASH" }
-        return "—"
+        classifyProtocol(transportProtocol)
     }
 }
 

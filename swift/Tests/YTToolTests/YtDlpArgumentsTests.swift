@@ -211,7 +211,12 @@ final class YtDlpArgumentsTests: XCTestCase {
             aria2cPath: "/opt/homebrew/bin/aria2c"
         )
         XCTAssertFalse(args.contains("--concurrent-fragments"))
-        XCTAssertTrue(args.contains("-N"))
+        guard let nIndex = args.firstIndex(of: "-N"),
+              args.index(after: nIndex) < args.endIndex
+        else {
+            return XCTFail("Expected -N 4 for concurrent fragment downloads")
+        }
+        XCTAssertEqual(args[args.index(after: nIndex)], "4")
         XCTAssertTrue(args.contains("--downloader"))
         XCTAssertTrue(args.contains("--embed-thumbnail"))
     }
