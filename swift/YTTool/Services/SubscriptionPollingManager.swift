@@ -126,9 +126,10 @@ final class SubscriptionPollingManager: ObservableObject {
             return collected
         }
 
+        let checkTime = Date()
         store.performBatchUpdate {
             for (subscription, videos) in results {
-                processNewVideos(videos, for: subscription)
+                processNewVideos(videos, for: subscription, now: checkTime)
             }
         }
     }
@@ -161,14 +162,16 @@ final class SubscriptionPollingManager: ObservableObject {
         return candidates.filter { seen.insert($0.videoID).inserted }
     }
 
-    private func processNewVideos(_ videos: [FeedVideo], for subscription: ChannelSubscription) {
-        guard let latest = videos.first else { return }
+    private func processNewVideos(_ videos: [FeedVideo], for subscription: ChannelSubscription, now: Date) {
+        guard let latest = videos.first else {
+            store.updateLastChecked(id: subscription.id, date: now, lastVideoID: subscription.lastVideoID)
+            return
+        }
 
         if !latest.channelName.isEmpty {
             store.updateChannelName(id: subscription.id, name: latest.channelName)
         }
 
-        let now = Date()
         let previousLastVideoID = subscription.lastVideoID
         let previousLastCheckedDate = subscription.lastCheckedDate
 
@@ -176,7 +179,10 @@ final class SubscriptionPollingManager: ObservableObject {
             store.updateLastChecked(id: subscription.id, date: now, lastVideoID: latest.videoID)
             return
         }
-        guard latest.videoID != previousLastVideoID else { return }
+        guard latest.videoID != previousLastVideoID else {
+            store.updateLastChecked(id: subscription.id, date: now, lastVideoID: previousLastVideoID)
+            return
+        }
 
         let existingIDs = Set(newVideos.map(\.videoID))
         var freshVideos = Self.filterFreshVideos(
