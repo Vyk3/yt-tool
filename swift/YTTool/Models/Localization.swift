@@ -1123,6 +1123,18 @@ enum Loc {
             : "Re-export your cookies file, update the path, and try again."
     }
 
+    static func needsCookiesMessage(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "Bilibili 需要 Cookies 才能访问该内容。"
+            : "Bilibili needs cookies to access this content."
+    }
+
+    static func needsCookiesSuggestion(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "请在设置 → Cookies 中添加 cookies 文件路径，然后重试。"
+            : "Add a cookies file path in Settings → Cookies, then try again."
+    }
+
     // MARK: Paste URL (#13)
 
     static func pasteURLHelp(_ l: AppLanguage) -> String {

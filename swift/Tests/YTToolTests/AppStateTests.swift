@@ -47,6 +47,71 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.isCurrentProbeAttempt(secondAttempt))
     }
 
+    func testMapsBilibiliPreconditionToNeedsCookiesWhenNoCookiesConfigured() {
+        let state = AppState(defaults: freshDefaults())
+        let error = AppError(
+            message: "yt-dlp probe failed.",
+            recoverySuggestion: "HTTP Error 412: Precondition Failed"
+        )
+
+        let mapped = state.mapYtDlpError(
+            error,
+            url: "https://www.bilibili.com/video/BV123",
+            cookiesFilePath: nil
+        )
+
+        XCTAssertEqual(mapped.kind, .needsCookies)
+        XCTAssertEqual(mapped.message, Loc.needsCookiesMessage(.english))
+        XCTAssertEqual(mapped.recoverySuggestion, Loc.needsCookiesSuggestion(.english))
+    }
+
+    func testMapsBilibiliPreconditionToCookieExpiredWhenCookiesConfigured() {
+        let state = AppState(defaults: freshDefaults())
+        let error = AppError(
+            message: "yt-dlp probe failed.",
+            recoverySuggestion: "Precondition Failed"
+        )
+
+        let mapped = state.mapYtDlpError(
+            error,
+            url: "https://www.bilibili.com/video/BV123",
+            cookiesFilePath: "/tmp/cookies.txt"
+        )
+
+        XCTAssertEqual(mapped.kind, .cookieExpired)
+        XCTAssertEqual(mapped.message, Loc.cookieExpiredMessage(.english))
+        XCTAssertEqual(mapped.recoverySuggestion, Loc.cookieExpiredSuggestion(.english))
+    }
+
+    func testKeepsPreconditionErrorUnchangedForNonBilibiliURL() {
+        let state = AppState(defaults: freshDefaults())
+        let error = AppError(
+            message: "yt-dlp probe failed.",
+            recoverySuggestion: "HTTP Error 412: Precondition Failed"
+        )
+
+        let mapped = state.mapYtDlpError(
+            error,
+            url: "https://www.youtube.com/watch?v=P5yHEKqx86U",
+            cookiesFilePath: nil
+        )
+
+        XCTAssertEqual(mapped, error)
+    }
+
+    func testProbeKeepsInvalidCookiesPathErrorForBilibiliURL() async throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.bilibili.com/video/BV123"
+        state.cookiesFilePath = "/tmp/yttool-missing-\(UUID().uuidString).txt"
+
+        state.probe()
+        let error = try await waitForProbeFailure(in: state)
+
+        XCTAssertEqual(error.kind, .general)
+        XCTAssertEqual(error.message, "Cookies file path is invalid.")
+        XCTAssertEqual(error.recoverySuggestion, "Use an existing cookies file path.")
+    }
+
     func testCancelDownloadInvalidatesActiveAttempt() {
         let state = AppState(defaults: freshDefaults())
 
@@ -492,5 +557,16 @@ final class AppStateTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    private func waitForProbeFailure(in state: AppState) async throws -> AppError {
+        for _ in 0 ..< 50 {
+            if case let .failure(error) = state.probeState {
+                return error
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Expected probe failure")
+        return AppError(message: "Missing probe failure")
     }
 }

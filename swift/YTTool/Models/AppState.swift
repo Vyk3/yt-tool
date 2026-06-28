@@ -269,9 +269,33 @@ final class AppState: ObservableObject {
         downloadState = .idle
 
         probeTask = Task {
+            let normalizedCookiesFilePath: String?
+            let parsedOptions: [ParsedExtraOption]
             do {
-                let normalizedCookiesFilePath = try normalizedCookiesFilePathOrThrow()
-                let parsedOptions = try parsedExtraOptionsOrThrow()
+                normalizedCookiesFilePath = try normalizedCookiesFilePathOrThrow()
+                parsedOptions = try parsedExtraOptionsOrThrow()
+            } catch let error as AppError {
+                await MainActor.run {
+                    guard isCurrentProbeAttempt(attemptID) else { return }
+                    probeTask = nil
+                    probeState = .failure(error)
+                    appendLog(scope: .probe, level: .error, message: joinedErrorMessage(error))
+                }
+                return
+            } catch {
+                await MainActor.run {
+                    guard isCurrentProbeAttempt(attemptID) else { return }
+                    probeTask = nil
+                    probeState = .failure(AppError(
+                        message: "Probe failed.",
+                        recoverySuggestion: error.localizedDescription
+                    ))
+                    appendLog(scope: .probe, level: .error, message: "Probe failed. \(error.localizedDescription)")
+                }
+                return
+            }
+
+            do {
                 let info = try await probeService.probe(
                     url: url,
                     cookiesFilePath: normalizedCookiesFilePath,
@@ -298,18 +322,20 @@ final class AppState: ObservableObject {
                 await MainActor.run {
                     guard isCurrentProbeAttempt(attemptID) else { return }
                     probeTask = nil
-                    probeState = .failure(error)
-                    appendLog(scope: .probe, level: .error, message: joinedErrorMessage(error))
+                    let mappedError = mapYtDlpError(error, url: url, cookiesFilePath: normalizedCookiesFilePath)
+                    probeState = .failure(mappedError)
+                    appendLog(scope: .probe, level: .error, message: joinedErrorMessage(mappedError))
                 }
             } catch {
                 await MainActor.run {
                     guard isCurrentProbeAttempt(attemptID) else { return }
                     probeTask = nil
-                    probeState = .failure(AppError(
+                    let mappedError = mapYtDlpError(AppError(
                         message: "Probe failed.",
                         recoverySuggestion: error.localizedDescription
-                    ))
-                    appendLog(scope: .probe, level: .error, message: "Probe failed. \(error.localizedDescription)")
+                    ), url: url, cookiesFilePath: normalizedCookiesFilePath)
+                    probeState = .failure(mappedError)
+                    appendLog(scope: .probe, level: .error, message: joinedErrorMessage(mappedError))
                 }
             }
         }
@@ -582,7 +608,7 @@ final class AppState: ObservableObject {
                 await MainActor.run {
                     guard isCurrentDownloadAttempt(attemptID) else { return }
                     downloadTask = nil
-                    let mappedError = mapDownloadError(error, url: url)
+                    let mappedError = mapYtDlpError(error, url: url, cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath)
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
                     self.recordDownloadResult(
@@ -596,10 +622,10 @@ final class AppState: ObservableObject {
                 await MainActor.run {
                     guard isCurrentDownloadAttempt(attemptID) else { return }
                     downloadTask = nil
-                    let mappedError = mapDownloadError(AppError(
+                    let mappedError = mapYtDlpError(AppError(
                         message: "Download failed.",
                         recoverySuggestion: error.localizedDescription
-                    ), url: url)
+                    ), url: url, cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath)
                     downloadState = .failed(mappedError)
                     appendLog(scope: .download, level: .error, message: joinedErrorMessage(mappedError))
                     self.recordDownloadResult(
@@ -984,19 +1010,20 @@ final class AppState: ObservableObject {
         {
             probeState = .failure(unsupportedURLError())
         }
+        if case let .failure(error) = probeState,
+           let localized = localizedCookiesError(kind: error.kind)
+        {
+            probeState = .failure(localized)
+        }
         // Queue validation error (count persisted across input clears)
         if queueUnsupportedCount > 0, queueError != nil {
             queueError = Loc.queueUnsupportedURLs(queueUnsupportedCount, language)
         }
-        // Cookie expiry error
+        // Cookie-related errors
         if case let .failed(error) = downloadState,
-           error.kind == .cookieExpired
+           let localized = localizedCookiesError(kind: error.kind)
         {
-            downloadState = .failed(AppError(
-                kind: .cookieExpired,
-                message: Loc.cookieExpiredMessage(language),
-                recoverySuggestion: Loc.cookieExpiredSuggestion(language)
-            ))
+            downloadState = .failed(localized)
         }
     }
 
@@ -1161,10 +1188,10 @@ final class AppState: ObservableObject {
 
     private static let cookieExpiryPatterns = [
         "cookie", "sessdata", "expired", "login required",
-        "cookies are not valid", "unable to log in",
+        "cookies are not valid", "unable to log in", "412", "precondition",
     ]
 
-    private func mapDownloadError(_ error: AppError, url: String) -> AppError {
+    func mapYtDlpError(_ error: AppError, url: String, cookiesFilePath: String?) -> AppError {
         let haystack = [error.message, error.recoverySuggestion]
             .compactMap { $0?.lowercased() }
             .joined(separator: "\n")
@@ -1182,14 +1209,34 @@ final class AppState: ObservableObject {
         if isBilibiliURL(url),
            Self.cookieExpiryPatterns.contains(where: { haystack.contains($0) })
         {
-            return AppError(
+            let kind: AppError.Kind = Self.hasConfiguredCookies(cookiesFilePath) ? .cookieExpired : .needsCookies
+            return localizedCookiesError(kind: kind) ?? error
+        }
+
+        return error
+    }
+
+    private func localizedCookiesError(kind: AppError.Kind) -> AppError? {
+        switch kind {
+        case .cookieExpired:
+            AppError(
                 kind: .cookieExpired,
                 message: Loc.cookieExpiredMessage(language),
                 recoverySuggestion: Loc.cookieExpiredSuggestion(language)
             )
+        case .needsCookies:
+            AppError(
+                kind: .needsCookies,
+                message: Loc.needsCookiesMessage(language),
+                recoverySuggestion: Loc.needsCookiesSuggestion(language)
+            )
+        case .general, .unsupportedURL:
+            nil
         }
+    }
 
-        return error
+    private static func hasConfiguredCookies(_ cookiesFilePath: String?) -> Bool {
+        cookiesFilePath?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
     }
 
     private func ffmpegWarningMessage(for missingTools: [BundledTool]) -> String {
