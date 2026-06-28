@@ -567,6 +567,6 @@ final class AppStateTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTFail("Expected probe failure")
-        return AppError(message: "Missing probe failure")
+        throw AppError(message: "Missing probe failure")
     }
 }

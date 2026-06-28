@@ -1130,9 +1130,10 @@ enum Loc {
     }
 
     static func needsCookiesSuggestion(_ l: AppLanguage) -> String {
-        l == .chinese
-            ? "请在设置 → Cookies 中添加 cookies 文件路径，然后重试。"
-            : "Add a cookies file path in Settings → Cookies, then try again."
+        let label = cookiesFile(l)
+        return l == .chinese
+            ? "请在设置中添加 \(label) 路径，然后重试。"
+            : "Add a \(label) path in Settings, then try again."
     }
 
     // MARK: Paste URL (#13)
