@@ -17,10 +17,21 @@ from extract_release_notes import extract_notes
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TAG_RE = re.compile(r"^v?(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$")
 SPARKLE_NS = "{http://www.andymatuschak.org/xml-namespaces/sparkle}"
+README_FEATURE_DOCS = ("README.md", "README.en.md")
+CHANGELOG_SECTION_RE = re.compile(r"^###\s+\S+")
+CHANGELOG_ADDED_RE = re.compile(r"^###\s+Added\s*$", re.IGNORECASE)
+CHANGELOG_BULLET_RE = re.compile(r"^\s*[-*]\s+\S")
+CHANGELOG_VERSION_HEADER_RE = re.compile(r"^##\s+\[(?P<version>[^\]]+)\]")
 
 
 @dataclass(frozen=True)
 class Issue:
+    check: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class ReadinessWarning:
     check: str
     detail: str
 
@@ -67,6 +78,130 @@ def check_changelog(repo_root: Path, version: str) -> Issue | None:
     return Issue(
         check="changelog",
         detail=f"`CHANGELOG.md` has no non-empty section for `{version}`",
+    )
+
+
+def changelog_has_added_entries(notes: str) -> bool:
+    in_added = False
+    for line in notes.splitlines():
+        if CHANGELOG_ADDED_RE.match(line):
+            in_added = True
+            continue
+        if in_added and CHANGELOG_SECTION_RE.match(line):
+            return False
+        if in_added and CHANGELOG_BULLET_RE.match(line):
+            return True
+    return False
+
+
+def changelog_has_older_release(changelog: str, version: str) -> bool:
+    for line in changelog.splitlines():
+        match = CHANGELOG_VERSION_HEADER_RE.match(line)
+        if not match:
+            continue
+        header_version = match.group("version")
+        if header_version != "Unreleased" and header_version != version:
+            return True
+    return False
+
+
+def find_previous_release_tag(
+    repo_root: Path, tag_ref: str, version: str
+) -> tuple[str | None, str | None]:
+    result = run_git(
+        repo_root,
+        ["tag", "--list", "v[0-9]*", "--merged", tag_ref, "--sort=-v:refname"],
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or f"git exited with {result.returncode}"
+        return None, detail
+
+    for tag in result.stdout.splitlines():
+        try:
+            tag_version = normalize_version(tag)
+        except ValueError:
+            continue
+        if tag_version != version:
+            return tag, None
+    return None, None
+
+
+def readme_changes_since(
+    repo_root: Path, base_ref: str, tag_ref: str
+) -> tuple[set[str] | None, str | None]:
+    result = run_git(
+        repo_root,
+        [
+            "diff",
+            "--name-only",
+            f"{base_ref}..{tag_ref}",
+            "--",
+            *README_FEATURE_DOCS,
+        ],
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or f"git exited with {result.returncode}"
+        return None, detail
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}, None
+
+
+def check_readme_sync_warning(
+    repo_root: Path, version: str, tag_ref: str
+) -> ReadinessWarning | None:
+    changelog_path = repo_root / "CHANGELOG.md"
+    if not changelog_path.exists():
+        return None
+
+    changelog = changelog_path.read_text(encoding="utf-8")
+    notes = extract_notes(changelog, version)
+    if not notes or not changelog_has_added_entries(notes):
+        return None
+
+    previous_tag, tag_error = find_previous_release_tag(repo_root, tag_ref, version)
+    if tag_error:
+        return ReadinessWarning(
+            check="readme-sync",
+            detail=(
+                "Could not determine the previous release tag "
+                f"for `{tag_ref}`: {tag_error}; "
+                "verify README feature highlights manually."
+            ),
+        )
+    if not previous_tag:
+        if changelog_has_older_release(changelog, version):
+            return ReadinessWarning(
+                check="readme-sync",
+                detail=(
+                    f"`CHANGELOG.md` has releases before `{version}`, "
+                    "but no previous release tag was found; "
+                    "verify README feature highlights manually."
+                ),
+            )
+        return None
+
+    changed_readmes, diff_error = readme_changes_since(repo_root, previous_tag, tag_ref)
+    if diff_error:
+        return ReadinessWarning(
+            check="readme-sync",
+            detail=(
+                f"Could not diff README files between `{previous_tag}` and "
+                f"`{tag_ref}`: {diff_error}; "
+                "verify README feature highlights manually."
+            ),
+        )
+
+    missing = [path for path in README_FEATURE_DOCS if path not in changed_readmes]
+    if not missing:
+        return None
+
+    missing_list = ", ".join(f"`{path}`" for path in missing)
+    return ReadinessWarning(
+        check="readme-sync",
+        detail=(
+            f"`CHANGELOG.md` section for `{version}` has `Added` entries, "
+            f"but {missing_list} did not change since `{previous_tag}`; "
+            "verify README feature highlights cover user-visible additions."
+        ),
     )
 
 
@@ -132,6 +267,17 @@ def validate(args: argparse.Namespace) -> list[Issue]:
     return issues
 
 
+def collect_warnings(args: argparse.Namespace, version: str) -> list[ReadinessWarning]:
+    repo_root = args.repo_root.resolve()
+    warnings: list[ReadinessWarning] = []
+
+    warning = check_readme_sync_warning(repo_root, version, args.tag_ref)
+    if warning:
+        warnings.append(warning)
+
+    return warnings
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Validate release tag, changelog, and appcast readiness."
@@ -171,6 +317,7 @@ def main(argv: list[str]) -> int:
         args = parse_args(argv)
         version = normalize_version(args.tag)
         issues = validate(args)
+        warnings = collect_warnings(args, version)
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -179,10 +326,20 @@ def main(argv: list[str]) -> int:
         print(f"FOUND {len(issues)} release readiness issue(s) for v{version}")
         for issue in issues:
             print(f"- {issue.check}: {issue.detail}")
+        print_warnings(warnings, version)
         return 1
 
+    print_warnings(warnings, version)
     print(f"OK: release readiness passed for v{version}")
     return 0
+
+
+def print_warnings(warnings: list[ReadinessWarning], version: str) -> None:
+    if not warnings:
+        return
+    print(f"WARN: {len(warnings)} release readiness warning(s) for v{version}")
+    for warning in warnings:
+        print(f"- {warning.check}: {warning.detail}")
 
 
 if __name__ == "__main__":
