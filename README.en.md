@@ -11,13 +11,14 @@ English | [简体中文](README.md)
 - **aria2c Acceleration**: Automatically enables multi-connection download when aria2c is detected; falls back to built-in downloader otherwise
 - **Download History**: Persistent download records with search
 - **Size Estimation**: Shows estimated merged file size after format selection
+- **Protocol-Aware Format Selection**: Shows DASH / HLS / HTTP protocol labels, auto-selects the best DASH combination, and uses the built-in fragment downloader for HLS
 - **yt-dlp Self-Update**: Check and install new yt-dlp versions (Stable / Nightly) from within the app
 - **App Self-Update**: Sparkle 2.x integration with Ed25519 signing for automatic update detection
 
 ## License
 
 - Project code is licensed under the `MIT` License. See [LICENSE](LICENSE).
-- Third-party licenses for bundled `ffmpeg` / `ffprobe` binaries are in [LICENSE_FFMPEG.txt](LICENSE_FFMPEG.txt).
+- Bundled `ffmpeg` / `ffprobe` binaries use a self-built minimal LGPL static build (FFmpeg 8.1.1 + LAME 3.100). Third-party licenses are in [LICENSE_FFMPEG.txt](LICENSE_FFMPEG.txt).
 
 ## System Requirements
 
