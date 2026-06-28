@@ -21,6 +21,7 @@ README_FEATURE_DOCS = ("README.md", "README.en.md")
 CHANGELOG_SECTION_RE = re.compile(r"^###\s+\S+")
 CHANGELOG_ADDED_RE = re.compile(r"^###\s+Added\s*$", re.IGNORECASE)
 CHANGELOG_BULLET_RE = re.compile(r"^\s*[-*]\s+\S")
+CHANGELOG_VERSION_HEADER_RE = re.compile(r"^##\s+\[(?P<version>[^\]]+)\]")
 
 
 @dataclass(frozen=True)
@@ -93,13 +94,27 @@ def changelog_has_added_entries(notes: str) -> bool:
     return False
 
 
-def find_previous_release_tag(repo_root: Path, tag_ref: str, version: str) -> str | None:
+def changelog_has_older_release(changelog: str, version: str) -> bool:
+    for line in changelog.splitlines():
+        match = CHANGELOG_VERSION_HEADER_RE.match(line)
+        if not match:
+            continue
+        header_version = match.group("version")
+        if header_version != "Unreleased" and header_version != version:
+            return True
+    return False
+
+
+def find_previous_release_tag(
+    repo_root: Path, tag_ref: str, version: str
+) -> tuple[str | None, str | None]:
     result = run_git(
         repo_root,
         ["tag", "--list", "v[0-9]*", "--merged", tag_ref, "--sort=-v:refname"],
     )
     if result.returncode != 0:
-        return None
+        detail = result.stderr.strip() or f"git exited with {result.returncode}"
+        return None, detail
 
     for tag in result.stdout.splitlines():
         try:
@@ -107,11 +122,13 @@ def find_previous_release_tag(repo_root: Path, tag_ref: str, version: str) -> st
         except ValueError:
             continue
         if tag_version != version:
-            return tag
-    return None
+            return tag, None
+    return None, None
 
 
-def readme_changes_since(repo_root: Path, base_ref: str, tag_ref: str) -> set[str] | None:
+def readme_changes_since(
+    repo_root: Path, base_ref: str, tag_ref: str
+) -> tuple[set[str] | None, str | None]:
     result = run_git(
         repo_root,
         [
@@ -123,8 +140,9 @@ def readme_changes_since(repo_root: Path, base_ref: str, tag_ref: str) -> set[st
         ],
     )
     if result.returncode != 0:
-        return None
-    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+        detail = result.stderr.strip() or f"git exited with {result.returncode}"
+        return None, detail
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}, None
 
 
 def check_readme_sync_warning(
@@ -134,17 +152,43 @@ def check_readme_sync_warning(
     if not changelog_path.exists():
         return None
 
-    notes = extract_notes(changelog_path.read_text(encoding="utf-8"), version)
+    changelog = changelog_path.read_text(encoding="utf-8")
+    notes = extract_notes(changelog, version)
     if not notes or not changelog_has_added_entries(notes):
         return None
 
-    previous_tag = find_previous_release_tag(repo_root, tag_ref, version)
+    previous_tag, tag_error = find_previous_release_tag(repo_root, tag_ref, version)
+    if tag_error:
+        return ReadinessWarning(
+            check="readme-sync",
+            detail=(
+                "Could not determine the previous release tag "
+                f"for `{tag_ref}`: {tag_error}; "
+                "verify README feature highlights manually."
+            ),
+        )
     if not previous_tag:
+        if changelog_has_older_release(changelog, version):
+            return ReadinessWarning(
+                check="readme-sync",
+                detail=(
+                    f"`CHANGELOG.md` has releases before `{version}`, "
+                    "but no previous release tag was found; "
+                    "verify README feature highlights manually."
+                ),
+            )
         return None
 
-    changed_readmes = readme_changes_since(repo_root, previous_tag, tag_ref)
-    if changed_readmes is None:
-        return None
+    changed_readmes, diff_error = readme_changes_since(repo_root, previous_tag, tag_ref)
+    if diff_error:
+        return ReadinessWarning(
+            check="readme-sync",
+            detail=(
+                f"Could not diff README files between `{previous_tag}` and "
+                f"`{tag_ref}`: {diff_error}; "
+                "verify README feature highlights manually."
+            ),
+        )
 
     missing = [path for path in README_FEATURE_DOCS if path not in changed_readmes]
     if not missing:
