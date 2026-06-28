@@ -83,6 +83,40 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(mapped.recoverySuggestion, Loc.cookieExpiredSuggestion(.english))
     }
 
+    func testMapsBilibiliHttpStatus412ToNeedsCookiesWhenNoCookiesConfigured() {
+        let state = AppState(defaults: freshDefaults())
+        let error = AppError(
+            message: "yt-dlp probe failed.",
+            recoverySuggestion: "Request failed with status 412"
+        )
+
+        let mapped = state.mapYtDlpError(
+            error,
+            url: "https://www.bilibili.com/video/BV123",
+            cookiesFilePath: nil
+        )
+
+        XCTAssertEqual(mapped.kind, .needsCookies)
+        XCTAssertEqual(mapped.message, Loc.needsCookiesMessage(.english))
+        XCTAssertEqual(mapped.recoverySuggestion, Loc.needsCookiesSuggestion(.english))
+    }
+
+    func testKeepsBare412ErrorUnchangedForBilibiliURL() {
+        let state = AppState(defaults: freshDefaults())
+        let error = AppError(
+            message: "yt-dlp probe failed.",
+            recoverySuggestion: "format 412 is unavailable"
+        )
+
+        let mapped = state.mapYtDlpError(
+            error,
+            url: "https://www.bilibili.com/video/BV123",
+            cookiesFilePath: nil
+        )
+
+        XCTAssertEqual(mapped, error)
+    }
+
     func testKeepsPreconditionErrorUnchangedForNonBilibiliURL() {
         let state = AppState(defaults: freshDefaults())
         let error = AppError(

@@ -1188,7 +1188,11 @@ final class AppState: ObservableObject {
 
     private static let cookieExpiryPatterns = [
         "cookie", "sessdata", "expired", "login required",
-        "cookies are not valid", "unable to log in", "412", "precondition",
+        "cookies are not valid", "unable to log in", "precondition",
+    ]
+
+    private static let httpPreconditionStatusPatterns = [
+        "http error 412", "http status 412", "status 412", "status code 412",
     ]
 
     func mapYtDlpError(_ error: AppError, url: String, cookiesFilePath: String?) -> AppError {
@@ -1208,6 +1212,7 @@ final class AppState: ObservableObject {
 
         if isBilibiliURL(url),
            Self.cookieExpiryPatterns.contains(where: { haystack.contains($0) })
+           || Self.httpPreconditionStatusPatterns.contains(where: { haystack.contains($0) })
         {
             let kind: AppError.Kind = Self.hasConfiguredCookies(cookiesFilePath) ? .cookieExpired : .needsCookies
             return localizedCookiesError(kind: kind) ?? error
