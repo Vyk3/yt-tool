@@ -57,6 +57,7 @@
 		A000000000000000000000B2 /* BilibiliFeedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000B1 /* BilibiliFeedService.swift */; };
 		A000000000000000000000B4 /* PlaceholderTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000B3 /* PlaceholderTextEditor.swift */; };
 		A000000000000000000000B6 /* ProtocolChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000B5 /* ProtocolChecker.swift */; };
+		A000000000000000000000BA /* ResolvedDownloadPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000B9 /* ResolvedDownloadPlan.swift */; };
 		A000000000000000000000B8 /* Licenses in Resources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000B7 /* Licenses */; };
 /* End PBXBuildFile section */
 
@@ -109,6 +110,7 @@
 		A000000000000000000000B1 /* BilibiliFeedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/BilibiliFeedService.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000B3 /* PlaceholderTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Views/PlaceholderTextEditor.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000B5 /* ProtocolChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Services/ProtocolChecker.swift; sourceTree = SOURCE_ROOT; };
+		A000000000000000000000B9 /* ResolvedDownloadPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTTool/Models/ResolvedDownloadPlan.swift; sourceTree = SOURCE_ROOT; };
 		A000000000000000000000B7 /* Licenses */ = {isa = PBXFileReference; lastKnownFileType = folder; path = YTTool/Resources/Licenses; sourceTree = SOURCE_ROOT; };
 		A00000000000000000000020 /* YTTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YTTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A000000000000000000000F7 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = YTTool/Resources/en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
@@ -197,6 +199,7 @@
 				A00000000000000000000038 /* DownloaderPreference.swift */,
 				A0000000000000000000003A /* QueueItem.swift */,
 				A0000000000000000000003B /* DownloadQueue.swift */,
+				A000000000000000000000B9 /* ResolvedDownloadPlan.swift */,
 				A0000000000000000000003E /* UpdateState.swift */,
 				A0000000000000000000004A /* DownloadHistoryEntry.swift */,
 				A0000000000000000000004B /* DownloadHistoryStore.swift */,
@@ -385,6 +388,7 @@
 				A000000000000000000000B2 /* BilibiliFeedService.swift in Sources */,
 				A000000000000000000000B4 /* PlaceholderTextEditor.swift in Sources */,
 				A000000000000000000000B6 /* ProtocolChecker.swift in Sources */,
+				A000000000000000000000BA /* ResolvedDownloadPlan.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

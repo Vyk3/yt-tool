@@ -66,30 +66,8 @@ struct YtDlpDownloadService {
         self.runner = runner
     }
 
-    /// Streams download events for the given URL and format selection.
-    ///
-    /// - Parameters:
-    ///   - url: The webpage URL to download from.
-    ///   - videoFormatId: ID of the selected video format (nil for audio-only).
-    ///   - audioFormatId: ID of the selected audio format (nil for video-only or muxed).
-    ///   - outputDirectory: The directory to save the downloaded file.
     func download(
-        url: String,
-        videoFormatId: String?,
-        audioFormatId: String?,
-        formatSelectorOverride: String? = nil,
-        includeNoPlaylistOverride: Bool? = nil,
-        audioTranscodeFormat: AudioTranscodeFormat? = nil,
-        cookiesFilePath: String? = nil,
-        extraOptions: [ParsedExtraOption] = [],
-        managedArguments: [String] = [],
-        selectedProtocols: [String?] = [],
-        subtitleTrack: SubtitleTrack? = nil,
-        outputDirectory: URL,
-        playlistMode: PlaylistMode = .onlyFirstItem,
-        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
-        playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible,
-        aria2cPath: String? = nil,
+        plan: ResolvedDownloadPlan,
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -98,15 +76,15 @@ struct YtDlpDownloadService {
                     let ytDlp = try locator.locate(.ytDlp)
                     let ffmpeg = try locator.locate(.ffmpeg)
 
-                    let renderedExtra = renderExtraOptions(extraOptions, for: .download)
-                    let allExtraArgv = renderedExtra + managedArguments
+                    let renderedExtra = renderExtraOptions(plan.extraOptions, for: .download)
+                    let allExtraArgv = renderedExtra + plan.managedArguments
                     let hasDownloadSections = allExtraArgv.contains("--download-sections")
 
                     if hasDownloadSections {
-                        if selectedProtocols.isEmpty {
+                        if plan.selectedProtocols.isEmpty {
                             onLog(.warning, "download-sections without format metadata: relying on compiled protocol restriction")
                         } else {
-                            for proto in selectedProtocols {
+                            for proto in plan.selectedProtocols {
                                 let result = ProtocolChecker.check(transportProtocol: proto)
                                 if case let .rejected(reason) = result {
                                     throw AppError(
@@ -118,32 +96,11 @@ struct YtDlpDownloadService {
                         }
                     }
 
-                    let formatSelector = formatSelectorOverride ?? YTTool.buildFormatSelector(
-                        videoId: videoFormatId,
-                        audioId: audioFormatId,
-                        playlistMode: playlistMode,
-                        playlistVideoQualityStrategy: playlistVideoQualityStrategy,
-                        playlistAudioQualityStrategy: playlistAudioQualityStrategy
-                    )
-                    let includeNoPlaylist = includeNoPlaylistOverride ?? (playlistMode == .onlyFirstItem)
-                    let outputTemplate = outputDirectory
-                        .appendingPathComponent("%(title)s [%(resolution)s].%(ext)s")
-                        .path(percentEncoded: false)
-
                     let config = ProcessConfiguration(
                         executableURL: ytDlp,
                         arguments: buildDownloadArguments(
-                            url: url,
-                            formatSelector: formatSelector,
-                            outputTemplate: outputTemplate,
-                            ffmpegLocation: ffmpeg.path(percentEncoded: false),
-                            subtitleTrack: subtitleTrack,
-                            includeNoPlaylist: includeNoPlaylist,
-                            audioTranscodeFormat: audioTranscodeFormat,
-                            cookiesFilePath: cookiesFilePath,
-                            extraOptions: extraOptions,
-                            managedArguments: managedArguments,
-                            aria2cPath: aria2cPath
+                            plan: plan,
+                            ffmpegLocation: ffmpeg.path(percentEncoded: false)
                         ),
                         terminationGracePeriod: .seconds(3)
                     )
@@ -198,11 +155,8 @@ struct YtDlpDownloadService {
                         )
                     }
 
-                    // P3 fix: use the filepath printed by --print after_move:filepath.
-                    // Fall back to the output directory if yt-dlp didn't emit one
-                    // (e.g. older yt-dlp version or no post-processing step).
-                    let outputURL: URL = if playlistMode.downloadsWholePlaylist, includeNoPlaylistOverride == nil {
-                        outputDirectory
+                    let outputURL: URL = if plan.returnsOutputDirectoryOnSuccess {
+                        plan.outputDirectory
                     } else {
                         result.stdout
                             .components(separatedBy: "\n")
@@ -210,7 +164,7 @@ struct YtDlpDownloadService {
                             .filter { !$0.isEmpty }
                             .compactMap { URL(filePath: $0) }
                             .last(where: { FileManager.default.fileExists(atPath: $0.path) })
-                            ?? outputDirectory
+                            ?? plan.outputDirectory
                     }
                     onLog(.lifecycle, "Resolved output path: \(outputURL.path(percentEncoded: false))")
                     continuation.yield(.completed(DownloadResult(outputURL: outputURL)))
@@ -221,6 +175,56 @@ struct YtDlpDownloadService {
                 }
             }
         }
+    }
+
+    /// Streams download events for the given URL and format selection.
+    ///
+    /// - Parameters:
+    ///   - url: The webpage URL to download from.
+    ///   - videoFormatId: ID of the selected video format (nil for audio-only).
+    ///   - audioFormatId: ID of the selected audio format (nil for video-only or muxed).
+    ///   - outputDirectory: The directory to save the downloaded file.
+    func download(
+        url: String,
+        videoFormatId: String?,
+        audioFormatId: String?,
+        formatSelectorOverride: String? = nil,
+        includeNoPlaylistOverride: Bool? = nil,
+        audioTranscodeFormat: AudioTranscodeFormat? = nil,
+        cookiesFilePath: String? = nil,
+        extraOptions: [ParsedExtraOption] = [],
+        managedArguments: [String] = [],
+        selectedProtocols: [String?] = [],
+        subtitleTrack: SubtitleTrack? = nil,
+        outputDirectory: URL,
+        playlistMode: PlaylistMode = .onlyFirstItem,
+        playlistVideoQualityStrategy: PlaylistVideoQualityStrategy = .bestCompatibility,
+        playlistAudioQualityStrategy: PlaylistAudioQualityStrategy = .moreCompatible,
+        aria2cPath: String? = nil,
+        onLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
+    ) -> AsyncThrowingStream<DownloadEvent, Error> {
+        let plan = ResolvedDownloadPlan(
+            url: url,
+            formatSelector: formatSelectorOverride ?? YTTool.buildFormatSelector(
+                videoId: videoFormatId,
+                audioId: audioFormatId,
+                playlistMode: playlistMode,
+                playlistVideoQualityStrategy: playlistVideoQualityStrategy,
+                playlistAudioQualityStrategy: playlistAudioQualityStrategy
+            ),
+            includeNoPlaylist: includeNoPlaylistOverride ?? (playlistMode == .onlyFirstItem),
+            audioTranscodeFormat: audioTranscodeFormat,
+            cookiesFilePath: cookiesFilePath,
+            extraOptions: extraOptions,
+            managedArguments: managedArguments,
+            selectedProtocols: selectedProtocols,
+            subtitleTrack: subtitleTrack,
+            outputDirectory: outputDirectory,
+            aria2cPath: aria2cPath,
+            previewTarget: "download target",
+            returnsOutputDirectoryOnSuccess: playlistMode.downloadsWholePlaylist && includeNoPlaylistOverride == nil
+        )
+        return download(plan: plan, onLog: onLog)
     }
 
     func cancel() async {
