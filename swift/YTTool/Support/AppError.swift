@@ -5,6 +5,7 @@ struct AppError: Error, Codable, Equatable {
         case general
         case unsupportedURL
         case cookieExpired
+        case needsCookies
     }
 
     var kind: Kind

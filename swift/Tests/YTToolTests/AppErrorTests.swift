@@ -20,6 +20,11 @@ final class AppErrorTests: XCTestCase {
         XCTAssertEqual(error.kind, .cookieExpired)
     }
 
+    func testNeedsCookiesKind() {
+        let error = AppError(kind: .needsCookies, message: "cookies needed")
+        XCTAssertEqual(error.kind, .needsCookies)
+    }
+
     func testDifferentKindAffectsEquality() {
         let a = AppError(kind: .general, message: "msg")
         let b = AppError(kind: .unsupportedURL, message: "msg")
@@ -44,6 +49,13 @@ final class AppErrorTests: XCTestCase {
 
     func testRoundTripCookieExpiredKind() throws {
         let original = AppError(kind: .cookieExpired, message: "expired", recoverySuggestion: "re-export")
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AppError.self, from: data)
+        XCTAssertEqual(decoded, original)
+    }
+
+    func testRoundTripNeedsCookiesKind() throws {
+        let original = AppError(kind: .needsCookies, message: "cookies needed", recoverySuggestion: "configure cookies")
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(AppError.self, from: data)
         XCTAssertEqual(decoded, original)
