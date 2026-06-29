@@ -71,6 +71,10 @@ enum Loc {
         l == .chinese ? "历史" : "History"
     }
 
+    static func cancel(_ l: AppLanguage) -> String {
+        l == .chinese ? "取消" : "Cancel"
+    }
+
     // MARK: Subscriptions view
 
     static func channelURLPlaceholder(_ l: AppLanguage) -> String {
@@ -188,6 +192,10 @@ enum Loc {
         l == .chinese ? "关于" : "About"
     }
 
+    static func sectionPrivacy(_ l: AppLanguage) -> String {
+        l == .chinese ? "隐私" : "Privacy"
+    }
+
     static func sectionLanguage(_ l: AppLanguage) -> String {
         l == .chinese ? "显示" : "Display"
     }
@@ -285,6 +293,26 @@ enum Loc {
             "Cookie files are read only by yt-dlp locally — YTTool never parses, caches, or transmits their contents.",
             "Download history and preferences are stored locally and can be cleared at any time.",
         ]
+    }
+
+    static func clearLocalData(_ l: AppLanguage) -> String {
+        l == .chinese ? "清除本地数据" : "Clear local data"
+    }
+
+    static func clearLocalDataHelp(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "删除本机偏好、历史、订阅、新视频缓存和本地 yt-dlp；不会删除下载文件或 cookies 文件。"
+            : "Deletes local preferences, history, subscriptions, new-video cache, and user-local yt-dlp. Downloads and cookies files are not touched."
+    }
+
+    static func clearLocalDataConfirmTitle(_ l: AppLanguage) -> String {
+        l == .chinese ? "清除本地数据？" : "Clear local data?"
+    }
+
+    static func clearLocalDataConfirmMessage(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "会先创建备份，然后删除 YTTool 的本机元数据。下载文件和 cookies 文件不会被删除。"
+            : "A backup is created first, then YTTool's local metadata is deleted. Downloads and cookies files are not deleted."
     }
 
     static func extraArgs(_ l: AppLanguage) -> String {

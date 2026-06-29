@@ -7,8 +7,9 @@ final class ChannelSubscriptionStore: ObservableObject {
     @Published private(set) var subscriptions: [ChannelSubscription] = []
 
     private let customStorageURL: URL?
+    private(set) var recoveryMessage: String?
 
-    private var fileURL: URL? {
+    var storageURL: URL? {
         if let customStorageURL { return customStorageURL }
         return FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
@@ -85,18 +86,19 @@ final class ChannelSubscriptionStore: ObservableObject {
     // MARK: - Persistence
 
     private func load() {
-        guard let url = fileURL,
+        guard let url = storageURL,
               let data = try? Data(contentsOf: url)
         else { return }
         do {
             subscriptions = try JSONDecoder().decode([ChannelSubscription].self, from: data)
         } catch {
+            backupCorruptFile(at: url)
             subscriptions = []
         }
     }
 
     func save() {
-        guard let url = fileURL else { return }
+        guard let url = storageURL else { return }
         let dir = url.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         if let data = try? JSONEncoder().encode(subscriptions) {
@@ -107,6 +109,29 @@ final class ChannelSubscriptionStore: ObservableObject {
     func saveAsync() {
         Task { @MainActor in
             save()
+        }
+    }
+
+    func clearStoredData(fileManager: FileManager = .default) throws {
+        subscriptions = []
+        guard let url = storageURL, fileManager.fileExists(atPath: url.path) else { return }
+        try fileManager.removeItem(at: url)
+    }
+
+    func reload() {
+        subscriptions = []
+        recoveryMessage = nil
+        load()
+    }
+
+    private func backupCorruptFile(at url: URL, fileManager: FileManager = .default) {
+        let backupURL = url.deletingLastPathComponent()
+            .appendingPathComponent("\(url.lastPathComponent).corrupt-\(UUID().uuidString).bak")
+        do {
+            try fileManager.moveItem(at: url, to: backupURL)
+            recoveryMessage = "Recovered corrupt subscriptions at \(backupURL.lastPathComponent)"
+        } catch {
+            recoveryMessage = "Failed to back up corrupt subscriptions: \(error.localizedDescription)"
         }
     }
 }

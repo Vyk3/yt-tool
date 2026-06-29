@@ -35,6 +35,21 @@ final class AppState: ObservableObject {
         static let appAppearance = "appAppearance"
         static let showTechnicalDetails = "showTechnicalDetails"
         static let showAllFormats = "showAllFormats"
+
+        static let localDataKeys = [
+            selectedOutputDirectoryPath,
+            downloaderPreference,
+            updateChannel,
+            autoCheckForUpdates,
+            autoCheckForAppUpdates,
+            appLanguage,
+            appAppearance,
+            showTechnicalDetails,
+            showAllFormats,
+            "AppleLanguages",
+            "subscriptionPollInterval",
+            "subscriptionNewVideos",
+        ]
     }
 
     private static let maxLogEntries = 250
@@ -102,13 +117,14 @@ final class AppState: ObservableObject {
     private var queueUnsupportedCount = 0
     @Published var subscriptionInputURL: String = ""
     let downloadQueue = DownloadQueue()
-    let historyStore = DownloadHistoryStore()
+    let historyStore: DownloadHistoryStore
 
     // MARK: - Subscriptions
 
-    let subscriptionStore = ChannelSubscriptionStore()
+    let subscriptionStore: ChannelSubscriptionStore
     private(set) lazy var pollingManager = SubscriptionPollingManager(
         store: subscriptionStore,
+        defaults: defaults,
         onBilibiliLog: makeServiceLogger(scope: .feed)
     )
 
@@ -175,6 +191,7 @@ final class AppState: ObservableObject {
     @Published var downloadState: DownloadState = .idle
     @Published private(set) var logs: [AppLogEntry] = []
     @Published private(set) var ffmpegWarningMessage: String?
+    @Published private(set) var localDataStatusMessage: String?
 
     // MARK: - Private
 
@@ -187,9 +204,18 @@ final class AppState: ObservableObject {
     private var latestRelease: YtDlpReleaseInfo?
     private var probeAttemptID: Int = 0
     private var downloadAttemptID: Int = 0
+    private let userLocalBinariesDirectory: URL
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        historyStore: DownloadHistoryStore? = nil,
+        subscriptionStore: ChannelSubscriptionStore? = nil,
+        userLocalBinariesDirectory: URL = BundledToolLocator.userLocalBinariesDirectory
+    ) {
         self.defaults = defaults
+        self.historyStore = historyStore ?? DownloadHistoryStore()
+        self.subscriptionStore = subscriptionStore ?? ChannelSubscriptionStore()
+        self.userLocalBinariesDirectory = userLocalBinariesDirectory
 
         if let path = defaults.string(forKey: StorageKey.selectedOutputDirectoryPath),
            !path.isEmpty,
@@ -834,6 +860,97 @@ final class AppState: ObservableObject {
         appendLog(scope: .download, level: level, message: importLogMessage("clipboard", result))
     }
 
+    // MARK: - Local data
+
+    @discardableResult
+    func backupLocalData(fileManager: FileManager = .default) throws -> URL {
+        let backupRoot = try localDataBackupRoot(fileManager: fileManager)
+        let backupURL = backupRoot.appendingPathComponent("backup-\(Self.backupTimestamp())", isDirectory: true)
+        try fileManager.createDirectory(at: backupURL, withIntermediateDirectories: true)
+
+        let defaultsData = try PropertyListSerialization.data(
+            fromPropertyList: Self.localDefaultsPayload(from: defaults),
+            format: .xml,
+            options: 0
+        )
+        try defaultsData.write(to: backupURL.appendingPathComponent("defaults.plist"), options: .atomic)
+
+        try copyIfPresent(historyStore.storageURL, to: backupURL.appendingPathComponent("download_history.json"), fileManager: fileManager)
+        try copyIfPresent(subscriptionStore.storageURL, to: backupURL.appendingPathComponent("channel_subscriptions.json"), fileManager: fileManager)
+        try copyIfPresent(userLocalBinariesDirectory, to: backupURL.appendingPathComponent("Binaries", isDirectory: true), fileManager: fileManager)
+
+        localDataStatusMessage = "Local data backup created: \(backupURL.lastPathComponent)"
+        return backupURL
+    }
+
+    @discardableResult
+    func clearLocalData(fileManager: FileManager = .default) throws -> URL {
+        guard !isDownloadOrQueueActive else {
+            throw AppError(message: "Cannot clear local data while downloads are active.", recoverySuggestion: "Cancel or wait for active downloads, then try again.")
+        }
+
+        let backupURL = try backupLocalData(fileManager: fileManager)
+        pollingManager.clearStoredData()
+        try historyStore.clearStoredData(fileManager: fileManager)
+        try subscriptionStore.clearStoredData(fileManager: fileManager)
+
+        for key in StorageKey.localDataKeys {
+            defaults.removeObject(forKey: key)
+        }
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("subscriptionNewVideos.corruptBackup.") {
+            defaults.removeObject(forKey: key)
+        }
+
+        let userBinaries = userLocalBinariesDirectory
+        if fileManager.fileExists(atPath: userBinaries.path) {
+            try fileManager.removeItem(at: userBinaries)
+        }
+
+        selectedOutputDirectory = nil
+        downloaderPreference = .native
+        aria2cAvailable = Aria2cLocator().findAria2c() != nil
+        updateChannel = .stable
+        autoCheckForUpdates = true
+        autoCheckForAppUpdates = true
+        language = .english
+        appearance = .system
+        showTechnicalDetails = false
+        showAllFormats = false
+        for key in StorageKey.localDataKeys {
+            defaults.removeObject(forKey: key)
+        }
+
+        localDataStatusMessage = "Local data cleared. Backup: \(backupURL.lastPathComponent)"
+        appendLog(scope: .app, level: .success, message: localDataStatusMessage ?? "Local data cleared")
+        return backupURL
+    }
+
+    func restoreLocalData(from backupURL: URL, fileManager: FileManager = .default) throws {
+        guard !isDownloadOrQueueActive else {
+            throw AppError(message: "Cannot restore local data while downloads are active.", recoverySuggestion: "Cancel or wait for active downloads, then try again.")
+        }
+
+        if let defaultsPayload = try Self.loadDefaultsPayload(from: backupURL.appendingPathComponent("defaults.plist")) {
+            for key in StorageKey.localDataKeys {
+                defaults.removeObject(forKey: key)
+            }
+            for (key, value) in defaultsPayload {
+                defaults.set(value, forKey: key)
+            }
+        }
+
+        try restoreIfPresent(backupURL.appendingPathComponent("download_history.json"), to: historyStore.storageURL, fileManager: fileManager)
+        try restoreIfPresent(backupURL.appendingPathComponent("channel_subscriptions.json"), to: subscriptionStore.storageURL, fileManager: fileManager)
+        try restoreIfPresent(backupURL.appendingPathComponent("Binaries", isDirectory: true), to: userLocalBinariesDirectory, fileManager: fileManager)
+
+        historyStore.reload()
+        subscriptionStore.reload()
+        pollingManager.reloadStoredData()
+        reloadPreferencesFromDefaults()
+        localDataStatusMessage = "Local data restored from \(backupURL.lastPathComponent)"
+        appendLog(scope: .app, level: .success, message: localDataStatusMessage ?? "Local data restored")
+    }
+
     private func parseLines(_ text: String) -> [String] {
         text.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -997,6 +1114,99 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    private var isDownloadOrQueueActive: Bool {
+        if downloadQueue.isProcessing { return true }
+        switch downloadState {
+        case .preparing, .downloading:
+            return true
+        case .idle, .succeeded, .failed, .cancelled:
+            return false
+        }
+    }
+
+    private func localDataBackupRoot(fileManager: FileManager) throws -> URL {
+        let base = historyStore.storageURL?.deletingLastPathComponent()
+            ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("YTTool", isDirectory: true)
+        let backupRoot = base.appendingPathComponent("Backups", isDirectory: true)
+        try fileManager.createDirectory(at: backupRoot, withIntermediateDirectories: true)
+        return backupRoot
+    }
+
+    private func copyIfPresent(_ source: URL?, to destination: URL, fileManager: FileManager) throws {
+        guard let source, fileManager.fileExists(atPath: source.path) else { return }
+        try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.copyItem(at: source, to: destination)
+    }
+
+    private func restoreIfPresent(_ source: URL, to destination: URL?, fileManager: FileManager) throws {
+        guard let destination, fileManager.fileExists(atPath: source.path) else { return }
+        try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.copyItem(at: source, to: destination)
+    }
+
+    private static func localDefaultsPayload(from defaults: UserDefaults) -> [String: Any] {
+        let snapshot = defaults.dictionaryRepresentation()
+        var payload: [String: Any] = [:]
+        for key in StorageKey.localDataKeys {
+            if let value = snapshot[key] {
+                payload[key] = value
+            }
+        }
+        return payload
+    }
+
+    private static func loadDefaultsPayload(from url: URL) throws -> [String: Any]? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let data = try Data(contentsOf: url)
+        let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+        return plist as? [String: Any]
+    }
+
+    private static func backupTimestamp() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter.string(from: Date())
+    }
+
+    private func reloadPreferencesFromDefaults() {
+        if let path = defaults.string(forKey: StorageKey.selectedOutputDirectoryPath),
+           !path.isEmpty,
+           Self.isUsableDirectory(URL(fileURLWithPath: path))
+        {
+            selectedOutputDirectory = URL(fileURLWithPath: path)
+        } else {
+            selectedOutputDirectory = nil
+        }
+
+        downloaderPreference = defaults.string(forKey: StorageKey.downloaderPreference)
+            .flatMap(DownloaderPreference.init(rawValue:)) ?? .native
+        aria2cAvailable = Aria2cLocator().findAria2c() != nil
+        updateChannel = defaults.string(forKey: StorageKey.updateChannel)
+            .flatMap(UpdateChannel.init(rawValue:)) ?? .stable
+        autoCheckForUpdates = defaults.object(forKey: StorageKey.autoCheckForUpdates) == nil
+            ? true
+            : defaults.bool(forKey: StorageKey.autoCheckForUpdates)
+        autoCheckForAppUpdates = defaults.object(forKey: StorageKey.autoCheckForAppUpdates) == nil
+            ? true
+            : defaults.bool(forKey: StorageKey.autoCheckForAppUpdates)
+        language = defaults.string(forKey: StorageKey.appLanguage)
+            .flatMap(AppLanguage.init(rawValue:)) ?? .english
+        appearance = defaults.string(forKey: StorageKey.appAppearance)
+            .flatMap(AppAppearance.init(rawValue:)) ?? .system
+        showTechnicalDetails = defaults.bool(forKey: StorageKey.showTechnicalDetails)
+        showAllFormats = defaults.bool(forKey: StorageKey.showAllFormats)
+        applyAppearance()
+    }
 
     private func unsupportedURLError() -> AppError {
         AppError(kind: .unsupportedURL, message: Loc.queueUnsupportedURLs(1, language))

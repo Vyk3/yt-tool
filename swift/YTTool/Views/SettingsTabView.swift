@@ -13,6 +13,7 @@ struct SettingsTabView: View {
 
     @State private var showsCookiesGuide = false
     @State private var showsPrivacyInfo = false
+    @State private var showsClearLocalDataConfirmation = false
 
     private var lang: AppLanguage {
         state.language
@@ -154,11 +155,38 @@ struct SettingsTabView: View {
             sectionDivider()
 
             // ── About ──────────────────────────────────────────────
+            settingsRow(
+                section: Loc.sectionPrivacy(lang),
+                title: Loc.clearLocalData(lang),
+                help: Loc.clearLocalDataHelp(lang),
+                status: state.localDataStatusMessage
+            ) {
+                Button(Loc.clearLocalData(lang), role: .destructive) {
+                    showsClearLocalDataConfirmation = true
+                }
+                .disabled(state.downloadQueue.isProcessing)
+            }
+
+            sectionDivider()
+
+            // ── About ──────────────────────────────────────────────
             aboutSection
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: lang == .chinese ? 500 : 560)
+        .alert(Loc.clearLocalDataConfirmTitle(lang), isPresented: $showsClearLocalDataConfirmation) {
+            Button(Loc.cancel(lang), role: .cancel) {}
+            Button(Loc.clearLocalData(lang), role: .destructive) {
+                do {
+                    try state.clearLocalData()
+                } catch {
+                    state.appendLog(scope: .app, level: .error, message: error.localizedDescription)
+                }
+            }
+        } message: {
+            Text(Loc.clearLocalDataConfirmMessage(lang))
+        }
     }
 
     // MARK: - Updates section (yt-dlp + App combined)

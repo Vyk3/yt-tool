@@ -183,5 +183,21 @@ final class ChannelSubscriptionStoreTests: XCTestCase {
 
         let store = ChannelSubscriptionStore(storageURL: tempURL)
         XCTAssertTrue(store.subscriptions.isEmpty)
+        XCTAssertNotNil(store.recoveryMessage)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempURL.path))
+        let backups = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            .filter { $0.hasSuffix(".bak") }
+        XCTAssertEqual(backups.count, 1)
+    }
+
+    func testClearStoredDataRemovesFileAndSubscriptions() throws {
+        let store = makeStore()
+        store.add(makeSub())
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tempURL.path))
+
+        try store.clearStoredData()
+
+        XCTAssertTrue(store.subscriptions.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempURL.path))
     }
 }
