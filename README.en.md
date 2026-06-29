@@ -8,6 +8,8 @@ English | [简体中文](README.md)
 
 - **Download Queue**: Batch-enqueue multiple URLs, sequential downloads with drag-to-reorder, cancel, and retry
 - **Batch Import**: Import multiple URLs from file or clipboard at once
+- **Subscription Monitoring**: Subscribe to YouTube / Bilibili channels with periodic new-video checks and notifications
+- **Extra Options Allowlist**: User-supplied yt-dlp options are validated against an audited allowlist
 - **aria2c Acceleration**: Automatically enables multi-connection download when aria2c is detected; falls back to built-in downloader otherwise
 - **Download History**: Persistent download records with search
 - **Size Estimation**: Shows estimated merged file size after format selection
