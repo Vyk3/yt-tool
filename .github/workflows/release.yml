@@ -17,8 +17,6 @@ jobs:
   build-macos:
     name: build macOS app
     runs-on: macos-latest
-    env:
-      SPARKLE_ED25519_KEY: ${{ secrets.SPARKLE_ED25519_KEY }}
     outputs:
       sparkle_signature: ${{ steps.sign.outputs.signature }}
       sparkle_length: ${{ steps.sign.outputs.length }}
@@ -29,6 +27,16 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Require Sparkle Ed25519 key for tag releases
+        if: github.event_name == 'push'
+        env:
+          HAS_SPARKLE_ED25519_KEY: ${{ secrets.SPARKLE_ED25519_KEY != '' }}
+        run: |
+          if [[ "$HAS_SPARKLE_ED25519_KEY" != "true" ]]; then
+            echo "::error::SPARKLE_ED25519_KEY is required for tag releases."
+            exit 1
+          fi
 
       - name: Validate release readiness
         if: github.event_name == 'push'
@@ -48,7 +56,7 @@ jobs:
 
       - name: Sign ZIP with Sparkle Ed25519
         id: sign
-        if: env.SPARKLE_ED25519_KEY != ''
+        if: github.event_name == 'push'
         env:
           SPARKLE_ED25519_KEY: ${{ secrets.SPARKLE_ED25519_KEY }}
         run: |
