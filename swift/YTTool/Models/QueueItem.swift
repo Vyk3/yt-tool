@@ -35,6 +35,7 @@ struct QueueItemConfig: Equatable {
     let extraOptions: [ParsedExtraOption]
     let audioTranscodeFormat: AudioTranscodeFormat
     let downloaderPreference: DownloaderPreference
+    let aria2cPath: String?
     let qualityStrategy: QueueQualityStrategy
 }
 

@@ -6,7 +6,8 @@ final class DownloadQueueTests: XCTestCase {
     private func makeConfig(
         outputDirectory: URL = URL(fileURLWithPath: "/tmp"),
         audioTranscodeFormat: AudioTranscodeFormat = .original,
-        downloaderPreference: DownloaderPreference = .native
+        downloaderPreference: DownloaderPreference = .native,
+        aria2cPath: String? = nil
     ) -> QueueItemConfig {
         QueueItemConfig(
             outputDirectory: outputDirectory,
@@ -14,6 +15,7 @@ final class DownloadQueueTests: XCTestCase {
             extraOptions: [],
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
+            aria2cPath: aria2cPath,
             qualityStrategy: .bestQuality
         )
     }
@@ -114,6 +116,7 @@ final class DownloadQueueTests: XCTestCase {
             extraOptions: [ParsedExtraOption(name: .retries, value: "5")],
             audioTranscodeFormat: .mp3,
             downloaderPreference: .aria2c,
+            aria2cPath: "/opt/homebrew/bin/aria2c",
             qualityStrategy: .max1080p
         )
         let item = QueueItem(url: "https://example.com", config: config)
@@ -122,6 +125,45 @@ final class DownloadQueueTests: XCTestCase {
         XCTAssertEqual(item.config.extraOptions, [ParsedExtraOption(name: .retries, value: "5")])
         XCTAssertEqual(item.config.audioTranscodeFormat, .mp3)
         XCTAssertEqual(item.config.downloaderPreference, .aria2c)
+        XCTAssertEqual(item.config.aria2cPath, "/opt/homebrew/bin/aria2c")
+    }
+
+    func testStartProcessingFallsBackWhenQueuedAria2cPathIsNoLongerExecutable() async throws {
+        let queue = DownloadQueue()
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("queued-result.mp4")
+        let argsFile = outputDirectory.appendingPathComponent("argv.txt")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile, argsFile: argsFile)
+        let ffmpeg = try makeExecutableStub()
+        let staleAria2cPath = outputDirectory.appendingPathComponent("aria2c-stale").path
+
+        queue.addURLs(
+            ["https://example.com/watch?v=123"],
+            config: makeConfig(
+                outputDirectory: outputDirectory,
+                downloaderPreference: .aria2c,
+                aria2cPath: staleAria2cPath
+            )
+        )
+
+        var logMessages: [String] = []
+        queue.startProcessing(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            onLog: { _, _, message in
+                logMessages.append(message)
+            }
+        )
+
+        try await waitForTerminalStatus(of: queue.items[0])
+
+        XCTAssertEqual(queue.items[0].status, .completed)
+        let commandArguments = try String(contentsOf: argsFile, encoding: .utf8)
+        XCTAssertFalse(commandArguments.contains("--downloader"))
+        XCTAssertTrue(
+            logMessages.contains { $0.contains("aria2c unavailable for queued item; falling back to built-in downloader") }
+        )
     }
 
     // MARK: - Status
@@ -141,5 +183,43 @@ final class DownloadQueueTests: XCTestCase {
         XCTAssertNil(item.outputURL)
         XCTAssertNil(item.error)
         XCTAssertNil(item.title)
+    }
+
+    private func waitForTerminalStatus(of item: QueueItem) async throws {
+        for _ in 0 ..< 100 {
+            if item.status.isTerminal {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTFail("Expected queue item to reach a terminal state")
+    }
+
+    private func makeDownloadScript(resultFile: URL, argsFile: URL) throws -> URL {
+        try makeExecutableScript(
+            """
+            #!/bin/sh
+            printf '%s\n' "$@" > "\(argsFile.path)"
+            touch "\(resultFile.path)"
+            echo "\(resultFile.path)"
+            """
+        )
+    }
+
+    private func makeExecutableStub() throws -> URL {
+        try makeExecutableScript(
+            """
+            #!/bin/sh
+            exit 0
+            """
+        )
+    }
+
+    private func makeExecutableScript(_ contents: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        return url
     }
 }

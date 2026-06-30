@@ -464,7 +464,7 @@ final class AppState: ObservableObject {
             aria2cAvailable = resolvedAria2cPath != nil
         }
         if downloaderPreference == .aria2c, resolvedAria2cPath == nil {
-            appendLog(scope: .download, level: .warning, message: "aria2c not found in PATH; falling back to built-in downloader")
+            appendLog(scope: .download, level: .warning, message: "aria2c not found in supported locations; falling back to built-in downloader")
         }
 
         let preview = buildCommandPreview(
@@ -716,6 +716,7 @@ final class AppState: ObservableObject {
             extraOptions: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
+            aria2cPath: resolvedAria2cPathForQueue(),
             qualityStrategy: queueQualityStrategy
         )
 
@@ -768,6 +769,7 @@ final class AppState: ObservableObject {
             extraOptions: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
+            aria2cPath: resolvedAria2cPathForQueue(),
             qualityStrategy: queueQualityStrategy
         )
 
@@ -776,6 +778,16 @@ final class AppState: ObservableObject {
         queueError = nil
         appendLog(scope: .download, level: .info, message: "Added \(url) to queue from subscriptions")
         return true
+    }
+
+    private func resolvedAria2cPathForQueue() -> String? {
+        guard downloaderPreference == .aria2c else { return nil }
+        let path = Aria2cLocator().findAria2c()?.path
+        aria2cAvailable = path != nil
+        if path == nil {
+            appendLog(scope: .download, level: .warning, message: "aria2c not found in supported locations; falling back to built-in downloader")
+        }
+        return path
     }
 
     @discardableResult

@@ -81,7 +81,6 @@ final class DownloadQueue: ObservableObject {
     /// already installed by the initial `startProcessing` call.
     private func resumeProcessing(locator: BundledToolLocator) {
         guard !isProcessing else { return }
-        didResolveAria2c = false
         isProcessing = true
         processingTask = Task {
             while !Task.isCancelled {
@@ -102,32 +101,13 @@ final class DownloadQueue: ObservableObject {
 
     // MARK: - Private
 
-    /// Cached once per `startProcessing` invocation so we don't spawn `/usr/bin/which` per item.
-    private var cachedAria2cPath: String?
-    private var didResolveAria2c = false
-
-    private func resolvedAria2cPath() -> String? {
-        if !didResolveAria2c {
-            cachedAria2cPath = Aria2cLocator().findAria2c()?.path
-            didResolveAria2c = true
-        }
-        return cachedAria2cPath
-    }
-
     private func processItem(_ item: QueueItem, locator: BundledToolLocator) async {
         item.status = .active
         let runner = ProcessRunner()
         item.runner = runner
         let service = YtDlpDownloadService(locator: locator, runner: runner)
 
-        let aria2cPath: String? = if item.config.downloaderPreference == .aria2c {
-            resolvedAria2cPath()
-        } else {
-            nil
-        }
-        if item.config.downloaderPreference == .aria2c, aria2cPath == nil {
-            onLog(.download, .warning, "[\(truncatedURL(item.url))] aria2c not found; falling back to built-in downloader")
-        }
+        let aria2cPath = resolvedAria2cPath(for: item)
 
         let effectiveTranscode: AudioTranscodeFormat? =
             item.config.audioTranscodeFormat == .original ? nil : item.config.audioTranscodeFormat
@@ -189,6 +169,17 @@ final class DownloadQueue: ObservableObject {
 
     private func truncatedURL(_ url: String) -> String {
         url.count > 60 ? String(url.prefix(57)) + "..." : url
+    }
+
+    private func resolvedAria2cPath(for item: QueueItem) -> String? {
+        guard item.config.downloaderPreference == .aria2c else { return nil }
+        guard let aria2cPath = item.config.aria2cPath,
+              FileManager.default.isExecutableFile(atPath: aria2cPath)
+        else {
+            onLog(.download, .warning, "[\(truncatedURL(item.url))] aria2c unavailable for queued item; falling back to built-in downloader")
+            return nil
+        }
+        return aria2cPath
     }
 
     /// Returns `true` only for YouTube pure playlist URLs
