@@ -204,4 +204,58 @@ final class SubscriptionPollingManagerTests: XCTestCase {
         )
         XCTAssertTrue(result.isEmpty)
     }
+
+    @MainActor
+    func testLoadsPollIntervalFromInjectedDefaults() {
+        let defaults = freshDefaults()
+        defaults.set(TimeInterval(15 * 60), forKey: SubscriptionPollingManager.pollIntervalKey)
+        let manager = SubscriptionPollingManager(store: makeStore(), defaults: defaults)
+
+        XCTAssertEqual(manager.pollInterval, TimeInterval(15 * 60))
+    }
+
+    @MainActor
+    func testCorruptNewVideosBackedUpAndCleared() {
+        let defaults = freshDefaults()
+        defaults.set(Data("not json".utf8), forKey: SubscriptionPollingManager.newVideosKey)
+
+        let manager = SubscriptionPollingManager(store: makeStore(), defaults: defaults)
+
+        XCTAssertTrue(manager.newVideos.isEmpty)
+        XCTAssertNotNil(manager.recoveryMessage)
+        XCTAssertNil(defaults.data(forKey: SubscriptionPollingManager.newVideosKey))
+        XCTAssertTrue(defaults.dictionaryRepresentation().keys.contains { $0.hasPrefix("subscriptionNewVideos.corruptBackup.") })
+    }
+
+    @MainActor
+    func testClearStoredDataRemovesDefaultsAndResetsInterval() {
+        let defaults = freshDefaults()
+        defaults.set(TimeInterval(15 * 60), forKey: SubscriptionPollingManager.pollIntervalKey)
+        defaults.set(Data("[]".utf8), forKey: SubscriptionPollingManager.newVideosKey)
+        defaults.set(Data("bad".utf8), forKey: "subscriptionNewVideos.corruptBackup.test")
+        let manager = SubscriptionPollingManager(store: makeStore(), defaults: defaults)
+
+        manager.clearStoredData()
+
+        XCTAssertEqual(manager.pollInterval, SubscriptionPollingManager.defaultPollInterval)
+        XCTAssertTrue(manager.newVideos.isEmpty)
+        XCTAssertNil(defaults.object(forKey: SubscriptionPollingManager.pollIntervalKey))
+        XCTAssertNil(defaults.object(forKey: SubscriptionPollingManager.newVideosKey))
+        XCTAssertFalse(defaults.dictionaryRepresentation().keys.contains { $0.hasPrefix("subscriptionNewVideos.corruptBackup.") })
+    }
+
+    @MainActor
+    private func makeStore() -> ChannelSubscriptionStore {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SubscriptionPollingManagerTests-\(UUID().uuidString)")
+            .appendingPathComponent("channel_subscriptions.json")
+        return ChannelSubscriptionStore(storageURL: url)
+    }
+
+    private func freshDefaults() -> UserDefaults {
+        let suiteName = "SubscriptionPollingManagerTests.\(#function).\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
+    }
 }

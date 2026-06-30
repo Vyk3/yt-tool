@@ -8,20 +8,23 @@ final class SubscriptionPollingManager: ObservableObject {
     @Published private(set) var newVideos: [FeedVideo] = []
 
     private let store: ChannelSubscriptionStore
+    private let defaults: UserDefaults
     private let youtubeFeedService = YouTubeFeedService()
     private let bilibiliFeedService: BilibiliFeedService
     private nonisolated(unsafe) var timer: Timer?
+    private(set) var recoveryMessage: String?
 
     /// Default poll interval in seconds (30 minutes).
     static let defaultPollInterval: TimeInterval = 30 * 60
 
-    private static let pollIntervalKey = "subscriptionPollInterval"
-    private static let newVideosKey = "subscriptionNewVideos"
+    static let pollIntervalKey = "subscriptionPollInterval"
+    static let newVideosKey = "subscriptionNewVideos"
+    private static let corruptNewVideosBackupPrefix = "subscriptionNewVideos.corruptBackup."
 
     var pollInterval: TimeInterval {
         didSet {
             guard pollInterval != oldValue else { return }
-            UserDefaults.standard.set(pollInterval, forKey: Self.pollIntervalKey)
+            defaults.set(pollInterval, forKey: Self.pollIntervalKey)
             guard isPolling else { return }
             stopPolling()
             startPolling()
@@ -31,13 +34,19 @@ final class SubscriptionPollingManager: ObservableObject {
     init(
         store: ChannelSubscriptionStore,
         pollInterval: TimeInterval? = nil,
+        defaults: UserDefaults = .standard,
         onBilibiliLog: @escaping @Sendable (ServiceLogKind, String) -> Void = { _, _ in }
     ) {
         self.store = store
+        self.defaults = defaults
         bilibiliFeedService = BilibiliFeedService(onLog: onBilibiliLog)
-        let stored = UserDefaults.standard.double(forKey: Self.pollIntervalKey)
+        let stored = defaults.double(forKey: Self.pollIntervalKey)
         self.pollInterval = pollInterval ?? (stored > 0 ? stored : Self.defaultPollInterval)
-        newVideos = Self.loadNewVideos()
+        var recoveredMessage: String?
+        newVideos = Self.loadNewVideos(defaults: defaults) { message in
+            recoveredMessage = message
+        }
+        recoveryMessage = recoveredMessage
     }
 
     deinit {
@@ -75,16 +84,47 @@ final class SubscriptionPollingManager: ObservableObject {
         saveNewVideos()
     }
 
+    func clearStoredData() {
+        stopPolling()
+        newVideos.removeAll()
+        defaults.removeObject(forKey: Self.newVideosKey)
+        defaults.removeObject(forKey: Self.pollIntervalKey)
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(Self.corruptNewVideosBackupPrefix) {
+            defaults.removeObject(forKey: key)
+        }
+        pollInterval = Self.defaultPollInterval
+        defaults.removeObject(forKey: Self.pollIntervalKey)
+        recoveryMessage = nil
+    }
+
+    func reloadStoredData() {
+        var recoveredMessage: String?
+        newVideos = Self.loadNewVideos(defaults: defaults) { message in
+            recoveredMessage = message
+        }
+        recoveryMessage = recoveredMessage
+        let stored = defaults.double(forKey: Self.pollIntervalKey)
+        pollInterval = stored > 0 ? stored : Self.defaultPollInterval
+    }
+
     // MARK: - Persistence
 
-    private static func loadNewVideos() -> [FeedVideo] {
-        guard let data = UserDefaults.standard.data(forKey: newVideosKey) else { return [] }
-        return (try? JSONDecoder().decode([FeedVideo].self, from: data)) ?? []
+    private static func loadNewVideos(defaults: UserDefaults, onRecovery: (String) -> Void) -> [FeedVideo] {
+        guard let data = defaults.data(forKey: newVideosKey) else { return [] }
+        do {
+            return try JSONDecoder().decode([FeedVideo].self, from: data)
+        } catch {
+            let backupKey = "\(corruptNewVideosBackupPrefix)\(UUID().uuidString)"
+            defaults.set(data, forKey: backupKey)
+            defaults.removeObject(forKey: newVideosKey)
+            onRecovery("Recovered corrupt subscription videos at \(backupKey)")
+            return []
+        }
     }
 
     private func saveNewVideos() {
         if let data = try? JSONEncoder().encode(newVideos) {
-            UserDefaults.standard.set(data, forKey: Self.newVideosKey)
+            defaults.set(data, forKey: Self.newVideosKey)
         }
     }
 

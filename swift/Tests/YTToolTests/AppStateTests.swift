@@ -586,11 +586,122 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=ok")
     }
 
+    func testClearLocalDataCreatesBackupAndDoesNotDeleteExternalFiles() throws {
+        let fixture = try makeLocalDataFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let state = fixture.state
+        state.historyStore.append(fixture.historyEntry)
+        state.subscriptionStore.add(fixture.subscription)
+
+        let backupURL = try state.clearLocalData()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backupURL.appendingPathComponent("defaults.plist").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.historyURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.subscriptionsURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.userBinariesURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fixture.outputDirectory.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fixture.cookiesURL.path))
+        XCTAssertTrue(state.historyStore.entries.isEmpty)
+        XCTAssertTrue(state.subscriptionStore.subscriptions.isEmpty)
+    }
+
+    func testRestoreLocalDataRestoresBackupPayload() throws {
+        let fixture = try makeLocalDataFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let state = fixture.state
+        state.historyStore.append(fixture.historyEntry)
+        state.subscriptionStore.add(fixture.subscription)
+
+        let backupURL = try state.clearLocalData()
+        try state.restoreLocalData(from: backupURL)
+
+        XCTAssertEqual(state.selectedOutputDirectory?.path, fixture.outputDirectory.path)
+        XCTAssertEqual(state.downloaderPreference, .aria2c)
+        XCTAssertEqual(state.historyStore.entries.map(\.url), [fixture.historyEntry.url])
+        XCTAssertEqual(state.subscriptionStore.subscriptions.map(\.channelID), [fixture.subscription.channelID])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fixture.userBinariesURL.appendingPathComponent("yt-dlp").path))
+    }
+
     private func freshDefaults() -> UserDefaults {
         let suiteName = "YTToolTests.\(#function).\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    private struct LocalDataFixture {
+        let root: URL
+        let state: AppState
+        let historyURL: URL
+        let subscriptionsURL: URL
+        let userBinariesURL: URL
+        let outputDirectory: URL
+        let cookiesURL: URL
+        let historyEntry: DownloadHistoryEntry
+        let subscription: ChannelSubscription
+    }
+
+    private func makeLocalDataFixture() throws -> LocalDataFixture {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("AppStateLocalData-\(UUID().uuidString)", isDirectory: true)
+        let appData = root.appendingPathComponent("AppData", isDirectory: true)
+        let outputDirectory = root.appendingPathComponent("Downloads", isDirectory: true)
+        let cookiesURL = root.appendingPathComponent("cookies.txt")
+        let userBinariesURL = root.appendingPathComponent("Binaries", isDirectory: true)
+        try FileManager.default.createDirectory(at: appData, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: userBinariesURL, withIntermediateDirectories: true)
+        try Data("cookies".utf8).write(to: cookiesURL)
+        let ytDlp = userBinariesURL.appendingPathComponent("yt-dlp")
+        try Data("#!/bin/sh\n".utf8).write(to: ytDlp)
+
+        let defaults = freshDefaults()
+        defaults.set(outputDirectory.path, forKey: "selectedOutputDirectoryPath")
+        defaults.set(DownloaderPreference.aria2c.rawValue, forKey: "downloaderPreference")
+        defaults.set(Data("[]".utf8), forKey: SubscriptionPollingManager.newVideosKey)
+
+        let historyURL = appData.appendingPathComponent("download_history.json")
+        let subscriptionsURL = appData.appendingPathComponent("channel_subscriptions.json")
+        let historyStore = DownloadHistoryStore(storageURL: historyURL)
+        let subscriptionStore = ChannelSubscriptionStore(storageURL: subscriptionsURL)
+        let state = AppState(
+            defaults: defaults,
+            historyStore: historyStore,
+            subscriptionStore: subscriptionStore,
+            userLocalBinariesDirectory: userBinariesURL
+        )
+        state.cookiesFilePath = cookiesURL.path
+
+        let historyEntry = DownloadHistoryEntry(
+            id: UUID(),
+            url: "https://example.com/video",
+            title: "Video",
+            outputPath: outputDirectory.appendingPathComponent("video.mp4").path,
+            dateCompleted: Date(),
+            succeeded: true,
+            estimatedSizeBytes: nil
+        )
+        let subscription = ChannelSubscription(
+            id: UUID(),
+            channelID: "UC_LOCAL",
+            channelName: "Local",
+            channelURL: "https://www.youtube.com/channel/UC_LOCAL",
+            dateAdded: Date(),
+            isEnabled: true,
+            lastCheckedDate: nil,
+            lastVideoID: nil
+        )
+
+        return LocalDataFixture(
+            root: root,
+            state: state,
+            historyURL: historyURL,
+            subscriptionsURL: subscriptionsURL,
+            userBinariesURL: userBinariesURL,
+            outputDirectory: outputDirectory,
+            cookiesURL: cookiesURL,
+            historyEntry: historyEntry,
+            subscription: subscription
+        )
     }
 
     private func waitForProbeFailure(in state: AppState) async throws -> AppError {
