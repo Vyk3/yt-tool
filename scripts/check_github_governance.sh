@@ -358,13 +358,13 @@ else:
             issue("environment", f"invalid expected prevent_self_review value `{expected_prevent_self_review}`")
         else:
             expected_value = expected_bool == "true"
-            if environment_summary["prevent_self_review"] is not expected_value:
+            if environment_summary["prevent_self_review"] != expected_value:
                 issue(
                     "environment",
                     f"environment `{expected_environment_name}` prevent_self_review is `{environment_summary['prevent_self_review']}`, expected `{expected_value}`",
                 )
 
-    if environment_summary["custom_branch_policies"] is not True:
+    if environment_summary["custom_branch_policies"] != True:
         issue(
             "environment",
             f"environment `{expected_environment_name}` custom_branch_policies is `{environment_summary['custom_branch_policies']}`",
