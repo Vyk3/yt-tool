@@ -164,7 +164,7 @@ struct SettingsTabView: View {
                 Button(Loc.clearLocalData(lang), role: .destructive) {
                     showsClearLocalDataConfirmation = true
                 }
-                .disabled(state.downloadQueue.isProcessing)
+                .disabled(state.isDownloadOrQueueActive)
             }
 
             sectionDivider()

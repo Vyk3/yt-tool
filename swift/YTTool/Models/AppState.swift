@@ -1121,7 +1121,7 @@ final class AppState: ObservableObject {
 
     // MARK: - Helpers
 
-    private var isDownloadOrQueueActive: Bool {
+    var isDownloadOrQueueActive: Bool {
         if downloadQueue.isProcessing { return true }
         switch downloadState {
         case .preparing, .downloading:
