@@ -879,6 +879,16 @@ final class AppState: ObservableObject {
         try copyIfPresent(subscriptionStore.storageURL, to: backupURL.appendingPathComponent("channel_subscriptions.json"), fileManager: fileManager)
         try copyIfPresent(userLocalBinariesDirectory, to: backupURL.appendingPathComponent("Binaries", isDirectory: true), fileManager: fileManager)
 
+        let defaultsPlist = backupURL.appendingPathComponent("defaults.plist")
+        guard fileManager.fileExists(atPath: defaultsPlist.path),
+              (try? fileManager.attributesOfItem(atPath: defaultsPlist.path)[.size] as? UInt64) ?? 0 > 0
+        else {
+            throw AppError(
+                message: "Backup validation failed.",
+                recoverySuggestion: "defaults.plist was not created in the backup directory. Aborting to prevent data loss."
+            )
+        }
+
         localDataStatusMessage = "Local data backup created: \(backupURL.lastPathComponent)"
         return backupURL
     }
@@ -893,13 +903,6 @@ final class AppState: ObservableObject {
         pollingManager.clearStoredData()
         try historyStore.clearStoredData(fileManager: fileManager)
         try subscriptionStore.clearStoredData(fileManager: fileManager)
-
-        for key in StorageKey.localDataKeys {
-            defaults.removeObject(forKey: key)
-        }
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("subscriptionNewVideos.corruptBackup.") {
-            defaults.removeObject(forKey: key)
-        }
 
         let userBinaries = userLocalBinariesDirectory
         if fileManager.fileExists(atPath: userBinaries.path) {
@@ -917,6 +920,9 @@ final class AppState: ObservableObject {
         showTechnicalDetails = false
         showAllFormats = false
         for key in StorageKey.localDataKeys {
+            defaults.removeObject(forKey: key)
+        }
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("subscriptionNewVideos.corruptBackup.") {
             defaults.removeObject(forKey: key)
         }
 
