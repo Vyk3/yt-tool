@@ -403,6 +403,43 @@ final class YtDlpDownloadServiceTests: XCTestCase {
         XCTAssertTrue(command.contains("%(title)s [%(resolution)s].%(ext)s"), "Output template must include %(resolution)s for format differentiation")
     }
 
+    func testDownloadPlanCanReturnOutputDirectoryForWholePlaylist() async throws {
+        let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let resultFile = outputDirectory.appendingPathComponent("result.m4a")
+        let ytDlp = try makeDownloadScript(resultFile: resultFile)
+        let ffmpeg = try makeExecutableStub()
+        let service = YtDlpDownloadService(
+            locator: BundledToolLocator(overrides: [.ytDlp: ytDlp, .ffmpeg: ffmpeg]),
+            runner: ProcessRunner()
+        )
+        let plan = ResolvedDownloadPlan(
+            url: "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123",
+            formatSelector: "ba/bestaudio/best",
+            includeNoPlaylist: false,
+            audioTranscodeFormat: nil,
+            cookiesFilePath: nil,
+            extraOptions: [],
+            managedArguments: [],
+            selectedProtocols: [],
+            subtitleTrack: nil,
+            outputDirectory: outputDirectory,
+            aria2cPath: nil,
+            previewTarget: "playlist items",
+            returnsOutputDirectoryOnSuccess: true
+        )
+
+        var completedURL: URL?
+        for try await event in service.download(plan: plan, onLog: { _, _ in }) {
+            if case let .completed(result) = event {
+                completedURL = result.outputURL
+            }
+        }
+
+        XCTAssertEqual(completedURL, outputDirectory)
+    }
+
     func testCompletedEventParsesFilepathWithBracketsAndSpaces() async throws {
         let outputDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)

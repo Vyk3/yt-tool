@@ -404,6 +404,36 @@ func buildDownloadArguments(
     return args
 }
 
+func buildDownloadArguments(plan: ResolvedDownloadPlan, ffmpegLocation: String) -> [String] {
+    buildDownloadArguments(
+        url: plan.url,
+        formatSelector: plan.formatSelector,
+        outputTemplate: plan.outputTemplate,
+        ffmpegLocation: ffmpegLocation,
+        subtitleTrack: plan.subtitleTrack,
+        includeNoPlaylist: plan.includeNoPlaylist,
+        audioTranscodeFormat: plan.audioTranscodeFormat,
+        cookiesFilePath: plan.cookiesFilePath,
+        extraOptions: plan.extraOptions,
+        managedArguments: plan.managedArguments,
+        aria2cPath: plan.aria2cPath
+    )
+}
+
+func buildDownloadPreview(plan: ResolvedDownloadPlan) -> String {
+    let playlistFlag = plan.includeNoPlaylist ? " --no-playlist" : ""
+    var subtitleFlags = ""
+    if let subtitleTrack = plan.subtitleTrack {
+        let flag = subtitleTrack.isAuto ? "--write-auto-subs" : "--write-subs"
+        subtitleFlags = " \(flag) --sub-langs \(subtitleTrack.lang)"
+    }
+    let cookiesFlags = (plan.cookiesFilePath?.isEmpty == false) ? " --cookies \"<cookies-file>\"" : ""
+    let transcodeFlags = plan.audioTranscodeFormat?.ytDlpAudioFormat.map { " -x --audio-format \($0)" } ?? ""
+    let rendered = renderExtraOptions(plan.extraOptions, for: .download) + plan.managedArguments
+    let extraFlags = rendered.isEmpty ? "" : " " + rendered.joined(separator: " ")
+    return "yt-dlp -f \(plan.formatSelector)\(playlistFlag)\(subtitleFlags)\(cookiesFlags)\(transcodeFlags)\(extraFlags) -o \"\(plan.outputDirectory.lastPathComponent)/%(title)s [%(resolution)s].%(ext)s\" …  # \(plan.previewTarget)"
+}
+
 func parseShellLikeArguments(_ input: String) throws -> [String] {
     enum ParseError: LocalizedError {
         case unterminatedQuote(Character)
