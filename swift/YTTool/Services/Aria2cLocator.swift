@@ -4,6 +4,7 @@ struct Aria2cLocator {
     private static let wellKnownPaths: [String] = [
         "/opt/homebrew/bin/aria2c",
         "/usr/local/bin/aria2c",
+        "/opt/local/bin/aria2c",
     ]
 
     func findAria2c(
