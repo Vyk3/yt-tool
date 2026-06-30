@@ -99,6 +99,12 @@ final class AppState: ObservableObject {
     }
 
     private(set) var cachedParsedExtraOptions: Result<[ParsedExtraOption], Error> = .success([])
+
+    // MARK: - Playlist format editor
+
+    let playlistFormatEditor = PlaylistFormatEditorState()
+    @Published var showsPlaylistFormatEditor = false
+
     @Published var downloaderPreference: DownloaderPreference = .native {
         didSet { defaults.set(downloaderPreference.rawValue, forKey: StorageKey.downloaderPreference) }
     }
