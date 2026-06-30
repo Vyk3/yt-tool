@@ -16,7 +16,7 @@ on:
 jobs:
   build-macos:
     name: build macOS app
-    runs-on: macos-latest
+    runs-on: macos-15
     outputs:
       sparkle_signature: ${{ steps.sign.outputs.signature }}
       sparkle_length: ${{ steps.sign.outputs.length }}
@@ -92,7 +92,7 @@ jobs:
           echo "Signed: v$VERSION (build $BUILD), length=$LENGTH"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: yt-tool-macOS
           path: |
@@ -112,7 +112,7 @@ jobs:
           ref: main
 
       - name: Download macOS artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: yt-tool-macOS
           path: dist/
