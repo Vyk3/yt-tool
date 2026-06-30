@@ -343,11 +343,12 @@ else:
     if required_reviewers_rule is None:
         issue("environment", f"environment `{expected_environment_name}` has no required_reviewers rule")
     else:
-        reviewers = [
-            reviewer.get("reviewer", {}).get("login")
-            for reviewer in required_reviewers_rule.get("reviewers") or []
-            if reviewer.get("reviewer", {}).get("login")
-        ]
+        reviewers = []
+        for entry in required_reviewers_rule.get("reviewers") or []:
+            r = entry.get("reviewer", {})
+            name = r.get("login") or r.get("slug")
+            if name:
+                reviewers.append(name)
         environment_summary["reviewers"] = sorted(reviewers)
         environment_summary["prevent_self_review"] = required_reviewers_rule.get("prevent_self_review")
 
