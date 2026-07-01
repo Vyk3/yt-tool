@@ -385,7 +385,7 @@ final class AppStateTests: XCTestCase {
         let parsed = try state.parsePerItemFormatSelectionsOrThrow()
 
         XCTAssertEqual(parsed.map(\.index), [1, 2])
-        XCTAssertEqual(parsed.map(\.formatSelector), ["137+140", "136+140"])
+        XCTAssertEqual(parsed.map(\.formatSelector), ["137+140/bestvideo+bestaudio/best", "136+140/bestvideo+bestaudio/best"])
     }
 
     func testPerItemFormatMappingRejectsMalformedEntry() {
@@ -396,6 +396,30 @@ final class AppStateTests: XCTestCase {
         state.playlistConfig.perItemFormatMap = "bad-entry"
 
         XCTAssertThrowsError(try state.parsePerItemFormatSelectionsOrThrow())
+    }
+
+    func testPerItemFormatMappingAppendsAudioOnlyFallback() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.formatMode = .perItemMapping
+        state.playlistConfig.perItemFormatMap = "1=140"
+
+        let parsed = try state.parsePerItemFormatSelectionsOrThrow()
+
+        XCTAssertEqual(parsed[0].formatSelector, "140/bestaudio/best")
+    }
+
+    func testPerItemFormatMappingPreservesExistingFallback() throws {
+        let state = AppState(defaults: freshDefaults())
+        state.inputURL = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        state.playlistConfig.mode = .wholePlaylistBestVideo
+        state.playlistConfig.formatMode = .perItemMapping
+        state.playlistConfig.perItemFormatMap = "1=300+140/best"
+
+        let parsed = try state.parsePerItemFormatSelectionsOrThrow()
+
+        XCTAssertEqual(parsed[0].formatSelector, "300+140/best")
     }
 
     func testPerItemMappingDisablesTranscodeForCombinedVideoAudioSelector() {

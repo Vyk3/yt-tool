@@ -1161,6 +1161,10 @@ enum Loc {
         l == .chinese ? "播放列表为空或无法加载。" : "Playlist is empty or could not be loaded."
     }
 
+    static func formatEditorStaleWarning(_ l: AppLanguage) -> String {
+        l == .chinese ? "部分格式探测已超过 30 分钟，建议重新探测" : "Some probed formats may be stale — consider re-probing"
+    }
+
     // MARK: Format picker column headers (#6)
 
     static func colRes(_ l: AppLanguage) -> String {

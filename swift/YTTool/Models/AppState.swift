@@ -532,6 +532,7 @@ final class AppState: ObservableObject {
             do {
                 if isWholePlaylistDownload, playlistConfig.formatMode == .perItemMapping {
                     let perItemSelections = try parsePerItemFormatSelectionsOrThrow()
+                    var failedItems: [(index: Int, error: AppError)] = []
                     for item in perItemSelections {
                         guard isCurrentDownloadAttempt(attemptID) else { return }
                         appendLog(scope: .download, level: .info, message: "Downloading playlist item \(item.index) with format \(item.formatSelector)")
@@ -540,44 +541,68 @@ final class AppState: ObservableObject {
                             formatSelector: item.formatSelector,
                             selectedFormat: effectiveTranscode
                         )
-                        for try await event in service.download(
-                            url: url,
-                            videoFormatId: nil,
-                            audioFormatId: nil,
-                            formatSelectorOverride: item.formatSelector,
-                            includeNoPlaylistOverride: false,
-                            audioTranscodeFormat: perItemTranscode,
-                            cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
-                            extraOptions: parsedOptions,
-                            managedArguments: itemManagedArgs,
-                            selectedProtocols: [],
-                            subtitleTrack: subtitleTrack,
-                            outputDirectory: outputDir,
-                            playlistMode: .onlyFirstItem,
-                            playlistVideoQualityStrategy: playlistConfig.videoQualityStrategy,
-                            playlistAudioQualityStrategy: playlistConfig.audioQualityStrategy,
-                            aria2cPath: resolvedAria2cPath,
-                            onLog: makeServiceLogger(scope: .download)
-                        ) {
-                            switch event {
-                            case let .progress(progress):
-                                await MainActor.run {
-                                    guard isCurrentDownloadAttempt(attemptID) else { return }
-                                    downloadState = .downloading(progress)
+                        do {
+                            for try await event in service.download(
+                                url: url,
+                                videoFormatId: nil,
+                                audioFormatId: nil,
+                                formatSelectorOverride: item.formatSelector,
+                                includeNoPlaylistOverride: false,
+                                audioTranscodeFormat: perItemTranscode,
+                                cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath,
+                                extraOptions: parsedOptions,
+                                managedArguments: itemManagedArgs,
+                                selectedProtocols: [],
+                                subtitleTrack: subtitleTrack,
+                                outputDirectory: outputDir,
+                                playlistMode: .onlyFirstItem,
+                                playlistVideoQualityStrategy: playlistConfig.videoQualityStrategy,
+                                playlistAudioQualityStrategy: playlistConfig.audioQualityStrategy,
+                                aria2cPath: resolvedAria2cPath,
+                                onLog: makeServiceLogger(scope: .download)
+                            ) {
+                                switch event {
+                                case let .progress(progress):
+                                    await MainActor.run {
+                                        guard isCurrentDownloadAttempt(attemptID) else { return }
+                                        downloadState = .downloading(progress)
+                                    }
+                                case .completed:
+                                    break
                                 }
-                            case .completed:
-                                break
                             }
+                        } catch is CancellationError {
+                            throw CancellationError()
+                        } catch let itemError as AppError {
+                            appendLog(scope: .download, level: .error, message: "Item \(item.index) failed: \(itemError.message)")
+                            failedItems.append((index: item.index, error: itemError))
+                        } catch {
+                            let wrapped = AppError(
+                                message: "Item \(item.index) download failed.",
+                                recoverySuggestion: error.localizedDescription
+                            )
+                            appendLog(scope: .download, level: .error, message: "Item \(item.index) failed: \(error.localizedDescription)")
+                            failedItems.append((index: item.index, error: wrapped))
                         }
                     }
                     await MainActor.run {
                         guard isCurrentDownloadAttempt(attemptID) else { return }
                         downloadTask = nil
-                        downloadState = .succeeded(outputURL: outputDir)
-                        appendLog(scope: .download, level: .success, message: "Completed playlist per-item downloads")
+                        if failedItems.isEmpty {
+                            downloadState = .succeeded(outputURL: outputDir)
+                            appendLog(scope: .download, level: .success, message: "Completed playlist per-item downloads")
+                        } else if failedItems.count == perItemSelections.count {
+                            downloadState = .failed(failedItems[0].error)
+                            appendLog(scope: .download, level: .error, message: "All \(failedItems.count) item(s) failed")
+                        } else {
+                            let failedIndices = failedItems.map(\.index)
+                            downloadState = .succeeded(outputURL: outputDir)
+                            appendLog(scope: .download, level: .warning, message: "Completed with \(failedItems.count) failed item(s): \(failedIndices)")
+                        }
                         self.recordDownloadResult(
                             url: url, title: capturedTitle,
-                            outputURL: outputDir, succeeded: true,
+                            outputURL: outputDir,
+                            succeeded: failedItems.count < perItemSelections.count,
                             estimatedSizeBytes: capturedEstimatedBytes
                         )
                     }
@@ -1658,7 +1683,7 @@ final class AppState: ObservableObject {
                     recoverySuggestion: "Item index must be a positive number and format selector cannot be empty."
                 )
             }
-            results.append(PerItemFormatSelection(index: index, formatSelector: formatRaw))
+            results.append(PerItemFormatSelection(index: index, formatSelector: Self.withFallbackChain(formatRaw)))
         }
 
         guard !results.isEmpty else {
@@ -1668,6 +1693,14 @@ final class AppState: ObservableObject {
             )
         }
         return results
+    }
+
+    private static func withFallbackChain(_ selector: String) -> String {
+        if selector.contains("/") { return selector }
+        if !selector.contains("+") {
+            return "\(selector)/bestaudio/best"
+        }
+        return "\(selector)/bestvideo+bestaudio/best"
     }
 
     private func effectiveAudioTranscodeFormat(

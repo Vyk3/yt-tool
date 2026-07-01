@@ -46,16 +46,24 @@ struct PlaylistFormatEditorView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
-            Text(Loc.formatEditorTitle(language))
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(Loc.formatEditorTitle(language))
+                    .font(.headline)
 
-            Spacer()
+                Spacer()
 
-            if !editorState.entries.isEmpty {
-                Text(Loc.formatEditorProbed(editorState.probedCount, editorState.entries.count, language))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                if !editorState.entries.isEmpty {
+                    Text(Loc.formatEditorProbed(editorState.probedCount, editorState.entries.count, language))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if editorState.hasStaleProbes {
+                Label(Loc.formatEditorStaleWarning(language), systemImage: "clock.badge.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
             }
         }
     }

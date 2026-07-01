@@ -28,6 +28,7 @@ final class PlaylistFormatEditorState: ObservableObject {
     @Published var formatSelections: [Int: PlaylistItemFormatSelection] = [:]
     @Published var isLoadingEntries = false
     @Published var entriesError: String?
+    @Published var probeTimestamps: [Int: Date] = [:]
 
     private var confirmedSelections: [Int: PlaylistItemFormatSelection] = [:]
     private var probeTasks: [Int: Task<Void, Never>] = [:]
@@ -41,6 +42,12 @@ final class PlaylistFormatEditorState: ObservableObject {
             if case .success = $0 { return true }
             return false
         }.count
+    }
+
+    var hasStaleProbes: Bool {
+        let threshold: TimeInterval = 30 * 60
+        let now = Date()
+        return probeTimestamps.values.contains { now.timeIntervalSince($0) > threshold }
     }
 
     var itemIndices: [Int] {
@@ -179,6 +186,7 @@ final class PlaylistFormatEditorState: ObservableObject {
             )
             guard !Task.isCancelled else { return }
             itemProbeStates[index] = .success(info)
+            probeTimestamps[index] = Date()
             if formatSelections[index] == nil {
                 var selection = PlaylistItemFormatSelection()
                 if let firstVideo = filterVideoFormats(info.videoFormats).first {
@@ -252,6 +260,7 @@ final class PlaylistFormatEditorState: ObservableObject {
         itemProbeStates = [:]
         formatSelections = [:]
         confirmedSelections = [:]
+        probeTimestamps = [:]
         entriesError = nil
         cachedURL = nil
         cancelAllProbes()
