@@ -574,15 +574,17 @@ final class AppState: ObservableObject {
                         } catch is CancellationError {
                             throw CancellationError()
                         } catch let itemError as AppError {
-                            appendLog(scope: .download, level: .error, message: "Item \(item.index) failed: \(itemError.message)")
-                            failedItems.append((index: item.index, error: itemError))
+                            let mapped = mapYtDlpError(itemError, url: url, cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath)
+                            appendLog(scope: .download, level: .error, message: "Item \(item.index) failed: \(mapped.message)")
+                            failedItems.append((index: item.index, error: mapped))
                         } catch {
                             let wrapped = AppError(
                                 message: "Item \(item.index) download failed.",
                                 recoverySuggestion: error.localizedDescription
                             )
-                            appendLog(scope: .download, level: .error, message: "Item \(item.index) failed: \(error.localizedDescription)")
-                            failedItems.append((index: item.index, error: wrapped))
+                            let mapped = mapYtDlpError(wrapped, url: url, cookiesFilePath: cookiesPath.isEmpty ? nil : cookiesPath)
+                            appendLog(scope: .download, level: .error, message: "Item \(item.index) failed: \(mapped.message)")
+                            failedItems.append((index: item.index, error: mapped))
                         }
                     }
                     await MainActor.run {
@@ -603,7 +605,8 @@ final class AppState: ObservableObject {
                             url: url, title: capturedTitle,
                             outputURL: outputDir,
                             succeeded: failedItems.count < perItemSelections.count,
-                            estimatedSizeBytes: capturedEstimatedBytes
+                            estimatedSizeBytes: capturedEstimatedBytes,
+                            sendNotification: failedItems.isEmpty
                         )
                     }
                 } else {
@@ -660,6 +663,12 @@ final class AppState: ObservableObject {
                     downloadTask = nil
                     downloadState = .cancelled
                     appendLog(scope: .download, level: .warning, message: "Download task was cancelled")
+                    self.recordDownloadResult(
+                        url: url, title: capturedTitle,
+                        outputURL: nil, succeeded: false,
+                        estimatedSizeBytes: capturedEstimatedBytes,
+                        sendNotification: false
+                    )
                 }
             } catch let error as AppError {
                 await MainActor.run {

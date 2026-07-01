@@ -136,15 +136,16 @@ struct ProbeParser {
             return rawEntries.enumerated().compactMap { offset, raw in
                 let index = offset + 1
                 let title = raw.title ?? raw.id ?? "Item \(index)"
-                let url: String
-                if let directURL = raw.url, !directURL.isEmpty {
-                    url = directURL
-                } else if let id = raw.id, let ieKey = raw.ieKey {
-                    url = "https://www.youtube.com/watch?v=\(id)"
-                    _ = ieKey
-                } else {
-                    url = ""
-                }
+                let url =
+                    if let directURL = raw.url, !directURL.isEmpty {
+                        directURL
+                    } else if let webURL = raw.webpageURL, !webURL.isEmpty {
+                        webURL
+                    } else if let id = raw.id, let ieKey = raw.ieKey, ieKey == "Youtube" {
+                        "https://www.youtube.com/watch?v=\(id)"
+                    } else {
+                        ""
+                    }
                 return PlaylistEntry(index: index, title: title, duration: raw.duration, url: url)
             }
         } catch let decodingError as DecodingError {
@@ -240,6 +241,7 @@ private struct RawPlaylistEntry: Decodable {
     var duration: TimeInterval?
     var url: String?
     var ieKey: String?
+    var webpageURL: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -247,6 +249,7 @@ private struct RawPlaylistEntry: Decodable {
         case duration
         case url
         case ieKey = "ie_key"
+        case webpageURL = "webpage_url"
     }
 }
 

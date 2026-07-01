@@ -114,6 +114,32 @@ final class ProbeParserTests: XCTestCase {
         XCTAssertEqual(auto.id, "auto.en")
     }
 
+    func testParsePlaylistUsesWebpageURLFallback() throws {
+        let json = """
+        {
+          "_type": "playlist",
+          "entries": [
+            { "id": "x1", "title": "Vimeo clip", "duration": 60, "ie_key": "Vimeo", "webpage_url": "https://vimeo.com/123" }
+          ]
+        }
+        """
+        let entries = try ProbeParser().parsePlaylist(XCTUnwrap(json.data(using: .utf8)))
+        XCTAssertEqual(entries.first?.url, "https://vimeo.com/123")
+    }
+
+    func testParsePlaylistNonYoutubeIeKeyWithoutURLReturnsEmpty() throws {
+        let json = """
+        {
+          "_type": "playlist",
+          "entries": [
+            { "id": "x2", "title": "Unknown clip", "duration": 30, "ie_key": "BiliBili" }
+          ]
+        }
+        """
+        let entries = try ProbeParser().parsePlaylist(XCTUnwrap(json.data(using: .utf8)))
+        XCTAssertEqual(entries.first?.url, "")
+    }
+
     func testSubtitleDisplayNameFallsBackToLang() {
         let track = SubtitleTrack(lang: "zh-Hans", label: "", isAuto: false)
         XCTAssertEqual(track.displayName, "zh-Hans")

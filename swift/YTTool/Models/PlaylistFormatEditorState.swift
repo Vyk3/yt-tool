@@ -50,10 +50,6 @@ final class PlaylistFormatEditorState: ObservableObject {
         return probeTimestamps.values.contains { now.timeIntervalSince($0) > threshold }
     }
 
-    var itemIndices: [Int] {
-        entries.map(\.index)
-    }
-
     // MARK: - Entry Loading
 
     func loadEntries(
@@ -99,12 +95,17 @@ final class PlaylistFormatEditorState: ObservableObject {
     ) {
         let indices = selectedIndices.sorted().filter { idx in
             if case .success = itemProbeStates[idx] { return false }
+            if case .loading = itemProbeStates[idx] { return false }
             return true
         }
         guard !indices.isEmpty else { return }
 
         for idx in indices {
             itemProbeStates[idx] = .loading
+        }
+
+        for idx in indices {
+            probeTasks[idx]?.cancel()
         }
 
         let task = Task {
@@ -230,6 +231,8 @@ final class PlaylistFormatEditorState: ObservableObject {
     }
 
     func restoreFromConfig(overridesString: String) {
+        formatSelections = [:]
+        confirmedSelections = [:]
         guard !overridesString.isEmpty else { return }
         let pairs = overridesString.split(separator: ";", omittingEmptySubsequences: true)
         for pair in pairs {
@@ -238,7 +241,8 @@ final class PlaylistFormatEditorState: ObservableObject {
                 continue
             }
             let selector = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let components = selector.split(separator: "+", maxSplits: 1).map(String.init)
+            let baseSelector = selector.split(separator: "/", maxSplits: 1).map(String.init).first ?? selector
+            let components = baseSelector.split(separator: "+", maxSplits: 1).map(String.init)
             var sel = PlaylistItemFormatSelection()
             if components.count == 2 {
                 sel.videoFormatId = components[0]
