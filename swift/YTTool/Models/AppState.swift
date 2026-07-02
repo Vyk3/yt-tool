@@ -603,7 +603,7 @@ final class AppState: ObservableObject {
                         }
                         self.recordDownloadResult(
                             url: url, title: capturedTitle,
-                            outputURL: outputDir,
+                            outputURL: failedItems.count == perItemSelections.count ? nil : outputDir,
                             succeeded: failedItems.count < perItemSelections.count,
                             estimatedSizeBytes: capturedEstimatedBytes,
                             sendNotification: failedItems.isEmpty
@@ -712,6 +712,12 @@ final class AppState: ObservableObject {
         Task { try? await downloadRunner.cancel() }
         downloadState = .cancelled
         appendLog(scope: .download, level: .warning, message: "Cancel requested")
+        recordDownloadResult(
+            url: inputURL, title: nil,
+            outputURL: nil, succeeded: false,
+            estimatedSizeBytes: nil,
+            sendNotification: false
+        )
     }
 
     func resetDownload() {

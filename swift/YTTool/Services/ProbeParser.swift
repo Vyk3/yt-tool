@@ -135,7 +135,12 @@ struct ProbeParser {
             let rawEntries = payload.entries ?? []
             return rawEntries.enumerated().compactMap { offset, raw in
                 let index = offset + 1
-                let title = raw.title ?? raw.id ?? "Item \(index)"
+                let sanitized = raw.title?
+                    .replacingOccurrences(of: "\t", with: " ")
+                    .replacingOccurrences(of: "\n", with: " ")
+                    .replacingOccurrences(of: "\r", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let title = (sanitized?.isEmpty == false ? sanitized! : nil) ?? raw.id ?? "Item \(index)"
                 let url =
                     if let directURL = raw.url, !directURL.isEmpty {
                         directURL

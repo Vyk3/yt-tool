@@ -156,6 +156,7 @@ final class PlaylistFormatEditorState: ObservableObject {
         extraOptions: [ParsedExtraOption],
         onLog: @escaping @Sendable (ServiceLogKind, String) -> Void
     ) {
+        probeTasks[index]?.cancel()
         itemProbeStates[index] = .loading
         probeTasks[index] = Task {
             await performItemProbe(
@@ -223,8 +224,8 @@ final class PlaylistFormatEditorState: ObservableObject {
     func buildPerItemFormatMap() -> String {
         formatSelections
             .sorted(by: { $0.key < $1.key })
-            .compactMap { idx, sel in
-                guard let selector = sel.effectiveSelector else { return nil }
+            .map { idx, sel in
+                let selector = sel.effectiveSelector ?? "bestvideo+bestaudio/best"
                 return "\(idx)=\(selector)"
             }
             .joined(separator: ";")
@@ -241,14 +242,17 @@ final class PlaylistFormatEditorState: ObservableObject {
                 continue
             }
             let selector = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let baseSelector = selector.split(separator: "/", maxSplits: 1).map(String.init).first ?? selector
-            let components = baseSelector.split(separator: "+", maxSplits: 1).map(String.init)
             var sel = PlaylistItemFormatSelection()
-            if components.count == 2 {
-                sel.videoFormatId = components[0]
-                sel.audioFormatId = components[1]
-            } else {
+            if selector.contains("/") {
                 sel.manualInput = selector
+            } else {
+                let components = selector.split(separator: "+", maxSplits: 1).map(String.init)
+                if components.count == 2 {
+                    sel.videoFormatId = components[0]
+                    sel.audioFormatId = components[1]
+                } else {
+                    sel.manualInput = selector
+                }
             }
             formatSelections[index] = sel
             confirmedSelections[index] = sel
@@ -259,6 +263,9 @@ final class PlaylistFormatEditorState: ObservableObject {
 
     func invalidateCacheIfNeeded(url: String) {
         guard url != cachedURL else { return }
+        loadEntriesTask?.cancel()
+        loadEntriesTask = nil
+        isLoadingEntries = false
         entries = []
         selectedIndices = []
         itemProbeStates = [:]
