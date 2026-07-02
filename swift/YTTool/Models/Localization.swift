@@ -564,6 +564,18 @@ enum Loc {
         l == .chinese ? "为列表中的特定视频指定格式，如 1=best;3=worst。" : "Assign formats to specific items, e.g. 1=best;3=worst."
     }
 
+    static func perItemMapEmptySummary(_ l: AppLanguage) -> String {
+        l == .chinese ? "尚未配置逐项格式。" : "No per-item formats configured yet."
+    }
+
+    static func perItemMapConfiguredSummary(_ count: Int, _ l: AppLanguage) -> String {
+        l == .chinese ? "已配置 \(count) 项格式。" : "\(count) item formats configured."
+    }
+
+    static func advancedPerItemMap(_ l: AppLanguage) -> String {
+        l == .chinese ? "高级：手动编辑映射" : "Advanced: edit raw map"
+    }
+
     static func playlistSubtitles(_ l: AppLanguage) -> String {
         l == .chinese ? "播放列表字幕" : "Playlist subtitles"
     }
@@ -1081,6 +1093,76 @@ enum Loc {
 
     static func playlistFormatModeTitle(_ mode: PlaylistFormatMode, _ l: AppLanguage) -> String {
         mode.title(l)
+    }
+
+    // MARK: Playlist format editor
+
+    static func configureFormatMap(_ l: AppLanguage) -> String {
+        l == .chinese ? "选择每项格式…" : "Choose formats per item…"
+    }
+
+    static func formatEditorTitle(_ l: AppLanguage) -> String {
+        l == .chinese ? "逐项格式选择" : "Per-Item Format Selection"
+    }
+
+    static func formatEditorLoading(_ l: AppLanguage) -> String {
+        l == .chinese ? "正在加载播放列表…" : "Loading playlist…"
+    }
+
+    static func formatEditorProbed(_ probed: Int, _ total: Int, _ l: AppLanguage) -> String {
+        l == .chinese ? "已探测 \(probed)/\(total)" : "\(probed)/\(total) probed"
+    }
+
+    static func formatEditorSelectAll(_ l: AppLanguage) -> String {
+        l == .chinese ? "全选" : "Select All"
+    }
+
+    static func formatEditorDeselectAll(_ l: AppLanguage) -> String {
+        l == .chinese ? "取消全选" : "Deselect All"
+    }
+
+    static func formatEditorProbeSelected(_ l: AppLanguage) -> String {
+        l == .chinese ? "探测选中项" : "Probe Selected"
+    }
+
+    static func formatEditorProbing(_ l: AppLanguage) -> String {
+        l == .chinese ? "探测中…" : "Probing…"
+    }
+
+    static func formatEditorRetry(_ l: AppLanguage) -> String {
+        l == .chinese ? "重试" : "Retry"
+    }
+
+    static func formatEditorConfirm(_ l: AppLanguage) -> String {
+        l == .chinese ? "确认" : "Confirm"
+    }
+
+    static func formatEditorCancel(_ l: AppLanguage) -> String {
+        l == .chinese ? "取消" : "Cancel"
+    }
+
+    static func formatEditorAutoFormat(_ l: AppLanguage) -> String {
+        l == .chinese ? "自动" : "Auto"
+    }
+
+    static func formatEditorVideo(_ l: AppLanguage) -> String {
+        l == .chinese ? "视频" : "Video"
+    }
+
+    static func formatEditorAudio(_ l: AppLanguage) -> String {
+        l == .chinese ? "音频" : "Audio"
+    }
+
+    static func formatEditorManualInput(_ l: AppLanguage) -> String {
+        l == .chinese ? "手动输入格式" : "Manual format input"
+    }
+
+    static func formatEditorEmpty(_ l: AppLanguage) -> String {
+        l == .chinese ? "播放列表为空或无法加载。" : "Playlist is empty or could not be loaded."
+    }
+
+    static func formatEditorStaleWarning(_ l: AppLanguage) -> String {
+        l == .chinese ? "部分格式探测已超过 30 分钟，建议重新探测" : "Some probed formats may be stale — consider re-probing"
     }
 
     // MARK: Format picker column headers (#6)

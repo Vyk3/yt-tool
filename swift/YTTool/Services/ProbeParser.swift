@@ -125,6 +125,61 @@ struct ProbeParser {
         return Int64(kbps * 1000 / 8 * dur)
     }
 
+    // MARK: - Playlist Parsing
+
+    func parsePlaylist(_ data: Data) throws -> [PlaylistEntry] {
+        let decoder = JSONDecoder()
+
+        do {
+            let payload = try decoder.decode(RawPlaylistPayload.self, from: data)
+            let rawEntries = payload.entries ?? []
+            return rawEntries.enumerated().compactMap { offset, raw in
+                let index = offset + 1
+                let sanitized = raw.title?
+                    .replacingOccurrences(of: "\t", with: " ")
+                    .replacingOccurrences(of: "\n", with: " ")
+                    .replacingOccurrences(of: "\r", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let title = (sanitized?.isEmpty == false ? sanitized! : nil) ?? raw.id ?? "Item \(index)"
+                let url =
+                    if let directURL = raw.url, !directURL.isEmpty {
+                        directURL
+                    } else if let webURL = raw.webpageURL, !webURL.isEmpty {
+                        webURL
+                    } else if let id = raw.id, let ieKey = raw.ieKey, ieKey == "Youtube" {
+                        "https://www.youtube.com/watch?v=\(id)"
+                    } else {
+                        ""
+                    }
+                return PlaylistEntry(index: index, title: title, duration: raw.duration, url: url)
+            }
+        } catch let decodingError as DecodingError {
+            throw AppError(
+                message: "Failed to decode playlist output.",
+                recoverySuggestion: Self.decodingErrorDetail(decodingError)
+            )
+        } catch {
+            throw AppError(
+                message: "Failed to decode playlist output.",
+                recoverySuggestion: error.localizedDescription
+            )
+        }
+    }
+
+    func parsePlaylistItemProbe(_ data: Data) throws -> MediaInfo {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return try parse(data)
+        }
+        if let type = json["_type"] as? String, type == "playlist",
+           let entries = json["entries"] as? [[String: Any]],
+           let first = entries.first
+        {
+            let entryData = try JSONSerialization.data(withJSONObject: first)
+            return try parse(entryData)
+        }
+        return try parse(data)
+    }
+
     private static func makeSubtitleTracks(
         from raw: [String: [RawSubtitleEntry]]?,
         isAuto: Bool
@@ -174,6 +229,32 @@ private struct RawProbePayload: Decodable {
         case formats
         case subtitles
         case automaticCaptions = "automatic_captions"
+    }
+}
+
+private struct RawPlaylistPayload: Decodable {
+    var entries: [RawPlaylistEntry]?
+
+    enum CodingKeys: String, CodingKey {
+        case entries
+    }
+}
+
+private struct RawPlaylistEntry: Decodable {
+    var id: String?
+    var title: String?
+    var duration: TimeInterval?
+    var url: String?
+    var ieKey: String?
+    var webpageURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case duration
+        case url
+        case ieKey = "ie_key"
+        case webpageURL = "webpage_url"
     }
 }
 

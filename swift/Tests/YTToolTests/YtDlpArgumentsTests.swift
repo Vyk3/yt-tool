@@ -154,6 +154,39 @@ final class YtDlpArgumentsTests: XCTestCase {
         XCTAssertTrue(args.contains("http://proxy.local:8080"))
     }
 
+    func testFlatPlaylistArgumentsDumpSingleFlatPlaylist() {
+        let url = "https://www.youtube.com/playlist?list=PL123"
+        let args = buildFlatPlaylistArguments(
+            url: url,
+            cookiesFilePath: "/tmp/cookies.txt",
+            extraOptions: [ParsedExtraOption(name: .proxy, value: "http://proxy.local:8080")]
+        )
+
+        XCTAssertTrue(args.contains("--dump-single-json"))
+        XCTAssertTrue(args.contains("--flat-playlist"))
+        XCTAssertTrue(args.contains("--cookies"))
+        XCTAssertTrue(args.contains("/tmp/cookies.txt"))
+        XCTAssertTrue(args.contains("--proxy"))
+        XCTAssertTrue(args.contains("http://proxy.local:8080"))
+        XCTAssertTrue(args.contains("--extractor-args"))
+        XCTAssertTrue(args.contains("youtube:player_client=default"))
+        XCTAssertEqual(args.last, url)
+    }
+
+    func testPlaylistItemProbeArgumentsSelectsItemWithoutNoPlaylist() {
+        let url = "https://www.youtube.com/watch?v=P5yHEKqx86U&list=PL123"
+        let args = buildPlaylistItemProbeArguments(
+            url: url,
+            itemIndex: 2,
+            cookiesFilePath: nil,
+            extraOptions: []
+        )
+
+        XCTAssertEqual(args.prefix(3), ["--dump-single-json", "--playlist-items", "2"])
+        XCTAssertFalse(args.contains("--no-playlist"))
+        XCTAssertEqual(args.last, url)
+    }
+
     func testParseShellLikeArgumentsSupportsQuotedValues() throws {
         let args = try parseShellLikeArguments("--download-sections \"*00:30-01:00\" --playlist-items 1")
         XCTAssertEqual(args, ["--download-sections", "*00:30-01:00", "--playlist-items", "1"])

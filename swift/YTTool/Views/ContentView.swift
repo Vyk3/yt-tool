@@ -26,6 +26,27 @@ struct ContentView: View {
         .sheet(isPresented: $showingHistory) {
             HistoryView(store: state.historyStore, language: state.language)
         }
+        .sheet(isPresented: $state.showsPlaylistFormatEditor) {
+            PlaylistFormatEditorView(
+                editorState: state.playlistFormatEditor,
+                playlistURL: state.trimmedInputURL,
+                probeService: YtDlpProbeService(),
+                cookiesFilePath: state.cookiesFilePath.isEmpty ? nil : state.cookiesFilePath,
+                extraOptions: (try? parseExtraOptions(state.extraYtDlpArguments)) ?? [],
+                language: state.language,
+                onConfirm: { map in
+                    state.playlistConfig.perItemFormatMap = map
+                },
+                onDismiss: {
+                    state.showsPlaylistFormatEditor = false
+                },
+                onLog: SendableLogHandler(action: { kind, message in
+                    Task { @MainActor in
+                        state.appendLog(scope: .probe, level: kind.appLogLevel, message: message)
+                    }
+                })
+            )
+        }
     }
 
     @ViewBuilder
@@ -159,6 +180,11 @@ struct ContentView: View {
                     if let text = NSPasteboard.general.string(forType: .string) {
                         state.inputURL = text.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
+                },
+                onConfigureFormatMap: {
+                    state.playlistFormatEditor.invalidateCacheIfNeeded(url: state.trimmedInputURL)
+                    state.playlistFormatEditor.restoreFromConfig(overridesString: state.playlistConfig.perItemFormatMap)
+                    state.showsPlaylistFormatEditor = true
                 }
             )
             FormatPickerView(

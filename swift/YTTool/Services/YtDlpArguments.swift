@@ -345,6 +345,37 @@ func buildProbeArguments(
     return args
 }
 
+func buildFlatPlaylistArguments(
+    url: String,
+    cookiesFilePath: String?,
+    extraOptions: [ParsedExtraOption]
+) -> [String] {
+    var args = ["--dump-single-json", "--flat-playlist"]
+    if let cookiesFilePath, !cookiesFilePath.isEmpty {
+        args += ["--cookies", cookiesFilePath]
+    }
+    args += renderExtraOptions(extraOptions, for: .probe)
+    if isYouTubeURL(url) { args += ["--extractor-args", "youtube:player_client=default"] }
+    args.append(url)
+    return args
+}
+
+func buildPlaylistItemProbeArguments(
+    url: String,
+    itemIndex: Int,
+    cookiesFilePath: String?,
+    extraOptions: [ParsedExtraOption]
+) -> [String] {
+    var args = ["--dump-single-json", "--playlist-items", "\(itemIndex)"]
+    if let cookiesFilePath, !cookiesFilePath.isEmpty {
+        args += ["--cookies", cookiesFilePath]
+    }
+    args += renderExtraOptions(extraOptions, for: .probe)
+    if isYouTubeURL(url) { args += ["--extractor-args", "youtube:player_client=default"] }
+    args.append(url)
+    return args
+}
+
 func buildDownloadArguments(
     url: String,
     formatSelector: String,

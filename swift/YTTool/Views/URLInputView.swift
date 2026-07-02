@@ -14,6 +14,7 @@ struct URLInputView: View {
     let onSelectDirectory: () -> Void
     let onClearDirectory: () -> Void
     var onPaste: (() -> Void)?
+    var onConfigureFormatMap: (() -> Void)?
     @State private var isDropTargeted = false
 
     var body: some View {
@@ -58,11 +59,12 @@ struct URLInputView: View {
                 .foregroundStyle(.secondary)
 
             if showsPlaylistModePicker {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(Loc.playlistMode(language))
-                            .font(.subheadline.weight(.semibold))
-
+                VStack(alignment: .leading, spacing: 10) {
+                    playlistOptionRow(
+                        label: Loc.playlistMode(language),
+                        helpText: playlistModeHint,
+                        labelFont: .subheadline.weight(.semibold)
+                    ) {
                         Picker(Loc.playlistMode(language), selection: $playlistConfig.mode) {
                             ForEach(PlaylistMode.allCases) { mode in
                                 Text(Loc.playlistModeTitle(mode, language)).tag(mode)
@@ -71,10 +73,6 @@ struct URLInputView: View {
                         .labelsHidden()
                         .frame(maxWidth: 280, alignment: .leading)
                     }
-
-                    Text(playlistModeHint)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
 
                     if showsPlaylistVideoQualityStrategy {
                         secondaryQualityPicker(
@@ -107,27 +105,27 @@ struct URLInputView: View {
                     }
 
                     if playlistConfig.mode.downloadsWholePlaylist {
-                        secondaryQualityPicker(
+                        playlistOptionRow(
                             label: Loc.playlistFormats(language),
                             helpText: Loc.playlistFormatsHelp(language)
                         ) {
-                            Picker(Loc.playlistFormats(language), selection: $playlistConfig.formatMode) {
-                                ForEach(PlaylistFormatMode.allCases) { mode in
-                                    Text(Loc.playlistFormatModeTitle(mode, language)).tag(mode)
+                            HStack(spacing: 8) {
+                                Picker(Loc.playlistFormats(language), selection: $playlistConfig.formatMode) {
+                                    ForEach(PlaylistFormatMode.allCases) { mode in
+                                        Text(Loc.playlistFormatModeTitle(mode, language)).tag(mode)
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(maxWidth: 220, alignment: .leading)
+
+                                if playlistConfig.formatMode == .perItemMapping, let onConfigureFormatMap {
+                                    Button(Loc.configureFormatMap(language), action: onConfigureFormatMap)
+                                        .buttonStyle(.bordered)
                                 }
                             }
-                            .labelsHidden()
-                            .frame(maxWidth: 280, alignment: .leading)
                         }
 
-                        if playlistConfig.formatMode == .perItemMapping {
-                            secondaryTextField(
-                                label: Loc.perItemMap(language),
-                                placeholder: "1=137+140;2=136+140",
-                                text: $playlistConfig.perItemFormatMap,
-                                helpText: Loc.perItemMapHelp(language)
-                            )
-                        }
+                        if playlistConfig.formatMode == .perItemMapping { perItemFormatPickerEntry }
 
                         secondaryQualityPicker(
                             label: Loc.playlistSubtitles(language),
@@ -234,25 +232,85 @@ struct URLInputView: View {
         }
     }
 
+    private var perItemFormatPickerEntry: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(perItemMapSummary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            DisclosureGroup(Loc.advancedPerItemMap(language)) {
+                TextField("1=137+140;2=136+140", text: $playlistConfig.perItemFormatMap)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1)
+                    .frame(maxWidth: 280, alignment: .leading)
+
+                Text(Loc.perItemMapHelp(language))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+        }
+        .padding(.leading, playlistControlLeadingPadding)
+    }
+
+    private var perItemMapSummary: String {
+        let count = playlistConfig.perItemFormatMap
+            .split(separator: ";")
+            .filter { item in
+                let parts = item.split(separator: "=", maxSplits: 1)
+                return parts.count == 2
+                    && !String(parts[0]).trimmingCharacters(in: .whitespaces).isEmpty
+                    && !String(parts[1]).trimmingCharacters(in: .whitespaces).isEmpty
+            }
+            .count
+
+        guard count > 0 else { return Loc.perItemMapEmptySummary(language) }
+        return Loc.perItemMapConfiguredSummary(count, language)
+    }
+
+    private var playlistLabelWidth: CGFloat {
+        116
+    }
+
+    private var playlistControlLeadingPadding: CGFloat {
+        playlistLabelWidth + 12
+    }
+
+    private func playlistOptionRow(
+        label: String,
+        helpText: String,
+        labelFont: Font = .callout.weight(.medium),
+        @ViewBuilder content: () -> some View
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(label)
+                    .font(labelFont)
+                    .foregroundStyle(.secondary)
+                    .frame(width: playlistLabelWidth, alignment: .trailing)
+
+                content()
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Color.clear
+                    .frame(width: playlistLabelWidth, height: 0)
+
+                Text(helpText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private func secondaryQualityPicker(
         label: String,
         helpText: String,
         @ViewBuilder picker: () -> some View
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(label)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-
-                picker()
-            }
-
-            Text(helpText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        playlistOptionRow(label: label, helpText: helpText) {
+            picker()
         }
-        .padding(.leading, 20)
     }
 
     private func secondaryTextField(
@@ -261,21 +319,12 @@ struct URLInputView: View {
         text: Binding<String>,
         helpText: String
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(.callout.weight(.medium))
-                .foregroundStyle(.secondary)
-
+        playlistOptionRow(label: label, helpText: helpText) {
             TextField(placeholder, text: text)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1)
                 .frame(maxWidth: 280, alignment: .leading)
-
-            Text(helpText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
-        .padding(.leading, 20)
     }
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {

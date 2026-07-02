@@ -112,8 +112,8 @@ enum PlaylistFormatMode: String, CaseIterable, Codable, Equatable, Identifiable 
         switch (self, l) {
         case (.unifiedStrategy, .chinese): "统一策略"
         case (.unifiedStrategy, .english): "Unified strategy"
-        case (.perItemMapping, .chinese): "逐项映射"
-        case (.perItemMapping, .english): "Per-item mapping"
+        case (.perItemMapping, .chinese): "逐项选择格式"
+        case (.perItemMapping, .english): "Per-item format selection"
         }
     }
 }

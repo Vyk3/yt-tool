@@ -86,12 +86,58 @@ final class ProbeParserTests: XCTestCase {
         XCTAssertTrue(info.autoSubtitleTracks.isEmpty)
     }
 
+    func testParsePlaylistReturnsFlatEntries() throws {
+        let entries = try ProbeParser().parsePlaylist(XCTUnwrap(Self.playlistJSON.data(using: .utf8)))
+
+        XCTAssertEqual(entries.map(\.index), [1, 2])
+        XCTAssertEqual(entries.map(\.title), ["First item", "Second item"])
+        XCTAssertEqual(entries.map(\.duration), [95, 123])
+        XCTAssertEqual(entries.first?.url, "https://www.youtube.com/watch?v=abc123")
+        XCTAssertEqual(entries.last?.url, "https://www.youtube.com/watch?v=def456")
+    }
+
+    func testParsePlaylistItemProbeUnwrapsPlaylistWrapper() throws {
+        let info = try ProbeParser().parsePlaylistItemProbe(
+            XCTUnwrap(Self.playlistItemProbeWrapperJSON.data(using: .utf8))
+        )
+
+        XCTAssertEqual(info.title, "Wrapped item")
+        XCTAssertEqual(info.videoFormats.map(\.id), ["137"])
+        XCTAssertEqual(info.audioFormats.map(\.id), ["140"])
+    }
+
     func testSubtitleTrackIdIsNamespaced() {
         let manual = SubtitleTrack(lang: "en", label: "English", isAuto: false)
         let auto = SubtitleTrack(lang: "en", label: "English", isAuto: true)
         XCTAssertNotEqual(manual.id, auto.id)
         XCTAssertEqual(manual.id, "manual.en")
         XCTAssertEqual(auto.id, "auto.en")
+    }
+
+    func testParsePlaylistUsesWebpageURLFallback() throws {
+        let json = """
+        {
+          "_type": "playlist",
+          "entries": [
+            { "id": "x1", "title": "Vimeo clip", "duration": 60, "ie_key": "Vimeo", "webpage_url": "https://vimeo.com/123" }
+          ]
+        }
+        """
+        let entries = try ProbeParser().parsePlaylist(XCTUnwrap(json.data(using: .utf8)))
+        XCTAssertEqual(entries.first?.url, "https://vimeo.com/123")
+    }
+
+    func testParsePlaylistNonYoutubeIeKeyWithoutURLReturnsEmpty() throws {
+        let json = """
+        {
+          "_type": "playlist",
+          "entries": [
+            { "id": "x2", "title": "Unknown clip", "duration": 30, "ie_key": "BiliBili" }
+          ]
+        }
+        """
+        let entries = try ProbeParser().parsePlaylist(XCTUnwrap(json.data(using: .utf8)))
+        XCTAssertEqual(entries.first?.url, "")
     }
 
     func testSubtitleDisplayNameFallsBackToLang() {
@@ -174,6 +220,55 @@ final class ProbeParserTests: XCTestCase {
       "automatic_captions": {
         "live_chat": [{"name": "Live chat replay", "ext": "json"}]
       }
+    }
+    """
+
+    private static let playlistJSON = """
+    {
+      "_type": "playlist",
+      "entries": [
+        {
+          "id": "abc123",
+          "title": "First item",
+          "duration": 95,
+          "url": "https://www.youtube.com/watch?v=abc123"
+        },
+        {
+          "id": "def456",
+          "title": "Second item",
+          "duration": 123,
+          "ie_key": "Youtube"
+        }
+      ]
+    }
+    """
+
+    private static let playlistItemProbeWrapperJSON = """
+    {
+      "_type": "playlist",
+      "entries": [
+        {
+          "title": "Wrapped item",
+          "duration": 95,
+          "webpage_url": "https://example.com/watch?v=wrapped",
+          "formats": [
+            {
+              "format_id": "137",
+              "vcodec": "avc1.640028",
+              "acodec": "none",
+              "height": 1080,
+              "tbr": 4500
+            },
+            {
+              "format_id": "140",
+              "vcodec": "none",
+              "acodec": "mp4a.40.2",
+              "abr": 128,
+              "ext": "m4a"
+            }
+          ]
+        }
+      ]
     }
     """
 
