@@ -400,7 +400,7 @@ func buildDownloadArguments(
     if let aria2cPath {
         args += [
             "--downloader", aria2cPath,
-            "--downloader", "m3u8:native",
+            "--downloader", "dash,m3u8:native",
             "--downloader-args", "aria2c:-x 16 -s 16 -k 1M",
             "-N", "4",
         ]
