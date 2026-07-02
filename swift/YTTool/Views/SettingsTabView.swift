@@ -425,35 +425,38 @@ struct SettingsTabView: View {
     }
 
     private var extraArgsGuidePopover: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(Loc.extraArgsGuideTitle(lang))
-                .font(.headline)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(Loc.extraArgsGuideTitle(lang))
+                    .font(.headline)
 
-            Text(Loc.extraArgsGuideIntro(lang))
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                Text(Loc.extraArgsGuideIntro(lang))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
 
-            let groups = Loc.extraArgsGuideGroups(lang)
-            ForEach(groups, id: \.title) { group in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(group.title)
-                        .font(.caption.weight(.semibold))
-                    ForEach(group.items, id: \.self) { item in
-                        Text(item)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                let groups = Loc.extraArgsGuideGroups(lang)
+                ForEach(groups, id: \.title) { group in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(group.title)
+                            .font(.caption.weight(.semibold))
+                        ForEach(group.items, id: \.self) { item in
+                            Text(item)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
+
+                Divider()
+
+                Text(Loc.extraArgsGuideNote(lang))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-
-            Divider()
-
-            Text(Loc.extraArgsGuideNote(lang))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .padding(14)
         }
-        .padding(14)
         .frame(width: popoverWidth, alignment: .leading)
+        .frame(maxHeight: 420)
     }
 
     private var privacyPopover: some View {
