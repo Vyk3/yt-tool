@@ -4,6 +4,27 @@
 
 ---
 
+## [0.2.7] — 2026-07-02
+
+### Added
+- **播放列表逐项格式选择器**：播放列表模式可先加载条目，再按条目探测并选择视频/音频格式；支持全选/反选、单项重试、手动格式 ID、探测缓存和 30 分钟老化警告，取消时不污染已确认配置。(#125)
+- **本地数据备份与清除**：Settings 新增本地数据管理入口，可在清除历史、订阅和偏好前生成备份，并在执行前验证备份有效，降低误删风险。(#123)
+
+### Changed
+- **DASH / HLS 片段下载策略**：HLS 与 DASH 流都交给 yt-dlp 原生下载器并配合 `-N 4` 并行片段下载，普通 HTTP 流继续使用 aria2c 多连接下载。(#126)
+- **resolved download plans**：下载服务先生成明确的 resolved plan，再交给执行层消费，减少队列、单项下载和播放列表路径之间的参数分叉。(#121)
+- **Release 治理检查**：release workflow 增加 GitHub governance 检查，README / CHANGELOG drift 作为 readiness warning 暴露，降低发布前遗漏文档同步的风险。(#120)
+- **yt-dlp pinned 版本**：更新内置 yt-dlp Stable / Nightly pin 和 SHA256，跟进上游修复。(#126)
+
+### Fixed
+- **队列 aria2c 路径持久化**：队列项现在保留解析后的 aria2c 路径，避免启动后环境变化导致已入队任务使用不一致的下载器配置。(#122)
+- **播放列表格式选择器稳定性**：修复批量探测与单项重试互相取消、旧 `.loading` 状态遗留、`cancelAll()` 后加载态卡住、手动格式空白输入绕过 fallback、旧格式 ID 失效导致整组下载失败等问题。(#125)
+- **Bilibili cookie 错误映射**：Bilibili 探测阶段能识别 412、`SESSDATA` 过期和登录态失效，并映射为面向用户的 cookie 重新导出提示。(#117)
+- **本地数据清除保护**：修复清除流程中 double defaults removal、备份未验证即清除、按钮禁用状态与 guard 条件不一致的问题。(#123)
+- **aria2c 路径查找**：增加 MacPorts 常见安装路径，提高非 Homebrew 环境下的自动检测成功率。(#122)
+
+---
+
 ## [0.2.6] — 2026-06-27
 
 ### Changed
@@ -336,7 +357,12 @@ Swift 重写完整功能覆盖：(#34, #35, #36, #37)
 ---
 
 <!-- 版本对比链接 -->
-[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/Vyk3/yt-tool/compare/v0.2.6...v0.2.7
+[0.2.6]: https://github.com/Vyk3/yt-tool/compare/v0.2.5...v0.2.6
+[0.2.5]: https://github.com/Vyk3/yt-tool/compare/v0.2.4...v0.2.5
+[0.2.4]: https://github.com/Vyk3/yt-tool/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/Vyk3/yt-tool/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Vyk3/yt-tool/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Vyk3/yt-tool/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Vyk3/yt-tool/compare/v0.1.5...v0.2.0
