@@ -12,6 +12,7 @@ struct SettingsTabView: View {
     private let repoURL = URL(string: "https://github.com/Vyk3/yt-tool")!
 
     @State private var showsCookiesGuide = false
+    @State private var showsExtraArgsGuide = false
     @State private var showsPrivacyInfo = false
     @State private var showsClearLocalDataConfirmation = false
 
@@ -122,9 +123,19 @@ struct SettingsTabView: View {
                 title: Loc.extraArgs(lang),
                 help: Loc.extraArgsDescription(lang)
             ) {
-                TextField("e.g. --download-sections", text: $state.extraYtDlpArguments)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 260)
+                HStack(spacing: 6) {
+                    Text(Loc.extraArgsGuideLink(lang))
+                        .font(.caption)
+                        .foregroundStyle(Color.accentColor)
+                        .onTapGesture { showsExtraArgsGuide.toggle() }
+                        .popover(isPresented: $showsExtraArgsGuide) {
+                            extraArgsGuidePopover
+                        }
+
+                    TextField("e.g. --download-sections", text: $state.extraYtDlpArguments)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 260)
+                }
             }
 
             sectionDivider()
@@ -411,6 +422,41 @@ struct SettingsTabView: View {
         }
         .padding(14)
         .frame(width: popoverWidth, alignment: .leading)
+    }
+
+    private var extraArgsGuidePopover: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(Loc.extraArgsGuideTitle(lang))
+                    .font(.headline)
+
+                Text(Loc.extraArgsGuideIntro(lang))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                let groups = Loc.extraArgsGuideGroups(lang)
+                ForEach(groups, id: \.title) { group in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(group.title)
+                            .font(.caption.weight(.semibold))
+                        ForEach(group.items, id: \.self) { item in
+                            Text(item)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Divider()
+
+                Text(Loc.extraArgsGuideNote(lang))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+        }
+        .frame(width: popoverWidth, alignment: .leading)
+        .frame(maxHeight: 420)
     }
 
     private var privacyPopover: some View {

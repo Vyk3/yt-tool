@@ -920,44 +920,11 @@ final class AppState: ObservableObject {
 
     // MARK: - Local data
 
-    @discardableResult
-    func backupLocalData(fileManager: FileManager = .default) throws -> URL {
-        let backupRoot = try localDataBackupRoot(fileManager: fileManager)
-        let backupURL = backupRoot.appendingPathComponent("backup-\(Self.backupTimestamp())", isDirectory: true)
-        try fileManager.createDirectory(at: backupURL, withIntermediateDirectories: true)
-
-        let defaultsData = try PropertyListSerialization.data(
-            fromPropertyList: Self.localDefaultsPayload(from: defaults),
-            format: .xml,
-            options: 0
-        )
-        try defaultsData.write(to: backupURL.appendingPathComponent("defaults.plist"), options: .atomic)
-
-        try copyIfPresent(historyStore.storageURL, to: backupURL.appendingPathComponent("download_history.json"), fileManager: fileManager)
-        try copyIfPresent(subscriptionStore.storageURL, to: backupURL.appendingPathComponent("channel_subscriptions.json"), fileManager: fileManager)
-        try copyIfPresent(userLocalBinariesDirectory, to: backupURL.appendingPathComponent("Binaries", isDirectory: true), fileManager: fileManager)
-
-        let defaultsPlist = backupURL.appendingPathComponent("defaults.plist")
-        guard fileManager.fileExists(atPath: defaultsPlist.path),
-              (try? fileManager.attributesOfItem(atPath: defaultsPlist.path)[.size] as? UInt64) ?? 0 > 0
-        else {
-            throw AppError(
-                message: "Backup validation failed.",
-                recoverySuggestion: "defaults.plist was not created in the backup directory. Aborting to prevent data loss."
-            )
-        }
-
-        localDataStatusMessage = "Local data backup created: \(backupURL.lastPathComponent)"
-        return backupURL
-    }
-
-    @discardableResult
-    func clearLocalData(fileManager: FileManager = .default) throws -> URL {
+    func clearLocalData(fileManager: FileManager = .default) throws {
         guard !isDownloadOrQueueActive else {
             throw AppError(message: "Cannot clear local data while downloads are active.", recoverySuggestion: "Cancel or wait for active downloads, then try again.")
         }
 
-        let backupURL = try backupLocalData(fileManager: fileManager)
         pollingManager.clearStoredData()
         try historyStore.clearStoredData(fileManager: fileManager)
         try subscriptionStore.clearStoredData(fileManager: fileManager)
@@ -984,35 +951,8 @@ final class AppState: ObservableObject {
             defaults.removeObject(forKey: key)
         }
 
-        localDataStatusMessage = "Local data cleared. Backup: \(backupURL.lastPathComponent)"
-        appendLog(scope: .app, level: .success, message: localDataStatusMessage ?? "Local data cleared")
-        return backupURL
-    }
-
-    func restoreLocalData(from backupURL: URL, fileManager: FileManager = .default) throws {
-        guard !isDownloadOrQueueActive else {
-            throw AppError(message: "Cannot restore local data while downloads are active.", recoverySuggestion: "Cancel or wait for active downloads, then try again.")
-        }
-
-        if let defaultsPayload = try Self.loadDefaultsPayload(from: backupURL.appendingPathComponent("defaults.plist")) {
-            for key in StorageKey.localDataKeys {
-                defaults.removeObject(forKey: key)
-            }
-            for (key, value) in defaultsPayload {
-                defaults.set(value, forKey: key)
-            }
-        }
-
-        try restoreIfPresent(backupURL.appendingPathComponent("download_history.json"), to: historyStore.storageURL, fileManager: fileManager)
-        try restoreIfPresent(backupURL.appendingPathComponent("channel_subscriptions.json"), to: subscriptionStore.storageURL, fileManager: fileManager)
-        try restoreIfPresent(backupURL.appendingPathComponent("Binaries", isDirectory: true), to: userLocalBinariesDirectory, fileManager: fileManager)
-
-        historyStore.reload()
-        subscriptionStore.reload()
-        pollingManager.reloadStoredData()
-        reloadPreferencesFromDefaults()
-        localDataStatusMessage = "Local data restored from \(backupURL.lastPathComponent)"
-        appendLog(scope: .app, level: .success, message: localDataStatusMessage ?? "Local data restored")
+        localDataStatusMessage = "Local data cleared"
+        appendLog(scope: .app, level: .success, message: "Local data cleared")
     }
 
     private func parseLines(_ text: String) -> [String] {
@@ -1187,59 +1127,6 @@ final class AppState: ObservableObject {
         case .idle, .succeeded, .failed, .cancelled:
             return false
         }
-    }
-
-    private func localDataBackupRoot(fileManager: FileManager) throws -> URL {
-        let base = historyStore.storageURL?.deletingLastPathComponent()
-            ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("YTTool", isDirectory: true)
-        let backupRoot = base.appendingPathComponent("Backups", isDirectory: true)
-        try fileManager.createDirectory(at: backupRoot, withIntermediateDirectories: true)
-        return backupRoot
-    }
-
-    private func copyIfPresent(_ source: URL?, to destination: URL, fileManager: FileManager) throws {
-        guard let source, fileManager.fileExists(atPath: source.path) else { return }
-        try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
-        }
-        try fileManager.copyItem(at: source, to: destination)
-    }
-
-    private func restoreIfPresent(_ source: URL, to destination: URL?, fileManager: FileManager) throws {
-        guard let destination, fileManager.fileExists(atPath: source.path) else { return }
-        try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
-        }
-        try fileManager.copyItem(at: source, to: destination)
-    }
-
-    private static func localDefaultsPayload(from defaults: UserDefaults) -> [String: Any] {
-        let snapshot = defaults.dictionaryRepresentation()
-        var payload: [String: Any] = [:]
-        for key in StorageKey.localDataKeys {
-            if let value = snapshot[key] {
-                payload[key] = value
-            }
-        }
-        return payload
-    }
-
-    private static func loadDefaultsPayload(from url: URL) throws -> [String: Any]? {
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        let data = try Data(contentsOf: url)
-        let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
-        return plist as? [String: Any]
-    }
-
-    private static func backupTimestamp() -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        return formatter.string(from: Date())
     }
 
     private func reloadPreferencesFromDefaults() {

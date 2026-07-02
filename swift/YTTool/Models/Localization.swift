@@ -311,8 +311,8 @@ enum Loc {
 
     static func clearLocalDataConfirmMessage(_ l: AppLanguage) -> String {
         l == .chinese
-            ? "会先创建备份，然后删除 YTTool 的本机元数据。下载文件和 cookies 文件不会被删除。"
-            : "A backup is created first, then YTTool's local metadata is deleted. Downloads and cookies files are not deleted."
+            ? "将删除偏好设置、下载历史、订阅数据、新视频缓存和本地 yt-dlp。下载文件和 cookies 文件不受影响。"
+            : "Preferences, download history, subscription data, new-video cache, and user-local yt-dlp will be deleted. Downloads and cookies files are not affected."
     }
 
     static func extraArgs(_ l: AppLanguage) -> String {
@@ -323,6 +323,96 @@ enum Loc {
         l == .chinese
             ? "可选。仅支持 --limit-rate、--proxy 等特定参数，如 --limit-rate 5M"
             : "Optional. Only specific options are allowed, e.g. --limit-rate 5M"
+    }
+
+    struct ExtraArgsGroup: Identifiable {
+        let title: String
+        let items: [String]
+        var id: String {
+            title
+        }
+    }
+
+    static func extraArgsGuideLink(_ l: AppLanguage) -> String {
+        l == .chinese ? "支持参数" : "Supported"
+    }
+
+    static func extraArgsGuideTitle(_ l: AppLanguage) -> String {
+        l == .chinese ? "支持的额外参数" : "Supported Extra Arguments"
+    }
+
+    static func extraArgsGuideIntro(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "以下 18 个参数经过审核，可安全使用。标志型参数直接写，值型参数需跟值。"
+            : "The following 18 audited parameters are allowed. Flags need no value; others require one."
+    }
+
+    static func extraArgsGuideGroups(_ l: AppLanguage) -> [ExtraArgsGroup] {
+        if l == .chinese {
+            [
+                ExtraArgsGroup(title: "网络", items: [
+                    "--proxy <url>          代理服务器",
+                    "--force-ipv4           强制 IPv4",
+                    "--force-ipv6           强制 IPv6",
+                    "--retries <n>          重试次数",
+                ]),
+                ExtraArgsGroup(title: "速率与分片", items: [
+                    "--limit-rate <rate>    限速 (如 5M)",
+                    "--fragment-retries <n> 分片重试次数",
+                    "--buffer-size <size>   缓冲区大小",
+                    "--sleep-interval <s>   请求间隔秒数",
+                    "--max-sleep-interval <s>",
+                ]),
+                ExtraArgsGroup(title: "输出格式", items: [
+                    "--merge-output-format <fmt>  合并格式 (mp4/mkv/webm)",
+                    "--download-sections <spec>   下载片段",
+                    "--sub-format <fmt>           字幕格式",
+                ]),
+                ExtraArgsGroup(title: "文件行为", items: [
+                    "--restrict-filenames   限制文件名字符",
+                    "--no-mtime            不修改文件时间",
+                    "--no-overwrites       不覆盖已有文件",
+                    "--no-part             不使用 .part 文件",
+                    "--ignore-errors       忽略错误继续",
+                    "--no-abort-on-error   出错不中断",
+                ]),
+            ]
+        } else {
+            [
+                ExtraArgsGroup(title: "Network", items: [
+                    "--proxy <url>          Proxy server",
+                    "--force-ipv4           Force IPv4",
+                    "--force-ipv6           Force IPv6",
+                    "--retries <n>          Retry count",
+                ]),
+                ExtraArgsGroup(title: "Rate & Fragments", items: [
+                    "--limit-rate <rate>    Rate limit (e.g. 5M)",
+                    "--fragment-retries <n> Fragment retry count",
+                    "--buffer-size <size>   Buffer size",
+                    "--sleep-interval <s>   Sleep between requests",
+                    "--max-sleep-interval <s>",
+                ]),
+                ExtraArgsGroup(title: "Output Format", items: [
+                    "--merge-output-format <fmt>  Merge format (mp4/mkv/webm)",
+                    "--download-sections <spec>   Download sections",
+                    "--sub-format <fmt>           Subtitle format",
+                ]),
+                ExtraArgsGroup(title: "File Behavior", items: [
+                    "--restrict-filenames   Restrict filename chars",
+                    "--no-mtime            Don't set file mtime",
+                    "--no-overwrites       Don't overwrite files",
+                    "--no-part             Don't use .part files",
+                    "--ignore-errors       Ignore errors",
+                    "--no-abort-on-error   Don't abort on error",
+                ]),
+            ]
+        }
+    }
+
+    static func extraArgsGuideNote(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "不在列表中的参数将被拒绝。多个参数用空格分隔。"
+            : "Arguments not in this list are rejected. Separate multiple arguments with spaces."
     }
 
     static func checkInterval(_ l: AppLanguage) -> String {
