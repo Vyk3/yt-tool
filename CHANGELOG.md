@@ -357,7 +357,6 @@ Swift 重写完整功能覆盖：(#34, #35, #36, #37)
 ---
 
 <!-- 版本对比链接 -->
-[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.7...HEAD
 [0.2.7]: https://github.com/Vyk3/yt-tool/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/Vyk3/yt-tool/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/Vyk3/yt-tool/compare/v0.2.4...v0.2.5
