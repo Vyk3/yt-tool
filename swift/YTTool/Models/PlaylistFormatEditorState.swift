@@ -13,7 +13,8 @@ struct PlaylistItemFormatSelection: Equatable {
     var manualInput: String = ""
 
     var effectiveSelector: String? {
-        if !manualInput.isEmpty { return manualInput }
+        let manual = manualInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !manual.isEmpty { return manual }
         guard let vid = videoFormatId else { return audioFormatId }
         guard let aid = audioFormatId else { return vid }
         return "\(vid)+\(aid)"
