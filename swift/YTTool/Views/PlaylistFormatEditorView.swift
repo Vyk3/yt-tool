@@ -9,9 +9,10 @@ struct PlaylistFormatEditorView: View {
     let language: AppLanguage
     let onConfirm: (String) -> Void
     let onDismiss: () -> Void
-    nonisolated(unsafe) let onLog: @Sendable (ServiceLogKind, String) -> Void
+    let onLog: @Sendable (ServiceLogKind, String) -> Void
 
     var body: some View {
+        let log = onLog
         VStack(spacing: 0) {
             header
                 .padding(.horizontal, 20)
@@ -37,7 +38,7 @@ struct PlaylistFormatEditorView: View {
                     probeService: probeService,
                     cookiesFilePath: cookiesFilePath,
                     extraOptions: extraOptions,
-                    onLog: onLog
+                    onLog: log
                 )
             }
         }
@@ -72,6 +73,7 @@ struct PlaylistFormatEditorView: View {
 
     @ViewBuilder
     private var content: some View {
+        let log = onLog
         if editorState.isLoadingEntries {
             VStack {
                 Spacer()
@@ -124,7 +126,7 @@ struct PlaylistFormatEditorView: View {
                                         probeService: probeService,
                                         cookiesFilePath: cookiesFilePath,
                                         extraOptions: extraOptions,
-                                        onLog: onLog
+                                        onLog: log
                                     )
                                 }
                             )
@@ -142,7 +144,9 @@ struct PlaylistFormatEditorView: View {
 
     // MARK: - Selection Bar
 
+    @ViewBuilder
     private var selectionBar: some View {
+        let log = onLog
         HStack(spacing: 12) {
             Button(Loc.formatEditorSelectAll(language)) {
                 editorState.selectAll()
@@ -162,7 +166,7 @@ struct PlaylistFormatEditorView: View {
                     probeService: probeService,
                     cookiesFilePath: cookiesFilePath,
                     extraOptions: extraOptions,
-                    onLog: onLog
+                    onLog: log
                 )
             }
             .disabled(editorState.selectedIndices.isEmpty)
