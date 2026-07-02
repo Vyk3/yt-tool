@@ -10,13 +10,15 @@ English | [简体中文](README.md)
 - **Batch Import**: Import multiple URLs from file or clipboard at once
 - **aria2c Acceleration**: Automatically enables multi-connection download when aria2c is detected; falls back to built-in downloader otherwise
 - **Download History**: Persistent download records with search
+- **Per-Item Playlist Format Selection**: Probe, select, or manually enter formats per playlist item; retry individual failures without blocking the full playlist
 - **Size Estimation**: Shows estimated merged file size after format selection
 - **yt-dlp Self-Update**: Check and install new yt-dlp versions (Stable / Nightly) from within the app
 - **App Self-Update**: Sparkle 2.x integration with Ed25519 signing for automatic update detection
 - **Subscription Monitoring**: Subscribe to YouTube / Bilibili channels with periodic new-video checks and notifications
+- **Local Data Management**: Back up and clear local history, subscriptions, and preferences from Settings
 - **Extra Options Allowlist**: User-supplied yt-dlp options are validated against an allowlist of 18 audited parameters
 - **Smart DASH Selection**: Auto-selects the best DASH format combo after probing; protocol labels (DASH / HLS / HTTP) in technical details mode
-- **HLS Download Optimization**: HLS streams use the native downloader with parallel fragment downloads, avoiding aria2c connection overhead on small segments
+- **HLS / DASH Download Optimization**: HLS and DASH streams use the native downloader with parallel fragment downloads, avoiding aria2c connection overhead on small segments
 
 ## License
 
