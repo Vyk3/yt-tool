@@ -215,12 +215,25 @@ final class YtDlpArgumentsTests: XCTestCase {
         )
         XCTAssertTrue(args.contains("--downloader"))
         XCTAssertTrue(args.contains("/opt/homebrew/bin/aria2c"))
-        XCTAssertTrue(args.contains("m3u8:native"))
+        XCTAssertTrue(args.contains("dash,m3u8:native"))
         XCTAssertTrue(args.contains("--downloader-args"))
         XCTAssertTrue(args.contains("aria2c:-x 16 -s 16 -k 1M"))
         XCTAssertTrue(args.contains("-N"))
         XCTAssertTrue(args.contains("4"))
         XCTAssertFalse(args.contains("--downloader-path"))
+    }
+
+    func testDownloadArgumentsKeepsDashAndM3U8OnNativeDownloaderWhenAria2cEnabled() {
+        let args = buildDownloadArguments(
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            formatSelector: "137+251",
+            outputTemplate: "/tmp/%(title)s.%(ext)s",
+            ffmpegLocation: "/usr/local/bin/ffmpeg",
+            aria2cPath: "/opt/homebrew/bin/aria2c"
+        )
+
+        XCTAssertTrue(args.contains("dash,m3u8:native"))
+        XCTAssertFalse(args.contains("m3u8:native"))
     }
 
     func testDownloadArgumentsOmitsAria2cWhenPathNil() {
