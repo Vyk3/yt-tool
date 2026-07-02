@@ -31,6 +31,7 @@ final class PlaylistFormatEditorState: ObservableObject {
     @Published var probeTimestamps: [Int: Date] = [:]
 
     private var confirmedSelections: [Int: PlaylistItemFormatSelection] = [:]
+    private var batchTask: Task<Void, Never>?
     private var probeTasks: [Int: Task<Void, Never>] = [:]
     private var loadEntriesTask: Task<Void, Never>?
     private var cachedURL: String?
@@ -106,9 +107,11 @@ final class PlaylistFormatEditorState: ObservableObject {
 
         for idx in indices {
             probeTasks[idx]?.cancel()
+            probeTasks[idx] = nil
         }
 
-        let task = Task {
+        batchTask?.cancel()
+        batchTask = Task {
             await withTaskGroup(of: Void.self) { group in
                 var running = 0
                 var pending = indices.makeIterator()
@@ -141,10 +144,6 @@ final class PlaylistFormatEditorState: ObservableObject {
                     if running == 0 { break }
                 }
             }
-        }
-
-        for idx in indices {
-            probeTasks[idx] = task
         }
     }
 
@@ -284,10 +283,15 @@ final class PlaylistFormatEditorState: ObservableObject {
     }
 
     private func cancelAllProbes() {
+        batchTask?.cancel()
+        batchTask = nil
         for (_, task) in probeTasks {
             task.cancel()
         }
         probeTasks.removeAll()
+        for (idx, state) in itemProbeStates where state == .loading {
+            itemProbeStates[idx] = .idle
+        }
     }
 
     // MARK: - Selection

@@ -9,7 +9,7 @@ struct PlaylistFormatEditorView: View {
     let language: AppLanguage
     let onConfirm: (String) -> Void
     let onDismiss: () -> Void
-    nonisolated(unsafe) let onLog: @Sendable (ServiceLogKind, String) -> Void
+    let onLog: @Sendable (ServiceLogKind, String) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
