@@ -610,16 +610,15 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.queueInputURLs, "https://youtube.com/watch?v=ok")
     }
 
-    func testClearLocalDataCreatesBackupAndDoesNotDeleteExternalFiles() throws {
+    func testClearLocalDataDeletesDataAndPreservesExternalFiles() throws {
         let fixture = try makeLocalDataFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
         let state = fixture.state
         state.historyStore.append(fixture.historyEntry)
         state.subscriptionStore.add(fixture.subscription)
 
-        let backupURL = try state.clearLocalData()
+        try state.clearLocalData()
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: backupURL.appendingPathComponent("defaults.plist").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.historyURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.subscriptionsURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.userBinariesURL.path))
@@ -627,23 +626,6 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: fixture.cookiesURL.path))
         XCTAssertTrue(state.historyStore.entries.isEmpty)
         XCTAssertTrue(state.subscriptionStore.subscriptions.isEmpty)
-    }
-
-    func testRestoreLocalDataRestoresBackupPayload() throws {
-        let fixture = try makeLocalDataFixture()
-        defer { try? FileManager.default.removeItem(at: fixture.root) }
-        let state = fixture.state
-        state.historyStore.append(fixture.historyEntry)
-        state.subscriptionStore.add(fixture.subscription)
-
-        let backupURL = try state.clearLocalData()
-        try state.restoreLocalData(from: backupURL)
-
-        XCTAssertEqual(state.selectedOutputDirectory?.path, fixture.outputDirectory.path)
-        XCTAssertEqual(state.downloaderPreference, .aria2c)
-        XCTAssertEqual(state.historyStore.entries.map(\.url), [fixture.historyEntry.url])
-        XCTAssertEqual(state.subscriptionStore.subscriptions.map(\.channelID), [fixture.subscription.channelID])
-        XCTAssertTrue(FileManager.default.fileExists(atPath: fixture.userBinariesURL.appendingPathComponent("yt-dlp").path))
     }
 
     private func freshDefaults() -> UserDefaults {
