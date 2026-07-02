@@ -9,13 +9,13 @@
 #   stable:  https://github.com/yt-dlp/yt-dlp/releases
 #   nightly: https://github.com/yt-dlp/yt-dlp-nightly-builds/releases
 
-YTDLP_STABLE_VERSION="2026.03.17"
+YTDLP_STABLE_VERSION="2026.06.09"
 YTDLP_STABLE_URL="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_STABLE_VERSION}/yt-dlp"
-YTDLP_STABLE_SHA256="3bda0968a01cde70d26720653003b28553c71be14dcb2e5f4c24e9921fdad745"
+YTDLP_STABLE_SHA256="e5d57466682cfa9d61e9cf7c8a4f09b00f4a62af37d3bbdc4bcffdf63615feac"
 
-YTDLP_NIGHTLY_VERSION="2026.04.10.235301"
+YTDLP_NIGHTLY_VERSION="2026.07.01.235203"
 YTDLP_NIGHTLY_URL="https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/download/${YTDLP_NIGHTLY_VERSION}/yt-dlp"
-YTDLP_NIGHTLY_SHA256="7298cfe6d4ee40c3440daf9a9b98a5367913a54a924fa0844640e79a1179419e"
+YTDLP_NIGHTLY_SHA256="0b294370bd5dbdf23d4d7cff923f0eaad9a1fa7a2114c7e4d846445fb6ed7bda"
 
 # Embedded Python runtime (python-build-standalone, relocatable).
 # Used in release builds to invoke the yt-dlp zipapp. Dev builds use system python3.
