@@ -40,11 +40,11 @@ struct ContentView: View {
                 onDismiss: {
                     state.showsPlaylistFormatEditor = false
                 },
-                onLog: { kind, message in
+                onLog: SendableLogHandler(action: { kind, message in
                     Task { @MainActor in
                         state.appendLog(scope: .probe, level: kind.appLogLevel, message: message)
                     }
-                }
+                })
             )
         }
     }

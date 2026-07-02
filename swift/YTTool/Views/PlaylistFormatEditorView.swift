@@ -1,5 +1,9 @@
 import SwiftUI
 
+struct SendableLogHandler {
+    let action: @Sendable (ServiceLogKind, String) -> Void
+}
+
 struct PlaylistFormatEditorView: View {
     @ObservedObject var editorState: PlaylistFormatEditorState
     let playlistURL: String
@@ -9,10 +13,9 @@ struct PlaylistFormatEditorView: View {
     let language: AppLanguage
     let onConfirm: (String) -> Void
     let onDismiss: () -> Void
-    let onLog: @Sendable (ServiceLogKind, String) -> Void
+    let onLog: SendableLogHandler
 
     var body: some View {
-        let log = onLog
         VStack(spacing: 0) {
             header
                 .padding(.horizontal, 20)
@@ -38,7 +41,7 @@ struct PlaylistFormatEditorView: View {
                     probeService: probeService,
                     cookiesFilePath: cookiesFilePath,
                     extraOptions: extraOptions,
-                    onLog: log
+                    onLog: onLog.action
                 )
             }
         }
@@ -73,7 +76,6 @@ struct PlaylistFormatEditorView: View {
 
     @ViewBuilder
     private var content: some View {
-        let log = onLog
         if editorState.isLoadingEntries {
             VStack {
                 Spacer()
@@ -126,7 +128,7 @@ struct PlaylistFormatEditorView: View {
                                         probeService: probeService,
                                         cookiesFilePath: cookiesFilePath,
                                         extraOptions: extraOptions,
-                                        onLog: log
+                                        onLog: onLog.action
                                     )
                                 }
                             )
@@ -144,9 +146,7 @@ struct PlaylistFormatEditorView: View {
 
     // MARK: - Selection Bar
 
-    @ViewBuilder
     private var selectionBar: some View {
-        let log = onLog
         HStack(spacing: 12) {
             Button(Loc.formatEditorSelectAll(language)) {
                 editorState.selectAll()
@@ -166,7 +166,7 @@ struct PlaylistFormatEditorView: View {
                     probeService: probeService,
                     cookiesFilePath: cookiesFilePath,
                     extraOptions: extraOptions,
-                    onLog: log
+                    onLog: onLog.action
                 )
             }
             .disabled(editorState.selectedIndices.isEmpty)
