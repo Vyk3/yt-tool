@@ -284,6 +284,7 @@ final class PlaylistFormatEditorState: ObservableObject {
     func cancelAll() {
         loadEntriesTask?.cancel()
         loadEntriesTask = nil
+        isLoadingEntries = false
         cancelAllProbes()
     }
 
