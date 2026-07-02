@@ -311,8 +311,8 @@ enum Loc {
 
     static func clearLocalDataConfirmMessage(_ l: AppLanguage) -> String {
         l == .chinese
-            ? "将删除偏好设置、下载历史和订阅数据。下载文件和 cookies 文件不受影响。"
-            : "Preferences, download history, and subscription data will be deleted. Downloads and cookies files are not affected."
+            ? "将删除偏好设置、下载历史、订阅数据、新视频缓存和本地 yt-dlp。下载文件和 cookies 文件不受影响。"
+            : "Preferences, download history, subscription data, new-video cache, and user-local yt-dlp will be deleted. Downloads and cookies files are not affected."
     }
 
     static func extraArgs(_ l: AppLanguage) -> String {
