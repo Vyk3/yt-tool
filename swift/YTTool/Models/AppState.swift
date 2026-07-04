@@ -34,11 +34,13 @@ final class AppState: ObservableObject {
         static let appLanguage = "appLanguage"
         static let appAppearance = "appAppearance"
         static let showTechnicalDetails = "showTechnicalDetails"
+        static let customAria2cPath = "customAria2cPath"
         static let showAllFormats = "showAllFormats"
 
         static let localDataKeys = [
             selectedOutputDirectoryPath,
             downloaderPreference,
+            customAria2cPath,
             updateChannel,
             autoCheckForUpdates,
             autoCheckForAppUpdates,
@@ -109,7 +111,18 @@ final class AppState: ObservableObject {
         didSet { defaults.set(downloaderPreference.rawValue, forKey: StorageKey.downloaderPreference) }
     }
 
+    @Published var customAria2cPath: String = "" {
+        didSet {
+            defaults.set(customAria2cPath, forKey: StorageKey.customAria2cPath)
+            aria2cAvailable = Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath) != nil
+        }
+    }
+
     @Published private(set) var aria2cAvailable: Bool = false
+
+    private var effectiveCustomAria2cPath: String? {
+        customAria2cPath.isEmpty ? nil : customAria2cPath
+    }
 
     // MARK: - Queue
 
@@ -238,7 +251,8 @@ final class AppState: ObservableObject {
         {
             downloaderPreference = pref
         }
-        aria2cAvailable = Aria2cLocator().findAria2c() != nil
+        customAria2cPath = defaults.string(forKey: StorageKey.customAria2cPath) ?? ""
+        aria2cAvailable = Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath) != nil
 
         if let raw = defaults.string(forKey: StorageKey.updateChannel),
            let channel = UpdateChannel(rawValue: raw)
@@ -488,7 +502,7 @@ final class AppState: ObservableObject {
             selectedFormat: audioTranscodeFormat
         )
         let resolvedAria2cPath: String? = if downloaderPreference == .aria2c {
-            Aria2cLocator().findAria2c()?.path
+            Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath)?.path
         } else {
             nil
         }
@@ -854,7 +868,7 @@ final class AppState: ObservableObject {
 
     private func resolvedAria2cPathForQueue() -> String? {
         guard downloaderPreference == .aria2c else { return nil }
-        let path = Aria2cLocator().findAria2c()?.path
+        let path = Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath)?.path
         aria2cAvailable = path != nil
         if path == nil {
             appendLog(scope: .download, level: .warning, message: "aria2c not found in supported locations; falling back to built-in downloader")
@@ -936,6 +950,7 @@ final class AppState: ObservableObject {
 
         selectedOutputDirectory = nil
         downloaderPreference = .native
+        customAria2cPath = ""
         aria2cAvailable = Aria2cLocator().findAria2c() != nil
         updateChannel = .stable
         autoCheckForUpdates = true
@@ -1141,7 +1156,8 @@ final class AppState: ObservableObject {
 
         downloaderPreference = defaults.string(forKey: StorageKey.downloaderPreference)
             .flatMap(DownloaderPreference.init(rawValue:)) ?? .native
-        aria2cAvailable = Aria2cLocator().findAria2c() != nil
+        customAria2cPath = defaults.string(forKey: StorageKey.customAria2cPath) ?? ""
+        aria2cAvailable = Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath) != nil
         updateChannel = defaults.string(forKey: StorageKey.updateChannel)
             .flatMap(UpdateChannel.init(rawValue:)) ?? .stable
         autoCheckForUpdates = defaults.object(forKey: StorageKey.autoCheckForUpdates) == nil

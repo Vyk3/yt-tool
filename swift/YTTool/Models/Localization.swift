@@ -212,6 +212,16 @@ enum Loc {
             : "aria2c not found — install via: brew install aria2"
     }
 
+    static func customAria2cPath(_ l: AppLanguage) -> String {
+        l == .chinese ? "aria2c 路径" : "aria2c path"
+    }
+
+    static func customAria2cPathHelp(_ l: AppLanguage) -> String {
+        l == .chinese
+            ? "可选。Nix 或自定义安装时指定 aria2c 的完整路径。"
+            : "Optional. Full path to aria2c for Nix or custom installs."
+    }
+
     static func cookiesFile(_ l: AppLanguage) -> String {
         l == .chinese ? "Cookies 文件" : "Cookies file"
     }

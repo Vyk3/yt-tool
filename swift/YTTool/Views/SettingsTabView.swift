@@ -91,6 +91,15 @@ struct SettingsTabView: View {
                 .labelsHidden()
             }
 
+            settingsRow(
+                title: Loc.customAria2cPath(lang),
+                help: Loc.customAria2cPathHelp(lang)
+            ) {
+                TextField("/path/to/aria2c", text: $state.customAria2cPath)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 260)
+            }
+
             settingsRow(title: Loc.audioTranscode(lang)) {
                 Picker(Loc.audioTranscode(lang), selection: $state.audioTranscodeFormat) {
                     ForEach(AudioTranscodeFormat.allCases) { format in
