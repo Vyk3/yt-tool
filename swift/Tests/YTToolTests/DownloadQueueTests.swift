@@ -193,6 +193,7 @@ final class DownloadQueueTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(20))
         }
         XCTFail("Expected queue item to reach a terminal state")
+        throw NSError(domain: "DownloadQueueTests", code: 1)
     }
 
     private func makeDownloadScript(resultFile: URL, argsFile: URL) throws -> URL {
