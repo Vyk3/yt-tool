@@ -11,6 +11,8 @@ struct Aria2cLocator {
         guard !path.isEmpty else { return false }
         let url = URL(fileURLWithPath: path)
         guard !url.pathComponents.contains("..") else { return false }
+        var isDir: ObjCBool = false
+        guard fileManager.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue else { return false }
         return fileManager.isExecutableFile(atPath: path)
     }
 

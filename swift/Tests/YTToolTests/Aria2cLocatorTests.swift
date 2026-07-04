@@ -116,6 +116,10 @@ final class Aria2cLocatorTests: XCTestCase {
         XCTAssertFalse(Aria2cLocator.isValidCustomPath(""))
     }
 
+    func testDirectoryPathRejected() {
+        XCTAssertFalse(Aria2cLocator.isValidCustomPath(tempDirectory.path))
+    }
+
     func testValidExecutablePathAccepted() throws {
         let executable = tempDirectory.appendingPathComponent("aria2c")
         try "#!/bin/sh\nexit 0\n".write(to: executable, atomically: true, encoding: .utf8)

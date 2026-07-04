@@ -121,7 +121,9 @@ final class AppState: ObservableObject {
     @Published private(set) var aria2cAvailable: Bool = false
 
     private var effectiveCustomAria2cPath: String? {
-        customAria2cPath.isEmpty ? nil : customAria2cPath
+        let trimmed = customAria2cPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return (trimmed as NSString).expandingTildeInPath
     }
 
     // MARK: - Queue
@@ -951,7 +953,6 @@ final class AppState: ObservableObject {
         selectedOutputDirectory = nil
         downloaderPreference = .native
         customAria2cPath = ""
-        aria2cAvailable = Aria2cLocator().findAria2c() != nil
         updateChannel = .stable
         autoCheckForUpdates = true
         autoCheckForAppUpdates = true
@@ -1157,7 +1158,6 @@ final class AppState: ObservableObject {
         downloaderPreference = defaults.string(forKey: StorageKey.downloaderPreference)
             .flatMap(DownloaderPreference.init(rawValue:)) ?? .native
         customAria2cPath = defaults.string(forKey: StorageKey.customAria2cPath) ?? ""
-        aria2cAvailable = Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath) != nil
         updateChannel = defaults.string(forKey: StorageKey.updateChannel)
             .flatMap(UpdateChannel.init(rawValue:)) ?? .stable
         autoCheckForUpdates = defaults.object(forKey: StorageKey.autoCheckForUpdates) == nil
