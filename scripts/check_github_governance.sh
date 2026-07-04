@@ -14,6 +14,16 @@ EXPECTED_RULESET_INCLUDE="~DEFAULT_BRANCH"
 EXPECTED_ENVIRONMENT_BRANCH="main"
 EXPECT_PREVENT_SELF_REVIEW="false"
 
+require_value() {
+  local flag="$1"
+  local argc="$2"
+  local value="${3:-}"
+  if [[ "${argc}" -lt 2 ]] || [[ -z "${value}" ]] || [[ "${value}" == --* ]]; then
+    echo "Error: ${flag} requires a value" >&2
+    exit 2
+  fi
+}
+
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --json)
@@ -21,27 +31,33 @@ while [[ "$#" -gt 0 ]]; do
       shift
       ;;
     --repo)
-      REPO_ARG="${2:-}"
+      require_value "$1" "$#" "${2:-}"
+      REPO_ARG="$2"
       shift 2
       ;;
     --ruleset)
-      RULESET_NAME="${2:-}"
+      require_value "$1" "$#" "${2:-}"
+      RULESET_NAME="$2"
       shift 2
       ;;
     --environment)
-      ENVIRONMENT_NAME="${2:-}"
+      require_value "$1" "$#" "${2:-}"
+      ENVIRONMENT_NAME="$2"
       shift 2
       ;;
     --expected-ruleset-include)
-      EXPECTED_RULESET_INCLUDE="${2:-}"
+      require_value "$1" "$#" "${2:-}"
+      EXPECTED_RULESET_INCLUDE="$2"
       shift 2
       ;;
     --expected-environment-branch)
-      EXPECTED_ENVIRONMENT_BRANCH="${2:-}"
+      require_value "$1" "$#" "${2:-}"
+      EXPECTED_ENVIRONMENT_BRANCH="$2"
       shift 2
       ;;
     --expect-prevent-self-review)
-      EXPECT_PREVENT_SELF_REVIEW="${2:-}"
+      require_value "$1" "$#" "${2:-}"
+      EXPECT_PREVENT_SELF_REVIEW="$2"
       shift 2
       ;;
     -h|--help)
