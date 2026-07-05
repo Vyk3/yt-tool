@@ -9,11 +9,12 @@ struct Aria2cLocator {
 
     static func isValidCustomPath(_ path: String, fileManager: FileManager = .default) -> Bool {
         guard !path.isEmpty else { return false }
-        let url = URL(fileURLWithPath: path)
+        let expanded = (path as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded)
         guard !url.pathComponents.contains("..") else { return false }
         var isDir: ObjCBool = false
-        guard fileManager.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue else { return false }
-        return fileManager.isExecutableFile(atPath: path)
+        guard fileManager.fileExists(atPath: expanded, isDirectory: &isDir), !isDir.boolValue else { return false }
+        return fileManager.isExecutableFile(atPath: expanded)
     }
 
     func findAria2c(

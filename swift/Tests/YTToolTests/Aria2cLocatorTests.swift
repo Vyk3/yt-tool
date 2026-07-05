@@ -127,4 +127,18 @@ final class Aria2cLocatorTests: XCTestCase {
 
         XCTAssertTrue(Aria2cLocator.isValidCustomPath(executable.path))
     }
+
+    func testTildeExpansionAccepted() throws {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let filename = ".aria2c-tilde-test-\(UUID().uuidString)"
+        let executable = homeDir.appendingPathComponent(filename)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: executable)
+        }
+        try "#!/bin/sh\nexit 0\n".write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+
+        let tildePath = "~/\(filename)"
+        XCTAssertTrue(Aria2cLocator.isValidCustomPath(tildePath))
+    }
 }

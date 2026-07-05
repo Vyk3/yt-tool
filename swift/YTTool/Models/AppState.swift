@@ -503,17 +503,7 @@ final class AppState: ObservableObject {
             playlistMode: playlistConfig.mode,
             selectedFormat: audioTranscodeFormat
         )
-        let resolvedAria2cPath: String? = if downloaderPreference == .aria2c {
-            Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath)?.path
-        } else {
-            nil
-        }
-        if downloaderPreference == .aria2c {
-            aria2cAvailable = resolvedAria2cPath != nil
-        }
-        if downloaderPreference == .aria2c, resolvedAria2cPath == nil {
-            appendLog(scope: .download, level: .warning, message: "aria2c not found in supported locations; falling back to built-in downloader")
-        }
+        let resolvedAria2cPath: String? = resolvedAria2cPath()
 
         let preview = buildCommandPreview(
             title: info?.title,
@@ -804,7 +794,7 @@ final class AppState: ObservableObject {
             extraOptions: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
-            aria2cPath: resolvedAria2cPathForQueue(),
+            aria2cPath: resolvedAria2cPath(),
             qualityStrategy: queueQualityStrategy
         )
 
@@ -857,7 +847,7 @@ final class AppState: ObservableObject {
             extraOptions: parsedExtra,
             audioTranscodeFormat: audioTranscodeFormat,
             downloaderPreference: downloaderPreference,
-            aria2cPath: resolvedAria2cPathForQueue(),
+            aria2cPath: resolvedAria2cPath(),
             qualityStrategy: queueQualityStrategy
         )
 
@@ -868,7 +858,7 @@ final class AppState: ObservableObject {
         return true
     }
 
-    private func resolvedAria2cPathForQueue() -> String? {
+    private func resolvedAria2cPath() -> String? {
         guard downloaderPreference == .aria2c else { return nil }
         let path = Aria2cLocator().findAria2c(customPath: effectiveCustomAria2cPath)?.path
         aria2cAvailable = path != nil
