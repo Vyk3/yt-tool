@@ -15,6 +15,7 @@ struct SettingsTabView: View {
     @State private var showsExtraArgsGuide = false
     @State private var showsPrivacyInfo = false
     @State private var showsClearLocalDataConfirmation = false
+    @State private var customPathDraft: String = ""
 
     private var lang: AppLanguage {
         state.language
@@ -89,6 +90,18 @@ struct SettingsTabView: View {
                     }
                 }
                 .labelsHidden()
+            }
+
+            settingsRow(
+                title: Loc.customAria2cPath(lang),
+                help: Loc.customAria2cPathHelp(lang)
+            ) {
+                TextField("/path/to/aria2c", text: $customPathDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 260)
+                    .onSubmit { state.customAria2cPath = customPathDraft }
+                    .onAppear { customPathDraft = state.customAria2cPath }
+                    .onChange(of: state.customAria2cPath) { _, new in customPathDraft = new }
             }
 
             settingsRow(title: Loc.audioTranscode(lang)) {

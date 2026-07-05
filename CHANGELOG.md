@@ -4,6 +4,11 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+- **自定义 aria2c 路径**：Settings 新增「aria2c 路径」输入项，支持手动指定 aria2c 可执行文件路径（如 Nix、自定义 Homebrew prefix、手动编译安装场景）。自定义路径优先于系统路径检测，支持 tilde 展开（`~/bin/aria2c`），拒绝目录和 `..` 路径穿越，输入时不对文件系统做 per-keystroke 检查。(#136)
+
 ## [0.2.7] — 2026-07-02
 
 ### Added
@@ -357,6 +362,7 @@ Swift 重写完整功能覆盖：(#34, #35, #36, #37)
 ---
 
 <!-- 版本对比链接 -->
+[Unreleased]: https://github.com/Vyk3/yt-tool/compare/v0.2.7...HEAD
 [0.2.7]: https://github.com/Vyk3/yt-tool/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/Vyk3/yt-tool/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/Vyk3/yt-tool/compare/v0.2.4...v0.2.5
